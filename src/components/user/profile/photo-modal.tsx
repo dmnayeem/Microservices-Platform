@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { compressForUpload } from "@/lib/image-compress";
 import { Upload, Loader2, Trash2 } from "lucide-react";
@@ -9,6 +8,15 @@ import { confirmDialog } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
 import { inp } from "./profile-view.constants";
 import { Modal } from "./profile-ui";
+
+/**
+ * A full reload after a photo change. `router.refresh()` re-renders only the
+ * current route, and other pages visited in the last minute came back from
+ * the client cache with the old photo.
+ */
+function reloadSoon() {
+  setTimeout(() => window.location.reload(), 700);
+}
 
 export function PhotoModal({
   target,
@@ -27,7 +35,6 @@ export function PhotoModal({
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const router = useRouter();
 
   // Build preview from selected File
   useEffect(() => {
@@ -73,7 +80,7 @@ export function PhotoModal({
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       toast.success(target === "avatar" ? "Profile photo updated" : "Cover photo updated");
       onSaved();
-      router.refresh(); // re-render server shells (header/sidebar/composer)
+      reloadSoon(); // every screen (header, composer, feed) gets the new photo
     } catch (err) {
       toast.error("Upload failed", {
         description: err instanceof Error ? err.message : "Try again",
@@ -96,7 +103,7 @@ export function PhotoModal({
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       toast.success("Saved");
       onSaved();
-      router.refresh(); // re-render server shells (header/sidebar/composer)
+      reloadSoon(); // every screen (header, composer, feed) gets the new photo
     } catch (err) {
       toast.error("Save failed", {
         description: err instanceof Error ? err.message : "Try again",
@@ -118,7 +125,7 @@ export function PhotoModal({
       if (!res.ok) throw new Error(await res.text());
       toast.success("Removed");
       onSaved();
-      router.refresh(); // re-render server shells (header/sidebar/composer)
+      reloadSoon(); // every screen (header, composer, feed) gets the new photo
     } catch (err) {
       toast.error("Couldn't remove", {
         description: err instanceof Error ? err.message : "Try again",

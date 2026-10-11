@@ -181,8 +181,17 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
               router.push("/video-tasks");
             }
           } else {
-            // User backed out — keep the submission resumable
+            // User backed out — keep the submission resumable, from where the
+            // SERVER has them now (the value read at page load was stale, so
+            // reopening made them rewatch time already counted).
             setState({ kind: "ready", submissionId: state.submissionId });
+            void fetch(`/api/tasks/${taskId}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((d) => {
+                const w = Number(d?.userStatus?.watchedSeconds);
+                if (Number.isFinite(w)) setResumeSeconds(Math.max(0, Math.floor(w)));
+              })
+              .catch(() => {});
           }
         }}
       />

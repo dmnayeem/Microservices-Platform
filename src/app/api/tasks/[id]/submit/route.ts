@@ -287,7 +287,11 @@ export async function POST(
       task.type === "VIDEO" &&
       typeof videoDuration === "number" &&
       videoDuration > 0 &&
-      videoDuration < requiredSeconds
+      // Only when the 80% rule can't be met at all. A video the admin timed
+      // as 60s that the browser reports as 59.98s is a full watch, and it
+      // passes the normal rule — holding it turned auto-approve off for
+      // every task whose target equals the real length.
+      videoDuration < requiredSeconds * 0.8
     ) {
       videoTargetLowered = { claimedSec: Math.round(videoDuration), targetSec: requiredSeconds };
       requiredSeconds = Math.max(videoDuration, Math.min(requiredSeconds, 10));

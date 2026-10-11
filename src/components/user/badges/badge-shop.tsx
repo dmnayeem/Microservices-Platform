@@ -152,7 +152,7 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
             </p>
             <h1 className="mt-1 flex items-center justify-center gap-2 text-2xl font-extrabold text-(--app-ink) sm:justify-start sm:text-3xl">
               <span className="truncate">{name}</span>
-              <VerifiedBadge style={shown} size="lg" tooltip={styleLabel(shown)} />
+              <VerifiedBadge href={null} style={shown} size="lg" tooltip={styleLabel(shown)} />
             </h1>
             <p className="mt-2 max-w-xl text-sm text-(--app-ink-2)">
               The blue badge shows next to your name on your profile, posts and comments. Animated styles make it stand
@@ -225,7 +225,7 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
                   )}
                 >
                   <div className="grid h-20 place-items-center rounded-xl bg-(--app-page)">
-                    <VerifiedBadge style={k} size="lg" tooltip={styleLabel(k)} />
+                    <VerifiedBadge href={null} style={k} size="lg" tooltip={styleLabel(k)} />
                   </div>
                   <p className="mt-3 flex items-center justify-between text-sm font-bold text-(--app-ink)">
                     {styleLabel(k)}

@@ -488,7 +488,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                   {user.name || "Unnamed"}
                 </h1>
                 {user.isBlueVerified && (
-                  <VerifiedBadge
+                  <VerifiedBadge href={null}
                     style={user.verifiedBadgeStyle}
                     size="md"
                   />
@@ -1164,7 +1164,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                       <p className="text-sm font-bold text-white truncate inline-flex items-center gap-1">
                         {f.follower.name ?? f.follower.username ?? "User"}
                         {f.follower.isBlueVerified && (
-                          <VerifiedBadge
+                          <VerifiedBadge href={null}
                             style={f.follower.verifiedBadgeStyle}
                             size="sm"
                           />
@@ -1219,7 +1219,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                       <p className="text-sm font-bold text-white truncate inline-flex items-center gap-1">
                         {f.following.name ?? f.following.username ?? "User"}
                         {f.following.isBlueVerified && (
-                          <VerifiedBadge
+                          <VerifiedBadge href={null}
                             style={f.following.verifiedBadgeStyle}
                             size="sm"
                           />

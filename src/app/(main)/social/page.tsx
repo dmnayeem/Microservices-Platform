@@ -179,7 +179,8 @@ export default async function SocialPage() {
             level: true,
             createdAt: true,
           },
-          cacheStrategy: { ttl: 10, swr: 30 },
+          // Not cached: the avatar has to change the moment the user uploads a
+          // new photo (a cached copy showed the old one for up to ~40s).
         })
         .catch(() => null),
     ]);

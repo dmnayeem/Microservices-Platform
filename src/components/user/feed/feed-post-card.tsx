@@ -55,7 +55,7 @@ import {
   isEmbeddableVideoUrl,
 } from "@/components/user/primitives/inline-video-embed";
 import type { FeedPost } from "./social-feed-view.types";
-import { VerifiedBadge } from "@/components/user/profile/verified-badge";
+import { VerifiedBadge, badgeRingStyle } from "@/components/user/profile/verified-badge";
 
 // URL detection lives in `@/lib/post-urls`, shared with the composer so that
 // what previews there is what links here. The local copy this replaced required
@@ -478,8 +478,11 @@ export const FeedPostCard = memo(function FeedPostCard({
         // content was read. Both states are still called out, but by the badge
         // in the corner, which is where a label belongs.
         "app-card relative overflow-hidden p-0 animate-card-in",
-        "transition-colors duration-200 hover:border-(--app-line-strong)"
+        "transition-colors duration-200 hover:border-(--app-line-strong)",
+        // A verified badge holder's post: the badge colour as its edge.
+        post.user?.isBlueVerified && "post-premium"
       )}
+      style={post.user?.isBlueVerified ? badgeRingStyle(post.user.verifiedBadgeStyle) : undefined}
     >
       {/* Top-right badge (OFFICIAL > PROMOTED, mutually exclusive in render).
           These are the two states that are genuinely worth a colour on a post
@@ -516,6 +519,7 @@ export const FeedPostCard = memo(function FeedPostCard({
               size={44}
               name={post.user?.name}
               fallbackText={initial}
+              ring={post.user?.isBlueVerified ? badgeRingStyle(post.user.verifiedBadgeStyle) : null}
             />
           </Link>
           <div className="flex-1 min-w-0">

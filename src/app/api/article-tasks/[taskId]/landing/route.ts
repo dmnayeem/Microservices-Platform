@@ -41,7 +41,7 @@ export async function POST(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   // Anonymous and public: one address can't open journeys in bulk.
-  const { ok: underLimit } = rateLimit(`article-landing:${clientIp(req)}`, 20, 60_000);
+  const { ok: underLimit } = rateLimit(`article-landing:${clientIp(req)}`, 60, 60_000);
   if (!underLimit) return corsResponse({ error: "Too many requests" }, { status: 429 });
   const { taskId } = await params;
   const body = (await req.json().catch(() => ({}))) as {

@@ -80,7 +80,7 @@ export function BadgeConfigEditor({ canEdit }: { canEdit: boolean }) {
         </label>
         <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-800 bg-gray-950 p-3">
           <span className="flex items-center gap-2">
-            <VerifiedBadge style="BLUE" size="md" />
+            <VerifiedBadge href={null} style="BLUE" size="md" />
             <span>
               <span className="block text-sm font-semibold text-white">Blue badge</span>
               <span className="block text-xs text-gray-400">per month</span>
@@ -109,7 +109,7 @@ export function BadgeConfigEditor({ canEdit }: { canEdit: boolean }) {
               const s = cfg.styles[k];
               return (
                 <div key={k} className={`flex items-center gap-3 rounded-lg border p-3 ${s.enabled ? "border-gray-700 bg-gray-950" : "border-gray-800 bg-gray-950/40 opacity-60"}`}>
-                  <VerifiedBadge style={k} size="md" />
+                  <VerifiedBadge href={null} style={k} size="md" />
                   <span className="min-w-0 flex-1 truncate text-sm text-white">{styleLabel(k)}</span>
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     $

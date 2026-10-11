@@ -70,21 +70,13 @@ const TABS: { key: TabKey; label: string; icon: typeof ListTodo }[] = [
   { key: "offerwall", label: "Offerwall", icon: Globe },
 ];
 
-/* The `color` on each category below is kept — it is part of the catalogue
-   descriptor and other surfaces may still want it — but the hub no longer
-   renders it. Twelve category cards in nine hues is the worst instance of the
-   problem in the product: a wall of red, blue, amber, purple, pink, cyan,
-   emerald, indigo and violet, where the colour told you nothing except that
-   someone had assigned one. Twelve identical neutral cards let the twelve
-   LABELS do the distinguishing, which is what they are for. */
-
 type Kind = "type" | "board" | "feature";
 interface Category {
   key: string;
   label: string;
   description: string;
   icon: typeof Video;
-  /** Catalogue metadata. Kept on the descriptor, no longer rendered here. */
+  /** Icon colour (TONE). */
   color:
     | "red"
     | "blue"
@@ -110,7 +102,7 @@ const CATEGORIES: Category[] = [
   { key: "social-posts", label: "Social Posts", description: "Write & publish a post", icon: Megaphone, color: "violet", href: "/social-posts", kind: "feature", feature: "social-posts" },
   { key: "social", label: "Social Tasks", description: "Like, comment, share, follow", icon: Share2, color: "pink", href: "/social-tasks", kind: "type", taskType: "SOCIAL" },
   { key: "appinstall", label: "App Install", description: "Install an app + proof", icon: Smartphone, color: "emerald", href: "/app-install-tasks", kind: "type", taskType: "APPINSTALL" },
-  { key: "visit", label: "Visit & Earn", description: "Open a link for a set time or pass a short link", icon: Smartphone, color: "cyan", href: "/visit-tasks", kind: "type", taskType: "VISIT" },
+  { key: "visit", label: "Visit & Earn", description: "Open a link for a set time or pass a short link", icon: Globe, color: "cyan", href: "/visit-tasks", kind: "type", taskType: "VISIT" },
   { key: "custom", label: "Custom", description: "Custom tasks to earn", icon: Sparkles, color: "indigo", href: "/custom-tasks", kind: "type", taskType: "CUSTOM" },
   { key: "survey", label: "Survey", description: "Complete surveys", icon: ClipboardList, color: "purple", href: "/survey-tasks", kind: "type", taskType: "SURVEY" },
   { key: "quiz", label: "Quiz Tasks", description: "Answer quiz questions", icon: HelpCircle, color: "amber", href: "/quiz-tasks", kind: "type", taskType: "QUIZ" },
@@ -120,6 +112,19 @@ const CATEGORIES: Category[] = [
   { key: "offerwalls", label: "Offerwalls", description: "Complete partner offers", icon: Gift, color: "emerald", href: "/offerwalls", kind: "feature", feature: "offerwalls" },
   { key: "cpa", label: "CPA Offers", description: "Sign up with partners + proof", icon: BadgeDollarSign, color: "emerald", href: "/cpa", kind: "feature" },
 ];
+
+/** Icon colour per category, so the types can be told apart at a glance. */
+const TONE: Record<Category["color"], string> = {
+  red: "bg-red-500/15 text-red-300",
+  blue: "bg-blue-500/15 text-blue-300",
+  amber: "bg-amber-500/15 text-amber-300",
+  purple: "bg-purple-500/15 text-purple-300",
+  pink: "bg-pink-500/15 text-pink-300",
+  cyan: "bg-cyan-500/15 text-cyan-300",
+  emerald: "bg-emerald-500/15 text-emerald-300",
+  indigo: "bg-indigo-500/15 text-indigo-300",
+  violet: "bg-violet-500/15 text-violet-300",
+};
 
 const EMPTY: SummaryData = {
   summary: {},
@@ -252,6 +257,23 @@ export function TasksHubView({
     return null;
   };
 
+  // What to do, in order: task types with work waiting (most points first),
+  // the non-task features, and the task types that are empty right now.
+  const ranked = visibleCategories.map((cat) => {
+    const row = progressFor(cat);
+    const done = row?.completed ?? 0;
+    const left = row ? Math.max(0, row.available - done) : 0;
+    const isTask = cat.kind === "type" || cat.kind === "board" || cat.key === "social-posts";
+    const pct = row && row.available > 0 ? Math.min(100, Math.round((done / row.available) * 100)) : 0;
+    return { cat, row, left, isTask, pct, points: row?.earnablePoints ?? 0 };
+  });
+  const ready = ranked
+    .filter((r): r is typeof r & { row: SummaryRow } => r.isTask && !!r.row && r.left > 0)
+    .sort((a, b) => b.points - a.points || b.left - a.left);
+  const more = ranked.filter((r) => !r.isTask).map((r) => r.cat);
+  const empty = ranked.filter((r) => r.isTask && r.left === 0).map((r) => r.cat);
+  const next = ready[0] ?? null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -267,7 +289,9 @@ export function TasksHubView({
       <AdRenderer placement="TASK_LIST" />
 
       {/* Stats row: package + today's numbers */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* One sideways row on a phone — five stacked tiles pushed the tasks
+          a whole screen down. */}
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5 [&>*]:w-40 [&>*]:shrink-0 sm:[&>*]:w-auto">
         <StatCard
           label="Your Package"
           value={packageName}
@@ -312,7 +336,10 @@ export function TasksHubView({
         })}
       </ScrollFadeRow>
 
-      {/* Tasks tab — category grid (only non-empty categories) */}
+      {/* Tasks tab. On a phone, fourteen identical cards — empty ones
+          included — gave no hint where to start. Now: one "Start here" pick,
+          then the types that HAVE work, numbered by what they pay, then the
+          other ways to earn, and the empty types last in one small row. */}
       {tab === "tasks" &&
         (visibleCategories.length === 0 ? (
           <EmptyState
@@ -321,93 +348,100 @@ export function TasksHubView({
             description="New earning opportunities appear here as soon as they're added."
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleCategories.map((cat) => {
-              const Icon = cat.icon;
-              const row = progressFor(cat);
-              const hasProgress = !!row && row.available > 0;
-              // A task category with nothing in it right now keeps the same
-              // card shape ("0 tasks") instead of switching to a bare
-              // "Explore", which read as if the numbers were missing.
-              const isTaskCategory = cat.kind === "type" || cat.kind === "board" || cat.key === "social-posts";
-              // The bar tracks how much of this type is FINISHED, not how much
-              // was finished today. A user who cleared nineteen of twenty
-              // article tasks last week saw an empty bar and "0/20 done today",
-              // which reads as "nothing here has been touched".
-              const done = row?.completed ?? 0;
-              const pct = hasProgress
-                ? Math.min(100, Math.round((done / row!.available) * 100))
-                : 0;
-              return (
-                <Link
-                  key={cat.key}
-                  href={cat.href}
-                  className="app-card app-press app-lift flex flex-col"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="app-icon app-icon-lg">
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="t-section text-white">{cat.label}</h3>
-                      <p className="t-meta text-(--app-ink-3) mt-1">
-                        {cat.description}
-                      </p>
-                    </div>
+          <div className="space-y-6">
+            {next && (
+              <Link
+                href={next.cat.href}
+                className="app-card app-press block border-(--app-accent-edge) bg-(--app-nav-wash)"
+              >
+                <p className="text-[11px] font-black uppercase tracking-widest text-(--app-accent-ink)">
+                  Start here
+                </p>
+                <div className="mt-2 flex items-center gap-3">
+                  <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-2xl", TONE[next.cat.color])}>
+                    <next.cat.icon className="h-6 w-6" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-black text-white">{next.cat.label}</p>
+                    <p className="t-meta text-(--app-ink-3)">
+                      {next.left} task{next.left === 1 ? "" : "s"} waiting
+                      {next.points > 0 ? ` · up to ${pts(next.points)} pts` : ""}
+                    </p>
                   </div>
+                </div>
+                <span className="mt-3 flex w-full items-center justify-center gap-2 app-accent rounded-xl py-3 text-sm font-black">
+                  Start {next.cat.label} <ArrowRight className="h-4 w-4" />
+                </span>
+              </Link>
+            )}
 
-                  {hasProgress ? (
-                    <div className="mt-auto pt-4">
-                      <div className="flex items-center justify-between t-meta mb-1.5">
-                        <span className="text-(--app-ink-3)">
-                          <span className="text-white font-bold">{done}</span>
-                          /{row!.available} done
+            {ready.length > 0 && (
+              <section>
+                <h2 className="t-section text-white">Tasks for you</h2>
+                <p className="t-meta text-(--app-ink-3) mt-0.5">In order of what they pay — do number 1 first.</p>
+                <ol className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {ready.map((r, i) => (
+                    <li key={r.cat.key}>
+                      <Link href={r.cat.href} className="app-card app-press app-lift flex items-center gap-3 !p-3">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-(--app-surface-2) text-xs font-black text-(--app-ink-2)">
+                          {i + 1}
                         </span>
-                        {/* Points first: it is the number users compare between
-                            task types. XP available is a genuine "there is
-                            something here for you" signal, so it keeps the one
-                            warn colour. */}
-                        <span className="t-warn font-bold">
-                          {(row!.earnablePoints ?? 0) > 0
-                            ? `${pts(row!.earnablePoints ?? 0)} pts`
-                            : ""}
-                          {(row!.earnablePoints ?? 0) > 0 && row!.earnableXp > 0
-                            ? " · "
-                            : ""}
-                          {row!.earnableXp > 0 ? `${row!.earnableXp} XP` : ""}
+                        <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", TONE[r.cat.color])}>
+                          <r.cat.icon className="h-5 w-5" />
                         </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-[width] bg-(image:--app-rail)"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <p className="t-meta text-(--app-ink-3) mt-1.5">
-                        {Math.max(0, row!.available - done)} left
-                        {row!.completedToday > 0
-                          ? ` · ${row!.completedToday} today`
-                          : ""}
-                      </p>
-                    </div>
-                  ) : isTaskCategory ? (
-                    <div className="mt-auto pt-4">
-                      <div className="flex items-center justify-between t-meta mb-1.5">
-                        <span className="text-(--app-ink-3)">
-                          <span className="text-white font-bold">0</span> tasks
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-(--app-surface-2)" />
-                      <p className="t-meta text-(--app-ink-3) mt-1.5">No tasks right now — check back soon</p>
-                    </div>
-                  ) : (
-                    <span className="mt-auto pt-4 inline-flex items-center gap-1 text-xs font-bold text-(--app-ink-3)">
-                      Explore <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-bold text-white">{r.cat.label}</p>
+                          <p className="truncate t-meta text-(--app-ink-3)">
+                            {r.left} left{r.points > 0 ? ` · ${pts(r.points)} pts` : ""}
+                            {r.row.completedToday > 0 ? ` · ${r.row.completedToday} done today` : ""}
+                          </p>
+                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-(--app-surface-2)">
+                            <div className="h-full rounded-full bg-(image:--app-rail)" style={{ width: `${r.pct}%` }} />
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-(--app-ink-3)" />
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            {more.length > 0 && (
+              <section>
+                <h2 className="t-section text-white">More ways to earn</h2>
+                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                  {more.map((cat) => (
+                    <Link key={cat.key} href={cat.href} className="app-card app-press app-lift flex flex-col gap-2 !p-3">
+                      <span className={cn("grid h-10 w-10 place-items-center rounded-xl", TONE[cat.color])}>
+                        <cat.icon className="h-5 w-5" />
+                      </span>
+                      <span className="text-sm font-bold text-white">{cat.label}</span>
+                      <span className="t-meta text-(--app-ink-3) line-clamp-2">{cat.description}</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {empty.length > 0 && (
+              <section>
+                <h2 className="t-meta font-bold uppercase tracking-wider text-(--app-ink-3)">
+                  No tasks right now — check back soon
+                </h2>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {empty.map((cat) => (
+                    <Link
+                      key={cat.key}
+                      href={cat.href}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-(--app-line) bg-(--app-surface) px-3 py-1.5 text-xs font-semibold text-(--app-ink-3) hover:text-(--app-ink)"
+                    >
+                      <cat.icon className="h-3.5 w-3.5" /> {cat.label}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         ))}
 

@@ -897,21 +897,49 @@ function buildScript(origin: string, appOrigin: string): string {
     // be rebuilt from the NEW one — the one the config handed us carries the
     // note as it was a moment ago.
     if (!token) {
-      recordVisitPage().then(function() {
-        if (!cfg.isFinal) {
-          window.location.href = withVisitToken(cfg.nextPageUrl);
-          return;
-        }
-        showFinalCta();
-      });
+      // The server paces pages on its own clock and answers 425 with how long
+      // is left. Moving on anyway (as this used to) carried the OLD note to
+      // the last page, where the key then failed with no explanation.
+      var attemptVisit = function(n) {
+        recordVisitPage().then(function(d) {
+          if (d && d.retryAfter && n < 4) {
+            setTimeout(function() { attemptVisit(n + 1); }, (Math.min(60, d.retryAfter) + 1) * 1000);
+            return;
+          }
+          if (!cfg.isFinal) {
+            window.location.href = withVisitToken(cfg.nextPageUrl);
+            return;
+          }
+          showFinalCta();
+        });
+      };
+      attemptVisit(0);
       return;
     }
 
-    if (!cfg.isFinal) {
-      window.location.href = cfg.nextPageUrl;
-      return;
-    }
-    showFinalCta();
+    // Wait for the last click's report — leaving the page 500ms after a plain
+    // fetch could abort it — and if the server hasn't counted the page yet,
+    // send it again after a short wait before moving on.
+    var proceed = function() {
+      if (!cfg.isFinal) {
+        window.location.href = cfg.nextPageUrl;
+        return;
+      }
+      showFinalCta();
+    };
+    var confirmPage = function(n) {
+      (state.lastReport || Promise.resolve(null)).then(function(d) {
+        if (d && d.pageCompleted === false && n < 4) {
+          setTimeout(function() {
+            reportProgress();
+            confirmPage(n + 1);
+          }, 3000);
+          return;
+        }
+        proceed();
+      });
+    };
+    confirmPage(0);
   }
 
   /** Swap whatever note is on a URL for the one we hold now. */
@@ -1247,11 +1275,15 @@ function buildScript(origin: string, appOrigin: string): string {
     // progress is whole pages, added to the signed note when the page is
     // finished — so there is nothing to report per popup.
     if (!token) return;
-    fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) + '/popup-progress', {
+    // keepalive: the last click's report must survive the move to the next page.
+    state.lastReport = fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) + '/popup-progress', {
       method: 'POST',
+      keepalive: true,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: token, page: pageNumber, popupsCompleted: state.clicked })
-    }).catch(function() { /* swallow */ });
+    })
+      .then(function(r) { return r.json(); })
+      .catch(function() { return null; });
   }
 
   /**

@@ -1012,7 +1012,13 @@ export function VideoTaskPlayer({
                 {allStepsDone && (
                   <button
                     type="button"
-                    onClick={() => setCompletePressed(true)}
+                    onClick={() =>
+                      // After a failed submit both flags are already true, so
+                      // setting them again changed nothing and the button was dead.
+                      completePressed && outroAdDone && !submittedRef.current
+                        ? void doSubmit()
+                        : setCompletePressed(true)
+                    }
                     disabled={busy || (proofReq.uniqueKey && !uniqueKey.trim())}
                     className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >

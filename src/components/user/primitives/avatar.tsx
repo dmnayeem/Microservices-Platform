@@ -36,6 +36,11 @@ interface AvatarProps {
   /** Override the auto-derived `sizes` (numeric size only). */
   sizes?: string;
   className?: string;
+  /**
+   * A verified badge holder's ring (`badgeRingStyle(style)`): a thin rotating
+   * colour ring around the photo. Null / undefined = no ring.
+   */
+  ring?: React.CSSProperties | null;
 }
 
 const FALLBACK_BG: Record<AvatarFallbackStyle, string> = {
@@ -68,6 +73,7 @@ export function Avatar({
   priority,
   sizes,
   className,
+  ring,
 }: AvatarProps) {
   const numeric = typeof size === "number";
   const radius = shape === "rounded" ? "rounded-2xl" : "rounded-full";
@@ -88,7 +94,7 @@ export function Avatar({
     className
   );
 
-  return (
+  const body = (
     <div
       className={box}
       style={numeric ? { width: size, height: size } : undefined}
@@ -106,5 +112,14 @@ export function Avatar({
         initial ?? fallbackIcon ?? null
       )}
     </div>
+  );
+  if (!ring) return body;
+  return (
+    <span
+      className={cn("vb-ring vb-ring-thin relative inline-flex shrink-0", shape === "rounded" && "vb-ring-rounded")}
+      style={ring}
+    >
+      {body}
+    </span>
   );
 }

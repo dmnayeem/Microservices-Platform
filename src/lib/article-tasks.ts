@@ -942,10 +942,17 @@ export interface EngagementPlan {
  * never had a `popups` array.
  */
 export function renderedPopupCount(page: ArticlePage): number {
-  const defined = (page.popups ?? []).filter(
-    (p) => String(p?.text ?? "").trim().length > 0
-  ).length;
-  return defined > 0 ? defined : page.popupCount;
+  // Exactly what embed-config hands the embed: templates from `popups` (those
+  // with text) — or, with no `popups` at all, the legacy `popupCount` — and
+  // then `popupClickCount` clicks cycled through them when the admin set it.
+  // Ignoring `popupClickCount` meant 3 texts + "1 click" needed 3 clicks on
+  // the server while the embed drew one, so the page could never finish.
+  const hasPopups = (page.popups?.length ?? 0) > 0;
+  const templates = hasPopups
+    ? (page.popups ?? []).filter((p) => String(p?.text ?? "").trim().length > 0).length
+    : page.popupCount;
+  if (!templates || templates <= 0) return 0;
+  return page.popupClickCount && page.popupClickCount > 0 ? page.popupClickCount : templates;
 }
 
 export function buildEngagementPlan(
@@ -1050,13 +1057,17 @@ export function popupDelaySeconds(page: ArticlePage, idx: number): number {
   return typeof own === "number" && own >= 0 ? own : fallback;
 }
 
-/** The least time a real reader can finish this page in (every popup's wait). */
+/** Server-side slack for network and clock jitter. */
+export const ARTICLE_TIMING_SLACK = 0.8;
+
+/**
+ * The least time the server accepts for finishing this page: every popup's
+ * wait, less the slack and 1.5s each for the embed's 1-second dwell tick (a
+ * popup can show up to a second before its full delay).
+ */
 export function minPageSeconds(page: ArticlePage): number {
   const n = renderedPopupCount(page);
   let total = 0;
-  for (let i = 0; i < n; i++) total += popupDelaySeconds(page, i);
+  for (let i = 0; i < n; i++) total += Math.max(0, popupDelaySeconds(page, i) * ARTICLE_TIMING_SLACK - 1.5);
   return total;
 }
-
-/** Server-side slack for network and clock jitter (the browser can only be slower). */
-export const ARTICLE_TIMING_SLACK = 0.8;
