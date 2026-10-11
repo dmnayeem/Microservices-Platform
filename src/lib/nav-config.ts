@@ -339,6 +339,8 @@ export const DEFAULT_SIDEBAR: SidebarConfig = {
       ["Quiz Games", "/quizzes", "brain", undefined, "trivia questions"],
       ["Games", "/games", "gamepad", "games", "play arcade"],
       ["Events", "/events", "sparkles", undefined, "campaign limited"],
+      ["Contests", "/contests", "trophy", undefined, "creator video reel tiktok contest prize"],
+      ["Spotlight", "/spotlight", "star", undefined, "feature my post bid auction top of feed"],
       ["Lottery", "/lottery", "ticket", "lottery", "raffle draw ticket"],
     ]),
     seedSection("Learn & Shop", [
@@ -350,6 +352,7 @@ export const DEFAULT_SIDEBAR: SidebarConfig = {
       ["My Team", "/referrals", "users", "referrals", "referral refer invite downline"],
       ["Affiliate", "/affiliate", "handshake", undefined, "commission partner links"],
       ["Milestones", "/milestones", "target", undefined, "progress rewards"],
+      ["Level Rewards", "/level-rewards", "gift", undefined, "level up reward claim"],
       ["Achievements", "/achievements", "award", undefined, "badges trophies"],
     ]),
     seedSection("Promote", [
@@ -364,6 +367,7 @@ export const DEFAULT_SIDEBAR: SidebarConfig = {
       ["My Package", "/my-package", "package", undefined, "current plan subscription"],
       ["Notifications", "/notifications", "bell", undefined, "alerts"],
       ["Chat", "/chat", "messageSquare", undefined, "messages dm inbox"],
+      ["Feedback", "/feedback", "lightbulb", undefined, "suggest idea feature request survey vote"],
       ["Help", "/support", "helpCircle", undefined, "support contact ticket faq"],
       ["Settings", "/settings", "settings", undefined, "preferences account theme privacy"],
     ]),
