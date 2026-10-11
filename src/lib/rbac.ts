@@ -1594,6 +1594,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "ENGAGEMENT",
   },
   {
+    // Points auctions for a featured place in the feed (lib/spotlight-server.ts).
+    name: "Spotlight",
+    href: "/admin/spotlight",
+    icon: "Sparkles",
+    permissions: ["events.view"],
+    category: "ENGAGEMENT",
+  },
+  {
     name: "Quiz Games",
     href: "/admin/quizzes",
     icon: "Brain",

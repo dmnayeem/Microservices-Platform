@@ -5911,6 +5911,50 @@ model FeatureIdeaVote {
   @@unique([ideaId, userId])
 }
 
+/// Spotlight — an open auction (in points) for a featured place in the feed
+/// (lib/spotlight-server.ts). The highest bid when bidding ends wins: the
+/// winner's chosen post is promoted for `displayHours`. Only the top bid is
+/// held; an outbid member gets their points back at once. No chance involved.
+model SpotlightAuction {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  biddingEndsAt DateTime
+  displayHours  Int       @default(24)
+  minBid        Int       @default(100)
+  /// Each new top bid must beat the current one by at least this.
+  bidStep       Int       @default(10)
+  /// OPEN | AWARDED | NO_BIDS | CANCELLED
+  status        String    @default("OPEN")
+  winnerUserId  String?
+  winnerPostId  String?
+  winnerBid     Int?
+  awardedAt     DateTime?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  bids SpotlightBid[]
+
+  @@index([status, biddingEndsAt])
+}
+
+model SpotlightBid {
+  id        String           @id @default(cuid())
+  auctionId String
+  auction   SpotlightAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  userId    String
+  postId    String
+  amount    Int
+  /// HELD (top bid, points held) | OUTBID (refunded) | WON | REFUNDED (cancelled)
+  status    String           @default("HELD")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([auctionId, userId])
+  @@index([auctionId, status])
+}
+
 /// A level reward claimed (lib/level-rewards-server.ts). Unique on user +
 /// level: each level's reward pays once per account. `points` is what was paid.
 model LevelRewardClaim {

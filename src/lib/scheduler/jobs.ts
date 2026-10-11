@@ -46,6 +46,7 @@ import { sweepStaleGameSessions } from "@/lib/game-cron";
 import { releaseDueCpaHolds } from "@/lib/cpa/credit";
 import { releaseHeldOfferwallCompletions } from "@/lib/offerwall";
 import { runBillReminders, summariseBillReminders } from "@/lib/company-finance/alerts";
+import { closeEndedSpotlights } from "@/lib/spotlight-server";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -209,6 +210,18 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await runSubscriptionReminders();
       return { ok: true, summary: summariseReminders(s), result: s };
+    },
+  },
+  {
+    name: "spotlight-close",
+    label: "Close Spotlight auctions",
+    description:
+      "When a Spotlight auction's bidding time ends, the highest bid wins: its points are spent and the winner's post is promoted in the feed for the auction's display hours. An auction with no bids is closed as such. Each auction is closed once — running it again changes nothing.",
+    intervalMs: 10 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const r = await closeEndedSpotlights();
+      return { ok: true, summary: `${r.awarded} awarded, ${r.empty} closed without bids`, result: r };
     },
   },
   {
