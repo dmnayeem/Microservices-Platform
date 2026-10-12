@@ -28,6 +28,8 @@ interface TaskCardProps {
   durationMin?: number;
   cooldownText?: string;
   requiredLevel?: number;
+  /** The admin's per-task device switches (lib/task-device-gate.ts). */
+  deviceNeeds?: TaskDeviceNeeds;
   icon?: ReactNode;
   thumbnail?: string;
   onAction?: () => void;
@@ -65,6 +67,32 @@ const STATUS_TONE: Record<TaskStatus, string> = {
     "bg-(--app-out-soft) border border-(--app-out-line) text-(--app-out)",
 };
 
+/** Shape of the two switches on a task row; anything else on it is ignored. */
+export type TaskDeviceNeeds = { requireApp?: boolean | null; requirePush?: boolean | null };
+
+/**
+ * "📱 App only" / "🔔 Notifications on" — shown on a task card BEFORE the
+ * member opens the task, so the requirement is never a surprise. Renders
+ * nothing for an ordinary task.
+ */
+export function TaskDeviceChips({ needs }: { needs?: TaskDeviceNeeds | null }) {
+  if (!needs?.requireApp && !needs?.requirePush) return null;
+  return (
+    <>
+      {needs.requireApp && (
+        <span className="app-chip" title="Can only be done from the installed RevType app">
+          📱 App only
+        </span>
+      )}
+      {needs.requirePush && (
+        <span className="app-chip" title="Notifications must be turned on">
+          🔔 Notifications on
+        </span>
+      )}
+    </>
+  );
+}
+
 export function TaskCard({
   title,
   description,
@@ -76,6 +104,7 @@ export function TaskCard({
   durationMin,
   cooldownText,
   requiredLevel,
+  deviceNeeds,
   icon,
   thumbnail,
   onAction,
@@ -164,6 +193,7 @@ export function TaskCard({
                 {durationMin}m
               </span>
             )}
+            <TaskDeviceChips needs={deviceNeeds} />
           </div>
         </div>
       </div>

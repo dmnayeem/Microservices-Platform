@@ -37,6 +37,7 @@ import { profileGateResponse } from "@/lib/profile-gate-server";
 import { processReferralCommissions } from "@/lib/referral-commissions";
 import { recordUserAction } from "@/lib/goal-progress";
 import { runAchievementCheck } from "@/lib/achievements";
+import { taskDeviceGate } from "@/lib/task-device-gate";
 
 /**
  * Strip the answer key before sending a quiz to the browser.
@@ -95,6 +96,8 @@ export async function GET(request: NextRequest) {
           id: t.id,
           title: t.title,
           description: t.description ?? undefined,
+          requireApp: t.requireApp,
+          requirePush: t.requirePush,
           difficulty: (t.difficulty as string) || "BEGINNER",
           questionCount: coerceQuizQuestions(t.questions)?.length ?? 0,
           timeLimit: 0,
@@ -135,6 +138,11 @@ export async function GET(request: NextRequest) {
         { error: "This quiz isn't available for you." },
         { status: 404 }
       );
+    }
+    // Admin's "installed app only" / "notifications on" switches.
+    {
+      const deviceBlocked = await taskDeviceGate(request, task, session.user.id);
+      if (deviceBlocked) return deviceBlocked;
     }
 
     // Use pre-defined questions when present and valid (parses string-encoded
@@ -281,6 +289,11 @@ export async function POST(request: NextRequest) {
         { error: "This quiz isn't available for you." },
         { status: 404 }
       );
+    }
+    // Admin's "installed app only" / "notifications on" switches.
+    {
+      const deviceBlocked = await taskDeviceGate(request, task, session.user.id);
+      if (deviceBlocked) return deviceBlocked;
     }
 
     // Global completion cap. `completedCount` is incremented once per credited

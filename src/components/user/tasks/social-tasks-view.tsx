@@ -11,6 +11,7 @@ import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { cn } from "@/lib/utils";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { TaskDeviceChips, type TaskDeviceNeeds } from "@/components/user/primitives/task-card";
 import {
   SOCIAL_PLATFORMS,
   getAction,
@@ -173,6 +174,7 @@ export function SocialTasksView({
                     {t.title}
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <TaskDeviceChips needs={t as unknown as TaskDeviceNeeds} />
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-(--app-cta)/15 text-(--app-accent-ink)">
                       {t.items.length} action{t.items.length > 1 ? "s" : ""}
                     </span>

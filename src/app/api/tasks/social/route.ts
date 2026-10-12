@@ -144,6 +144,8 @@ export async function GET(request: NextRequest) {
     tasks: tasks
       .map((t) => ({
         ...mapSocialTaskRow(t),
+        requireApp: t.requireApp,
+        requirePush: t.requirePush,
         locked: lockedTaskIds.has(t.id),
         inProgress: inProgressIds.has(t.id),
       }))

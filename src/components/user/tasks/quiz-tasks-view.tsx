@@ -9,6 +9,7 @@ import { QuizPlayer } from "./quiz-player";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { ensureAdsAllowed } from "@/lib/adblock";
 import { cn } from "@/lib/utils";
+import { TaskDeviceChips, type TaskDeviceNeeds } from "@/components/user/primitives/task-card";
 
 interface QuizRow {
   id: string;
@@ -100,6 +101,9 @@ export function QuizTasksView() {
                   <p className="text-sm font-semibold text-white line-clamp-2">
                     {q.title}
                   </p>
+                  <div className="flex flex-wrap gap-1.5 empty:hidden">
+                    <TaskDeviceChips needs={q as unknown as TaskDeviceNeeds} />
+                  </div>
                   <span
                     className={cn(
                       "inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border",

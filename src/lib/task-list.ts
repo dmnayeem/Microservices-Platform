@@ -179,6 +179,8 @@ export async function listTasksForUser(
         completedCount: true,
         dailyLimit: true,
         totalLimit: true,
+        requireApp: true,
+        requirePush: true,
       },
     }),
     prisma.task.count({ where }),
@@ -312,6 +314,10 @@ export async function listTasksForUser(
       socialAction: task.socialAction,
       autoApprove: task.autoApprove,
       expiresAt: task.expiresAt,
+      // Admin's "installed app only" / "notifications on" switches, so the card
+      // can say so before the member opens the task.
+      requireApp: task.requireApp,
+      requirePush: task.requirePush,
       // `completedCount` is the CREDITED count the slot limit is enforced
       // against (Task.completedCount). The number of attempts is a different
       // thing and now ships under its own name — shipping attempts as

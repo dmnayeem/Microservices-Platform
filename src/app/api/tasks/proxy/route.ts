@@ -58,6 +58,8 @@ export async function GET() {
       title: t.title,
       description: t.description,
       pointsReward: t.pointsReward,
+      requireApp: t.requireApp,
+      requirePush: t.requirePush,
       duration: t.duration ?? 5,
       country: t.countries[0] ?? user.country ?? "Worldwide",
       serverHost: undefined,

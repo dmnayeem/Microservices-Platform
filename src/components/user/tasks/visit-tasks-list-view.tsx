@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Globe } from "lucide-react";
-import { TaskCard } from "@/components/user/primitives/task-card";
+import { TaskCard, type TaskDeviceNeeds } from "@/components/user/primitives/task-card";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -74,6 +74,7 @@ export function VisitTasksListView() {
             <TaskCard
               key={t.id}
               title={t.title}
+              deviceNeeds={t as unknown as TaskDeviceNeeds}
               description={t.description ?? undefined}
               type="visit"
               reward={t.pointsReward}

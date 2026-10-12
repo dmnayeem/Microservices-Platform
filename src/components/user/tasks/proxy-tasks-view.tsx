@@ -27,6 +27,7 @@ import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import { ensureAdsAllowed } from "@/lib/adblock";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
+import { TaskDeviceChips, type TaskDeviceNeeds } from "@/components/user/primitives/task-card";
 import {
   isUpgradeRequired,
   isTaskLocked,
@@ -331,6 +332,9 @@ export function ProxyTasksView() {
                   <p className="text-sm font-semibold text-white truncate">
                     {t.title}
                   </p>
+                  <div className="flex flex-wrap gap-1.5 empty:hidden">
+                    <TaskDeviceChips needs={t as unknown as TaskDeviceNeeds} />
+                  </div>
                   <p className="text-[11px] text-(--app-ink-3)">
                     {t.country} · {t.duration} min session
                   </p>

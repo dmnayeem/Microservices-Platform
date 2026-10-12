@@ -65,7 +65,9 @@ const BALANCE_WRITES: RegExp[] = [
 const BALANCE_PAGES = /^\/(dashboard|wallet|earn|lottery|daily-mission|missions|events)(\/|$)/;
 
 // Task start endpoints (both the generic and the article session start).
-const TASK_START = /^\/api\/(tasks|article-tasks)\/[^/]+\/start$/;
+// Every request that can be refused by an app-only / notifications-on task:
+// starting one, submitting one (manual tasks never start), and the quiz.
+const TASK_START = /^\/api\/((tasks|article-tasks)\/[^/]+\/(start|submit)|tasks\/quiz)$/;
 
 let installed = false;
 
