@@ -460,7 +460,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
    * Save the task without redirecting away from the form. Used by the
    * article-task wizard's Step 1 "Save Pages & Continue" / "Save as Draft"
    * buttons so the user doesn't have to click the outer "Create Task"
-   * button first. Pass `isDraft: true` to create the task as PAUSED.
+   * button first. Pass `isDraft: true` to create the task as a DRAFT.
    * Returns the saved task's id (existing or newly-created), or null on
    * error. runSubmit already manages loading/error state.
    */
@@ -611,7 +611,9 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
         order: parseInt((formData.order ?? 0).toString()) || 0,
         startsAt: formData.startsAt ? new Date(formData.startsAt).toISOString() : null,
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
-        status: isDraft ? "PAUSED" : "ACTIVE",
+        // A draft is DRAFT — it used to be written as PAUSED, so every draft
+        // showed up as a paused task.
+        status: isDraft ? "DRAFT" : "ACTIVE",
         hidden: formData.hidden === true,
         questions: formData.type === "QUIZ" ? questions : null,
         boardId: formData.boardId || null,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Clock, Loader2, Trophy, AlertTriangle, ArrowRight, Check } from "lucide-react";
+import { X, Clock, Loader2, Trophy, AlertTriangle, ArrowRight, Check, ListChecks, Coins, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
@@ -29,6 +29,8 @@ interface QuizMeta {
   questionCount: number;
   timeLimitMinutes: number;
   pointsReward: number;
+  description?: string | null;
+  xpReward?: number;
 }
 
 interface ResultData {
@@ -43,11 +45,15 @@ interface ResultData {
 interface QuizPlayerProps {
   quizId: string;
   onClose: () => void;
+  /** Pass mark (%) from the quiz list — shown on the "Ready?" screen. */
+  minScore?: number;
 }
 
-type State = "loading" | "active" | "result" | "error";
+// "ready" sits between load and play so the clock never runs while the user
+// is still reading what the quiz is.
+type State = "loading" | "ready" | "active" | "result" | "error";
 
-export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
+export function QuizPlayer({ quizId, onClose, minScore }: QuizPlayerProps) {
   const [state, setState] = useState<State>("loading");
   const [meta, setMeta] = useState<QuizMeta | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -97,13 +103,14 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           questionCount: qs.length,
           timeLimitMinutes: Number(d.timeLimitMinutes ?? 0),
           pointsReward: d.pointsReward ?? 0,
+          description: d.description ?? null,
+          xpReward: Number(d.xpReward ?? 0),
         });
         setQuestions(qs);
         const mins = Number(d.timeLimitMinutes ?? 0);
         setHasTimer(mins > 0);
         setTimeLeft(mins * 60);
-        setStartedAt(Date.now());
-        setState("active");
+        setState("ready");
       })
       .catch((err) => {
         if (cancelled) return;
@@ -217,6 +224,69 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           >
             Close
           </button>
+        </div>
+      )}
+
+      {state === "ready" && meta && (
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10">
+          <div className="w-full max-w-md rounded-2xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4">
+            <div>
+              <p className="text-xs uppercase tracking-wider font-bold text-(--app-ink-2)">
+                Ready?
+              </p>
+              <h2 className="text-xl font-bold text-white mt-1">{meta.title}</h2>
+              {meta.description && (
+                <p className="text-sm text-(--app-ink-2) mt-2 whitespace-pre-wrap">
+                  {meta.description}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-xl bg-(--app-surface-2) p-3 inline-flex items-center gap-2 text-(--app-ink)">
+                <ListChecks className="w-4 h-4 text-(--app-ink-2)" />
+                {meta.questionCount} questions
+              </div>
+              <div className="rounded-xl bg-(--app-surface-2) p-3 inline-flex items-center gap-2 text-(--app-ink)">
+                <Clock className="w-4 h-4 text-(--app-ink-2)" />
+                {meta.timeLimitMinutes > 0 ? `${meta.timeLimitMinutes} min limit` : "No time limit"}
+              </div>
+              {minScore != null && (
+                <div className="rounded-xl bg-(--app-surface-2) p-3 inline-flex items-center gap-2 text-(--app-ink)">
+                  <Trophy className="w-4 h-4 text-(--app-ink-2)" />
+                  Pass: {minScore}%
+                </div>
+              )}
+              <div className="rounded-xl bg-(--app-surface-2) p-3 inline-flex items-center gap-2 text-amber-400 font-bold">
+                <Coins className="w-4 h-4" />+{meta.pointsReward} pts
+                {!!meta.xpReward && (
+                  <span className="text-(--app-ink-2) font-semibold">· +{meta.xpReward} XP</span>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-(--app-ink-2)">
+              {meta.timeLimitMinutes > 0
+                ? "The timer starts when you tap Start and submits automatically when it runs out."
+                : "Answer every question, then submit. Leaving mid-quiz loses your answers."}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={onClose}
+                className="flex-1 min-h-11 rounded-(--app-r-control) bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
+              >
+                Not now
+              </button>
+              <button
+                onClick={() => {
+                  setStartedAt(Date.now());
+                  setState("active");
+                }}
+                className="flex-1 min-h-11 rounded-(--app-r-control) bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5"
+              >
+                <Play className="w-4 h-4" />
+                Start quiz
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -405,7 +475,8 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
             onClick={onClose}
             className="px-5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
-            {result.passed ? "Claim Reward" : "Try Again Later"}
+            {/* Points are already credited by the submit — this only closes. */}
+            {result.passed ? "Done" : "Try Again Later"}
           </button>
           {/* Sponsor slot on the completion screen. */}
           <div className="w-full max-w-md mt-6">

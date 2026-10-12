@@ -109,6 +109,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.brandName !== undefined) data.brandName = body.brandName ? String(body.brandName) : null;
   if (body.brandLogo !== undefined) data.brandLogo = body.brandLogo ? String(body.brandLogo) : null;
   if (body.ctaLabel !== undefined) data.ctaLabel = body.ctaLabel ? String(body.ctaLabel) : null;
+  if (body.description !== undefined)
+    data.description = body.description ? String(body.description).trim().slice(0, 500) || null : null;
   if (body.promotedPostId !== undefined)
     data.promotedPostId = body.promotedPostId ? String(body.promotedPostId) : null;
   if (body.targeting !== undefined) {

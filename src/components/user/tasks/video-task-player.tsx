@@ -907,20 +907,22 @@ export function VideoTaskPlayer({
                             </span>
                           )}
                         </span>
-                        {active && s.actionUrl && (
-                          <a
-                            href={s.actionUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-semibold shrink-0"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            {meta.openText}
-                          </a>
-                        )}
                       </div>
                       {active && (
                         <>
+                          {/* The step's target is THE action here — a full-width
+                              button, not a chip the user has to hunt for. */}
+                          {s.actionUrl && (
+                            <a
+                              href={s.actionUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex w-full min-h-11 items-center justify-center gap-1.5 px-4 rounded-(--app-r-control) bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              {meta.openText}
+                            </a>
+                          )}
                           {stepType(s) === "comment" && s.commentTemplate && (
                             <button
                               type="button"

@@ -71,6 +71,7 @@ import {
   defaultContentRules,
   evaluateContentRules,
   shouldAutoReject,
+  autoRejectMessage,
   toPageContent,
   looksUnreadable,
 } from "@/lib/link-verify";
@@ -104,6 +105,7 @@ import { closeTaskIfFull } from "@/lib/task-slots";
 import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
 import { clientIp } from "@/lib/rate-limit";
 import { realIp } from "@/lib/client-ip";
+import { userHashtag } from "@/lib/social-caption";
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
@@ -1238,6 +1240,15 @@ export async function POST(
             ),
           ];
           const pageByUrl = new Map<string, string | null>();
+          // The member's own #username, for a `usertag` rule (lib/social-caption).
+          const memberTag = userHashtag(
+            (
+              await prisma.user.findUnique({
+                where: { id: session.user.id },
+                select: { username: true },
+              })
+            )?.username
+          );
           if (fetchUrls.length > 0) {
             // Ask as a link-preview crawler FIRST.
             //
@@ -1324,6 +1335,7 @@ export async function POST(
                     (socialBundle[i]?.username as string | undefined) ?? null,
                   expectedCode: verifyCodeFor(task.id, i, session.user.id),
                   codeMatcher: contentHasCode,
+                  userTag: memberTag,
                 }
               );
               status =
@@ -1339,8 +1351,8 @@ export async function POST(
               // Only a page we actually READ, that genuinely did not match, on a
               // task whose admin asked for it. `shouldAutoReject` is the single
               // place that judgement lives.
-              if (shouldAutoReject(evaluation.verdict, rules)) {
-                socialAutoRejectReason ??= evaluation.summary;
+              if (shouldAutoReject(evaluation.verdict, rules, evaluation.matched)) {
+                socialAutoRejectReason ??= autoRejectMessage(evaluation.summary);
               }
             } else if (
               it.verify === "TELEGRAM_MEMBER" ||
@@ -1864,7 +1876,7 @@ export async function POST(
       return NextResponse.json({
         submission: updatedSubmission,
         status: "rejected",
-        message: `Your link didn't meet the task requirements — ${socialAutoRejectReason}. Edit your post and submit again.`,
+        message: `${socialAutoRejectReason} Edit your post and submit again.`,
       });
     }
 

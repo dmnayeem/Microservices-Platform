@@ -70,6 +70,7 @@ export const MATERIAL_FIELDS = [
   "brandName",
   "brandLogo",
   "ctaLabel",
+  "description",
   "promotedPostId",
   "format",
   "type",

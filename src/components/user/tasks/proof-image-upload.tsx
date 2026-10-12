@@ -102,7 +102,7 @@ export function ProofImageUpload({ value, onChange, placeholder }: Props) {
       <button
         type="button"
         onClick={() => setShowUrl((v) => !v)}
-        className="text-[11px] text-(--app-ink-3) hover:text-(--app-ink-2)"
+        className="px-3 py-1.5 rounded-lg border border-(--app-line-strong) text-xs font-semibold text-(--app-ink-2) hover:text-(--app-ink)"
       >
         {showUrl ? "Hide URL option" : "or paste a URL"}
       </button>

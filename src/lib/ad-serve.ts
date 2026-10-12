@@ -43,6 +43,8 @@ export interface ServedAd {
   ctaUrl?: string;
   html?: string;
   sponsor?: string;
+  /** Brand icon, first-party proxied (`/api/spaces/media/[id]?f=logo`). */
+  logoUrl?: string;
   size?: string;
   width?: number;
   height?: number;
@@ -389,7 +391,13 @@ async function serveAdInner(opts: {
   }
 
   const fresh = pool.filter((a) => !exclude.has(a.id));
-  const candidates = fresh.length > 0 ? fresh : pool;
+  // Everything already shown recently: start over, but never with the ad that
+  // is on screen right now (the first id the client sends). With two ads in a
+  // space both were "recent" after one round, the pick fell back to the whole
+  // pool, and half of all rotations "rotated" to the same ad.
+  const onScreen = [...exclude][0];
+  const others = pool.filter((a) => a.id !== onScreen);
+  const candidates = fresh.length > 0 ? fresh : others.length > 0 ? others : pool;
   // Priority first: only the highest-priority ads still available compete;
   // weight decides among them. Ads already shown (exclude) drop out, so the
   // next priority gets its turn — e.g. after an empty network frame.
@@ -474,9 +482,12 @@ async function serveAdInner(opts: {
       type: chosen.type,
       imageUrl: creativeUrl(chosen.id, "img", chosen.contentUrl, proxy, chosen.updatedAt),
       videoUrl: creativeUrl(chosen.id, "video", chosen.videoUrl, proxy, chosen.updatedAt),
-      title: chosen.campaign.title,
-      body: undefined,
-      ctaLabel: "Learn More",
+      // Only what the admin wrote. The campaign's name used to be sent as the
+      // title and "Learn More" as a button on every ad, so an image-only ad
+      // grew a headline and buttons nobody had asked for.
+      title: chosen.headline?.trim() || undefined,
+      body: chosen.description?.trim() || undefined,
+      ctaLabel: chosen.ctaLabel?.trim() || undefined,
       ctaUrl: chosen.targetUrl ?? undefined,
       html,
       network,
@@ -487,7 +498,10 @@ async function serveAdInner(opts: {
       mobileFrameUrl: mobileHtml ? adFrameUrl(chosen.id, "m", chosen.updatedAt) : undefined,
       mobileWidth: mobileHtml ? chosen.mobileWidth ?? undefined : undefined,
       mobileHeight: mobileHtml ? chosen.mobileHeight ?? undefined : undefined,
-      sponsor: undefined,
+      sponsor: chosen.brandName?.trim() || undefined,
+      logoUrl: chosen.brandLogo
+        ? creativeUrl(chosen.id, "logo", chosen.brandLogo, proxy, chosen.updatedAt)
+        : undefined,
       size: chosen.size ?? undefined,
       width: chosen.width ?? undefined,
       height: chosen.height ?? undefined,

@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Search,
+  Video as VideoIcon,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { BrandIcon } from "@/components/ui/brand-icon";
@@ -29,6 +31,9 @@ import {
   AdblockNotice,
 } from "@/components/user/primitives/task-upgrade-notice";
 import { ensureAdsAllowed } from "@/lib/adblock";
+import { TaskInstructions } from "./task-instructions";
+import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
+import { CopyButton } from "@/components/user/primitives/copy-field";
 
 interface AppInstallTask {
   id: string;
@@ -37,6 +42,8 @@ interface AppInstallTask {
   pointsReward: number;
   xpReward: number;
   thumbnailUrl?: string | null;
+  instructions?: string | null;
+  instructionVideoUrl?: string | null;
   appInstallConfig?: AppInstallConfig | null;
 }
 
@@ -301,15 +308,48 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
               <ExternalLink className="w-3.5 h-3.5 opacity-70" />
             </a>
           )}
+          {/* No store link set: without this the card had no way forward at
+              all, so tell the user how to find the app themselves. */}
+          {!cfg?.playStoreUrl && !cfg?.appStoreUrl && (
+            <div className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-(--app-line) bg-(--app-page)/40 px-3 py-2.5">
+              <Search className="w-4 h-4 shrink-0 text-green-400" />
+              <p className="min-w-0 flex-1 text-sm text-(--app-ink)">
+                Search{" "}
+                <span className="font-bold">
+                  &ldquo;{cfg?.appName || task.title}&rdquo;
+                </span>{" "}
+                in your app store
+              </p>
+              <CopyButton value={cfg?.appName || task.title} label="Copy name" tone="emerald" />
+            </div>
+          )}
         </div>
       </div>
+
+      {/* The admin's instructions were stored but never shown on this page. */}
+      <TaskInstructions value={task.instructions} />
+
+      {task.instructionVideoUrl && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-bold text-(--app-ink-2) inline-flex items-center gap-1.5">
+            <VideoIcon className="w-3.5 h-3.5" />
+            Instruction video
+          </h2>
+          <div className="max-w-2xl mx-auto">
+            <InlineVideoEmbed
+              url={task.instructionVideoUrl}
+              title={`Instruction video — ${task.title}`}
+            />
+          </div>
+        </section>
+      )}
 
       <AdRenderer placement="TASK_START" />
 
       {/* Steps */}
       {steps.length > 0 && (
         <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 space-y-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+          <p className="text-sm font-bold text-(--app-ink)">
             How to complete
           </p>
           <ol className="space-y-2">
@@ -370,7 +410,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
             <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5 space-y-4">
               <div>
                 <p className="text-sm font-bold text-white">Submit your proof</p>
-                <p className="text-xs text-(--app-ink-3) mt-0.5">
+                <p className="text-xs text-(--app-ink-2) mt-0.5">
                   Complete each requirement below, then submit.
                 </p>
               </div>
@@ -385,7 +425,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
                   </p>
                   {it.valueLabel && (
                     <div>
-                      <label className="block text-[11px] text-(--app-ink-3) mb-1">
+                      <label className="block text-xs text-(--app-ink-2) mb-1">
                         {it.valueLabel}
                       </label>
                       <input

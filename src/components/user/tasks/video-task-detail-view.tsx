@@ -319,7 +319,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
           knows what's needed before starting. */}
       {engagementSteps(cfg).length > 0 && (
         <section className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-4">
-          <h2 className="text-[11px] uppercase tracking-wider text-(--app-accent-ink) font-bold mb-2">
+          <h2 className="text-sm font-bold text-(--app-accent-ink) mb-2">
             This task requires
           </h2>
           <ul className="space-y-1.5 text-sm text-(--app-ink)">
@@ -448,7 +448,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
               </div>
             )}
 
-            <p className="text-xs text-(--app-ink-3) mt-3">
+            <p className="text-sm text-(--app-ink-2) mt-3">
               {watchSeconds > 0 ? (
                 <>
                   Stay on the player until the timer finishes. The video

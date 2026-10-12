@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TaskInstructions } from "@/components/user/tasks/task-instructions";
-import { ClipboardList, Upload, Loader2, Video as VideoIcon } from "lucide-react";
+import { ClipboardList, Upload, Loader2, Video as VideoIcon, ExternalLink } from "lucide-react";
 import { TaskCard } from "@/components/user/primitives/task-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
@@ -31,6 +31,8 @@ interface ManualTask {
   duration?: number | null;
   instructions?: string | null;
   instructionVideoUrl?: string | null;
+  /** Where the task is done, when the task has one (task-list ships it). */
+  contentUrl?: string | null;
   locked?: boolean;
   /** AVAILABLE | IN_PROGRESS | SUBMITTED | REVISION | REJECTED | COMPLETED. */
   userStatus?: string;
@@ -92,6 +94,9 @@ export function ManualTasksView() {
   }, [tab]);
 
   useAutoRefresh(() => load(true));
+
+  // Same rule submit() enforces — shown on the button so it never fails silently.
+  const hasProof = !!proofUrl.trim() || !!screenshotUrl.trim();
 
   const submit = async () => {
     if (!submitting) return;
@@ -224,30 +229,67 @@ export function ManualTasksView() {
         title="Submit Proof"
         description={submitting?.title}
         footer={
-          <div className="flex gap-2">
-            <button
-              disabled={busy}
-              onClick={() => setSubmitting(null)}
-              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              disabled={busy}
-              onClick={submit}
-              className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              {busy ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4" />
-              )}
-              Submit
-            </button>
+          <div className="space-y-2">
+            {!hasProof && (
+              <p className="text-xs text-(--app-ink-2) text-center">
+                Add a proof URL or a screenshot to submit.
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                disabled={busy}
+                onClick={() => setSubmitting(null)}
+                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={busy || !hasProof}
+                onClick={submit}
+                className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {busy ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+                Submit proof
+              </button>
+            </div>
           </div>
         }
       >
         <div className="space-y-3">
+          {/* What the user earns and where to go — the card showed it, the sheet didn't. */}
+          {submitting && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-1 rounded-full bg-(--app-in-soft) border border-(--app-in-line) text-(--app-in) text-xs font-bold">
+                +{submitting.pointsReward} pts
+              </span>
+              {submitting.xpReward > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-(--app-surface-2) text-(--app-ink-2) text-xs font-semibold">
+                  +{submitting.xpReward} XP
+                </span>
+              )}
+              {!!submitting.duration && (
+                <span className="px-2.5 py-1 rounded-full bg-(--app-surface-2) text-(--app-ink-2) text-xs font-semibold">
+                  ~{submitting.duration} min
+                </span>
+              )}
+            </div>
+          )}
+          {submitting?.contentUrl && (
+            <a
+              href={submitting.contentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full min-h-11 items-center justify-center gap-1.5 px-4 rounded-(--app-r-control) bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open task link
+            </a>
+          )}
+
           {submitting?.description && (
             <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3">
               <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
@@ -280,7 +322,7 @@ export function ManualTasksView() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+            <label className="block text-xs font-semibold text-(--app-ink-2) mb-1.5">
               Proof URL
             </label>
             <input
@@ -291,16 +333,16 @@ export function ManualTasksView() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+            <label className="block text-xs font-semibold text-(--app-ink-2) mb-1.5">
               Screenshot
             </label>
             <ProofImageUpload value={screenshotUrl} onChange={setScreenshotUrl} />
-            <p className="text-[11px] text-(--app-ink-3) mt-1">
+            <p className="text-xs text-(--app-ink-2) mt-1">
               Give a proof URL, a screenshot, or both — at least one is required.
             </p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+            <label className="block text-xs font-semibold text-(--app-ink-2) mb-1.5">
               Notes (optional)
             </label>
             <textarea

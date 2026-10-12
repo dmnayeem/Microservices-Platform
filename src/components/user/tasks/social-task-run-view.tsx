@@ -84,6 +84,16 @@ function normalizeRuleValue(raw: string): string {
   return raw.trim().toLowerCase().replace(/\/+$/, "");
 }
 
+/** "Share Post" → "post", "Follow Page" → "page": what the Open button opens. */
+function targetNoun(label?: string | null): string {
+  if (!label) return "target";
+  const noun = label
+    .toLowerCase()
+    .replace(/^(share|like|follow|save|watch|comment on|join|subscribe to|visit|repost|retweet|react to|review|rate|install|download|listen to|play|upvote|star|fork|clap)\s+/, "")
+    .trim();
+  return noun || "target";
+}
+
 export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<SocialTaskView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,6 +140,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const [hydrated, setHydrated] = useState(false);
   // Per-user auto-verify codes (item index → code), from the task GET response.
   const [verifyCodes, setVerifyCodes] = useState<Record<number, string>>({});
+  // The caption each publishing action asks the member to post (their own
+  // #username already appended by the server when the task asks for it).
+  const [captions, setCaptions] = useState<Record<number, string>>({});
   /** What Smart Auto Verification will check, per item index. */
   const [contentRules, setContentRules] = useState<
     Record<number, { labels: string[]; matchMode: "all" | "any"; canReject: boolean }>
@@ -262,6 +275,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         }
         const mapped = mapSocialTaskRow(d.task);
         setTask(mapped);
+        if (d.socialCaptions && typeof d.socialCaptions === "object") {
+          setCaptions(d.socialCaptions as Record<number, string>);
+        }
         if (d.socialVerifyCodes && typeof d.socialVerifyCodes === "object") {
           setVerifyCodes(d.socialVerifyCodes as Record<number, string>);
         }
@@ -843,13 +859,8 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
       <AdRenderer placement="TASK_START" />
 
-      {/* Reference material, collapsed.
-
-          These were two full-weight panels above everything actionable, so the
-          first screen of a task was reading rather than doing — and on a task
-          with a long admin write-up the actual steps started below the fold on
-          every phone. They are still one tap away; they are just no longer the
-          first thing in the way. */}
+      {/* About the task and the advertiser's instructions — always open
+          (TaskAside). Members skipped them while they were folded away. */}
       {(task.description || hasInstructions(task.instructions)) && (
         <div className="space-y-2">
           {task.description && (
@@ -1085,16 +1096,51 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
               )
             ) : (
               item.targetUrl && (
-                <a
-                  href={item.targetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-(--app-accent-ink) hover:text-(--app-accent-ink)"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Open target
-                </a>
+                // The one thing every step starts with — a real button, centred,
+                // in the platform's own colour with its logo, so a member knows
+                // before tapping where it takes them.
+                <div className="flex flex-col items-center gap-1.5 py-1">
+                  <a
+                    href={item.targetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "app-press inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2.5 rounded-(--app-r-control) px-5 text-base font-bold shadow-lg ring-1 ring-white/15 transition hover:brightness-110",
+                      platform?.brandColor ?? "bg-(--app-cta) text-(--app-on-cta)"
+                    )}
+                  >
+                    {platform ? (
+                      <BrandIcon brand={platform.key} fallback={platform.emoji} className="h-5 w-5 shrink-0" />
+                    ) : null}
+                    <span className="truncate">
+                      Open {targetNoun(def?.label)}
+                    </span>
+                    <ExternalLink className="h-4 w-4 shrink-0 opacity-90" />
+                  </a>
+                  <p className="text-center text-xs text-(--app-ink-2)">
+                    Opens the {platform?.label ?? "target"} {targetNoun(def?.label)} in a new tab. Do the step there, then come back here.
+                  </p>
+                </div>
               )
+            )}
+
+            {/* The caption to paste when sharing / posting — the admin's text,
+                with this member's own hashtag when the task asks for it. */}
+            {captions[idx] && (
+              <div className="rounded-(--app-r-control) border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-(--app-ink)">Caption to post</p>
+                  <span className="inline-flex items-center rounded-lg bg-violet-500/15 px-2.5 py-1.5">
+                    <CopyButton value={captions[idx]} />
+                  </span>
+                </div>
+                <p className="whitespace-pre-wrap rounded-lg border border-(--app-line) bg-(--app-surface) p-3 text-sm text-(--app-ink-2) select-all">
+                  {captions[idx]}
+                </p>
+                <p className="text-xs text-(--app-ink-2)">
+                  Copy it and paste it as the text of your {def?.label?.toLowerCase() ?? "post"} — don&apos;t change the hashtags.
+                </p>
+              </div>
             )}
 
             {/* Auto-verify code — the user MUST include this unique code in the

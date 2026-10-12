@@ -613,7 +613,14 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
 
       {submitState.kind === "ready" && cfg?.useKeyPool && (
         <div className="space-y-3 sm:space-y-4">
-          <KeyPoolStartCard taskId={task.id} />
+          <KeyPoolStartCard
+            taskId={task.id}
+            entryMode={
+              cfg.entry?.mode === "search" || cfg.entry?.mode === "referral"
+                ? cfg.entry.mode
+                : "direct"
+            }
+          />
           <ManualKeySubmitCard
             taskId={task.id}
             submissionId={submitState.submissionId}
@@ -751,7 +758,14 @@ function searchUrlFor(engine: "google" | "bing" | "any", keyword: string) {
   return `https://www.google.com/search?q=${q}`;
 }
 
-function KeyPoolStartCard({ taskId }: { taskId: string }) {
+function KeyPoolStartCard({
+  taskId,
+  entryMode,
+}: {
+  taskId: string;
+  /** From the task's config — enough to describe the route before Start. */
+  entryMode: "direct" | "search" | "referral";
+}) {
   const [busy, setBusy] = useState(false);
   const [opened, setOpened] = useState(false);
   // Kept so "Reopen" returns to the SAME journey. Minting a second token each
@@ -865,9 +879,9 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
       <div>
         <h2 className="text-sm sm:text-base font-bold text-white inline-flex items-center gap-2">
           <ExternalLink className="w-4 h-4 text-(--app-accent-ink) shrink-0" />
-          Start the article journey
+          Step 1 — Start the article journey
         </h2>
-        <p className="text-xs text-(--app-ink-3) mt-1.5 leading-relaxed">
+        <p className="text-xs text-(--app-ink-2) mt-1.5 leading-relaxed">
           Visit each article page in order. Popups appear on each page —
           click them to advance. On the final page you&apos;ll receive a
           unique key to copy back to this task.
@@ -878,6 +892,32 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
           until then we do not know which mode this task is in — and asking
           the server up front would cost a round-trip on every article task
           for something almost none of them need. */}
+      {/* Before Start the keyword/host aren't known yet, but the route is —
+          so the user sees how this task works before committing. */}
+      {!entry && entryMode !== "direct" && (
+        <div className="rounded-lg border border-(--app-accent-edge)/30 bg-(--app-surface-2) p-3 space-y-1.5">
+          <p className="t-eyebrow text-(--app-ink-2)">How this task works</p>
+          {entryMode === "search" ? (
+            <>
+              <p className="text-xs text-(--app-ink-2)">1. Tap the button below — it opens a search page and shows the words to search for.</p>
+              <p className="text-xs text-(--app-ink-2)">2. Search those words and open the site from the results.</p>
+              <p className="text-xs text-(--app-ink-2)">3. Go through the article pages; copy the key from the last page.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-(--app-ink-2)">1. Tap the button below — it opens a post.</p>
+              <p className="text-xs text-(--app-ink-2)">2. Click the link inside the post to reach the article.</p>
+              <p className="text-xs text-(--app-ink-2)">3. Go through the article pages; copy the key from the last page.</p>
+            </>
+          )}
+          <p className="rounded-md border border-(--app-warn-line) bg-(--app-warn-soft) px-2.5 py-2 text-xs font-medium text-(--app-warn) leading-relaxed">
+            {entryMode === "search"
+              ? "Typing the site's address yourself does not count."
+              : "Reaching the article any other way does not count."}
+          </p>
+        </div>
+      )}
+
       {entry && (
         <div className="rounded-lg border border-(--app-accent-edge)/30 bg-(--app-surface-2) p-3 space-y-2.5">
           <p className="t-eyebrow text-(--app-ink-3)">
@@ -913,7 +953,7 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
                 </span>
                 .
               </p>
-              <p className="text-[11px] text-(--app-warn) leading-relaxed">
+              <p className="rounded-md border border-(--app-warn-line) bg-(--app-warn-soft) px-2.5 py-2 text-xs font-medium text-(--app-warn) leading-relaxed">
                 Open it from the search results. Typing the address straight
                 into the bar does not count, and the article will tell you so
                 instead of starting.
@@ -931,7 +971,7 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
                 </span>
                 .
               </p>
-              <p className="text-[11px] text-(--app-warn) leading-relaxed">
+              <p className="rounded-md border border-(--app-warn-line) bg-(--app-warn-soft) px-2.5 py-2 text-xs font-medium text-(--app-warn) leading-relaxed">
                 Go through the post&apos;s own link. Reaching the article any
                 other way does not count.
               </p>
@@ -1024,8 +1064,8 @@ function ManualKeySubmitCard({
 }) {
   const params = useSearchParams();
   const urlKey = params.get("key") ?? "";
-  // Auto-open when arriving with a key in the URL.
-  const [open, setOpen] = useState(!!urlKey);
+  // Open by default: this is Step 2 of the task, not an optional extra.
+  const [open, setOpen] = useState(true);
   const [key, setKey] = useState(urlKey);
   const [busy, setBusy] = useState(false);
   // null = not yet submitted, true = matched (green), false = rejected (red)
@@ -1126,12 +1166,10 @@ function ManualKeySubmitCard({
                 ? "Key matched — task complete"
                 : matchState === "fail"
                 ? "Key didn't match"
-                : urlKey
-                ? "Submit your unique key"
-                : "Already have your unique key?"}
+                : "Step 2 — Submit your key"}
             </span>
           </h3>
-          <p className="text-[11px] text-(--app-ink-3) mt-0.5 wrap-break-word">
+          <p className="text-xs text-(--app-ink-2) mt-0.5 wrap-break-word">
             {matchState === "match"
               ? resultMsg
               : matchState === "fail"
@@ -1141,8 +1179,8 @@ function ManualKeySubmitCard({
               : "Paste it here once you've generated it on the final article page."}
           </p>
         </div>
-        <span className="text-(--app-ink-3) text-xs shrink-0 ml-2">
-          {open ? "Close" : "Open"}
+        <span className="shrink-0 ml-2 rounded-(--app-r-chip) border border-(--app-line-strong) px-2.5 py-1 text-xs font-semibold text-(--app-ink)">
+          {open ? "Hide" : "Show"}
         </span>
       </button>
 

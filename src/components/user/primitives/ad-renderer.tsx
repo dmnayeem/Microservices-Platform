@@ -616,6 +616,14 @@ export function AdRenderer({
   // pair of full-width buttons on a campaign with no destination would be two
   // controls that look like the primary action and navigate nowhere.
   const hasUrl = !!ad.ctaUrl;
+  // What the admin actually wrote. Each piece is optional and drawn only when
+  // present; with none of them the ad is the image (or video) alone, and a tap
+  // anywhere on it is the click.
+  const hasTitle = !!ad.title?.trim();
+  const hasSponsor = !!ad.sponsor?.trim();
+  const hasCta = !!ad.ctaLabel?.trim();
+  const hasText = hasTitle || hasSponsor || hasCta || !!ad.body?.trim() || !!ad.logoUrl;
+  const mediaOnly = !hasText && !!(ad.imageUrl || ad.videoUrl);
 
   /** The creative itself. Same element in all three layouts, same ceiling. */
   const media = (cls: string) =>
@@ -674,6 +682,7 @@ export function AdRenderer({
 
   const overlay = (big: boolean) => (
     <>
+      {hasSponsor && (
       <span
         className="on-media pointer-events-none absolute left-2 top-2 z-20 inline-flex max-w-[75%] items-center gap-1.5 rounded-full px-2 py-1 backdrop-blur-sm"
         style={{ backgroundColor: CHIP_BG }}
@@ -687,6 +696,7 @@ export function AdRenderer({
           {brand}
         </span>
       </span>
+      )}
       {/* The headline sits UNDER the creative, not on it.
           It used to be overlaid on a black gradient band, and that band is what
           the owner reported as a black shadow across every ad. Light text on an
@@ -897,6 +907,45 @@ export function AdRenderer({
     );
   }
 
+  if (mediaOnly) {
+    return shell(
+      <a
+        ref={attachRoot}
+        {...linkProps}
+        style={outerStyle}
+        className={cn(
+          "app-press group relative mx-auto block overflow-hidden",
+          "rounded-(--app-r-control) border border-(--app-line)",
+          className
+        )}
+      >
+        {ad.impressionPixel ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={ad.impressionPixel} alt="" width={1} height={1} className="absolute bottom-0 right-0 opacity-0 pointer-events-none" />
+        ) : null}
+        {media("w-full")}
+        {/* The one required disclosure. */}
+        <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/55 px-1 text-[9px] font-semibold uppercase tracking-wide text-white/85">
+          Ad
+        </span>
+        {dismissible && (
+          <button
+            type="button"
+            aria-label="Hide ad"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDismissed(true);
+            }}
+            className="absolute top-0.5 right-0.5 z-20 w-5 h-5 grid place-items-center rounded-full bg-black/60 backdrop-blur text-white/70 hover:text-white hover:bg-black/80"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </a>
+    );
+  }
+
   if (isStrip) {
     return shell(
       <a
@@ -956,10 +1005,12 @@ export function AdRenderer({
           )}
           <p className="t-meta truncate text-(--app-ink-3)">Sponsored · {brand}</p>
         </div>
-        <span className="app-accent-soft mr-2 inline-flex shrink-0 items-center gap-1 self-center rounded-(--app-r-chip) px-2.5 py-1 text-[11px] font-bold">
-          {ad.ctaLabel || "Learn More"}
-          <ExternalLink className="h-3 w-3" />
-        </span>
+        {hasCta && (
+          <span className="app-accent-soft mr-2 inline-flex shrink-0 items-center gap-1 self-center rounded-(--app-r-chip) px-2.5 py-1 text-[11px] font-bold">
+            {ad.ctaLabel}
+            <ExternalLink className="h-3 w-3" />
+          </span>
+        )}
         {dismissible && (
           <button
             type="button"
@@ -1065,11 +1116,12 @@ export function AdRenderer({
             beside the avatar, which is where the reference puts it — and a
             circular arrow the size of a button, above two actual buttons,
             reads as a third action that does something different. */}
-        {brandChip}
+        {hasSponsor && brandChip}
       </a>
       {hideButton}
 
       <div className="p-4">
+        {(hasTitle || hasSponsor || ad.logoUrl) && (
         <div className="flex items-start gap-3">
           {ad.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -1100,7 +1152,7 @@ export function AdRenderer({
               <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-(--app-ink-3)" />
             </span>
             <span className="t-meta mt-0.5 block truncate text-(--app-ink-3)">
-              Sponsored · {brand}
+              {hasSponsor ? `Sponsored · ${brand}` : "Sponsored"}
             </span>
           </span>
           <div className="relative shrink-0">
@@ -1150,6 +1202,7 @@ export function AdRenderer({
             )}
           </div>
         </div>
+        )}
 
         {ad.body && (
           <p className="t-body mt-2 line-clamp-2 text-(--app-ink-2)">{ad.body}</p>
@@ -1167,22 +1220,15 @@ export function AdRenderer({
             so the secondary carries the advertiser's own CTA label and opens the
             same destination through the same handler. Two labels, one billed
             event each, no decoration. */}
-        {hasUrl && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <a
-              {...linkProps}
-              className="app-tap-row app-press flex items-center justify-center rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) px-3 text-center text-sm font-bold text-(--app-ink)"
-            >
-              {ad.ctaLabel || "Learn More"}
-            </a>
-            <a
-              {...linkProps}
-              className="app-tap-row app-press flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-cta) px-3 text-sm font-bold text-(--app-on-cta)"
-            >
-              Visit site
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
+        {/* The button is the admin's own, and only when they set one. */}
+        {hasUrl && hasCta && (
+          <a
+            {...linkProps}
+            className="app-tap-row app-press mt-3 flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-cta) px-3 text-sm font-bold text-(--app-on-cta)"
+          >
+            {ad.ctaLabel}
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
         )}
       </div>
     </article>

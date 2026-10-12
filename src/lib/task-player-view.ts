@@ -95,7 +95,17 @@ export function toPlayerTask<T extends Record<string, unknown>>(
   // it is never sent to the browser — just what the task screen needs.
   if ("visitConfig" in out && out.visitConfig != null) {
     const v = out.visitConfig as Record<string, unknown>;
-    out.visitConfig = { kind: v.kind, staySeconds: v.staySeconds, minSeconds: v.minSeconds };
+    // The host alone (not the URL) so the user can see where "Open link" goes
+    // before pressing it; the full link still only travels via /go/task.
+    let host: string | null = null;
+    try {
+      host = typeof v.url === "string" && v.url
+        ? new URL(v.url).host.toLowerCase().replace(/^www\./, "")
+        : null;
+    } catch {
+      host = null;
+    }
+    out.visitConfig = { kind: v.kind, staySeconds: v.staySeconds, minSeconds: v.minSeconds, host };
   }
 
   return out;

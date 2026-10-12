@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { actionTakesCaption, composeCaption } from "@/lib/social-caption";
 
 /**
  * How the user gets their post content.
@@ -667,7 +668,10 @@ function SocialActionCard({
       {/* Smart Auto Verification — fetch the submitted link and check it
           against the admin's own rules. Offered on the same actions as the code
           check: both need a public page to read. */}
-      {def.supportsAiPrompt && (
+      {/* The caption members copy for a share / post — optional. */}
+      {actionTakesCaption(item.action) && <CaptionEditor item={item} onUpdate={onUpdate} />}
+
+      {(def.supportsAiPrompt || actionTakesCaption(item.action)) && (
         <ContentRulesEditor
           item={item}
           onUpdate={onUpdate}
@@ -1173,6 +1177,86 @@ function deriveDefaultProofRequirements(
    whole value is that an admin can add "must contain our link" in two clicks.
    ───────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The caption a member copies for a share / post. All optional: an empty
+ * caption means no caption box at all. With "add the member's username" on,
+ * every member's copy ends with their own #username — pair it with the
+ * "Member's own username hashtag" rule below to verify who posted.
+ */
+function CaptionEditor({
+  item,
+  onUpdate,
+}: {
+  item: BundleItem;
+  onUpdate: (patch: Partial<BundleItem>) => void;
+}) {
+  const preview = composeCaption({
+    caption: item.caption,
+    hashtags: item.captionHashtags,
+    userTag: item.captionUserTag ? "member_username" : null,
+  });
+  const hasTagRule = !!item.contentRules?.criteria.some((c) => c.kind === "usertag");
+  return (
+    <div className="space-y-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+      <p className="text-xs font-semibold text-violet-300">Caption for the post (optional)</p>
+      <p className="text-[11px] text-gray-400 -mt-1">
+        Members see it with a Copy button and paste it when they share. Leave it empty for no caption.
+      </p>
+      <textarea
+        value={item.caption ?? ""}
+        onChange={(e) => onUpdate({ caption: e.target.value || undefined })}
+        rows={3}
+        maxLength={3000}
+        placeholder="e.g. I just found the easiest way to earn online 👇"
+        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 text-sm focus:outline-none focus:border-violet-500"
+      />
+      <input
+        value={item.captionHashtags ?? ""}
+        onChange={(e) => onUpdate({ captionHashtags: e.target.value || undefined })}
+        maxLength={500}
+        placeholder="Hashtags (optional) — e.g. #RevType #EarnOnline"
+        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 text-sm focus:outline-none focus:border-violet-500"
+      />
+      <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={!!item.captionUserTag}
+          onChange={(e) =>
+            onUpdate({
+              captionUserTag: e.target.checked || undefined,
+              // Turning it on also checks for it, so the tag proves who posted.
+              ...(e.target.checked && item.verify === "CONTENT" && !hasTagRule
+                ? {
+                    contentRules: {
+                      ...(item.contentRules ?? defaultContentRules()),
+                      criteria: [
+                        ...(item.contentRules?.criteria ?? []),
+                        { kind: "usertag" as CriterionKind, value: "" },
+                      ],
+                    },
+                  }
+                : {}),
+            })
+          }
+          className="mt-0.5 rounded bg-gray-800 border-gray-600 text-violet-500"
+        />
+        <span>
+          Add the member&apos;s username as a hashtag (e.g. <code>#rafi_123</code>)
+          <span className="block text-[11px] text-gray-500">
+            Each member copies their own tag. With Smart Auto Verification on, add the rule
+            &ldquo;Member&apos;s own username hashtag&rdquo; to check it was really them.
+          </span>
+        </span>
+      </label>
+      {preview && (
+        <pre className="whitespace-pre-wrap rounded-lg bg-gray-900 border border-gray-800 p-2 text-[11px] text-gray-300">
+          {preview}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 function ContentRulesEditor({
   item,
   onUpdate,
@@ -1226,6 +1310,9 @@ function ContentRulesEditor({
             // are the rules they meant, so start with them.
             contentRules: {
               ...rules,
+              // First switch-on: all match → approve, some → review, none →
+              // reject. A task that already had rules keeps its own choice.
+              onMismatch: item.contentRules ? rules.onMismatch : "partial",
               criteria: seededFromFields(rules.criteria),
             },
             // Nothing to fetch without a URL — the same forcing the code
@@ -1323,11 +1410,11 @@ function ContentRulesEditor({
                 <input
                   value={c.value}
                   onChange={(e) => update(i, { value: e.target.value })}
-                  disabled={c.kind === "code"}
+                  disabled={c.kind === "code" || c.kind === "usertag"}
                   placeholder={CRITERION_HINT[c.kind]}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 text-xs focus:outline-none focus:border-sky-500 disabled:opacity-50"
                 />
-                {c.kind !== "code" && !c.value.trim() && (
+                {c.kind !== "code" && c.kind !== "usertag" && !c.value.trim() && (
                   <p className="text-[10px] text-amber-400/80 mt-0.5">
                     Empty rules are dropped when the task is saved.
                   </p>
@@ -1381,10 +1468,11 @@ function ContentRulesEditor({
               <select
                 value={rules.onMismatch}
                 onChange={(e) =>
-                  setRules({ onMismatch: e.target.value as "manual" | "reject" })
+                  setRules({ onMismatch: e.target.value as ContentRules["onMismatch"] })
                 }
                 className="mt-1 w-full px-2 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-xs"
               >
+                <option value="partial">Some match → review · nothing matches → reject</option>
                 <option value="manual">Send to manual review</option>
                 <option value="reject">Reject automatically</option>
               </select>

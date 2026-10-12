@@ -363,47 +363,65 @@ export function ProxyTasksView() {
           if (!o && !connectedAt) reset();
         }}
         title={active?.title ?? "Proxy Session"}
-        description={active ? `${active.country} · ${active.duration} min target` : undefined}
+        description={
+          active ? `${active.country} · ${active.duration} min target · +${active.pointsReward} pts` : undefined
+        }
         footer={
           active ? (
-            <div className="flex gap-2">
-              <button
-                disabled={submitting}
-                onClick={async () => {
-                  if (
-                    !connectedAt ||
-                    (await confirmDialog({
-                      title: "Disconnect now?",
-                      description: "Reward will be forfeited.",
-                      tone: "danger",
-                      confirmLabel: "Disconnect",
-                    }))
-                  ) {
-                    reset();
-                  }
-                }}
-                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
-              >
-                {connectedAt ? "Disconnect" : "Cancel"}
-              </button>
-              <button
-                disabled={submitting || !minTimeMet || !connectedAt}
-                onClick={submit}
-                className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                {submitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-                Submit Proof
-              </button>
+            <div className="space-y-2">
+              {/* Why Submit is greyed out — the user otherwise has no idea. */}
+              {!submitting && (!connectedAt || !minTimeMet) && (
+                <p className="text-xs text-(--app-ink-2) text-center tabular-nums">
+                  {!connectedAt
+                    ? "Generate credentials to start the session — Submit unlocks after 80% of the time."
+                    : `Submit unlocks in ${fmt(Math.max(0, minRequiredSec - elapsedSec))}`}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  disabled={submitting}
+                  onClick={async () => {
+                    if (
+                      !connectedAt ||
+                      (await confirmDialog({
+                        title: "Disconnect now?",
+                        description: "Reward will be forfeited.",
+                        tone: "danger",
+                        confirmLabel: "Disconnect",
+                      }))
+                    ) {
+                      reset();
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+                >
+                  {connectedAt ? "Disconnect" : "Cancel"}
+                </button>
+                <button
+                  disabled={submitting || !minTimeMet || !connectedAt}
+                  onClick={submit}
+                  className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  Submit Proof
+                </button>
+              </div>
             </div>
           ) : null
         }
       >
         {active && (
           <div className="space-y-4">
+            {active.description && (
+              <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
+                {active.description}
+              </p>
+            )}
+
             {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
             <TaskInstructions
               value={active.instructions}
@@ -427,11 +445,11 @@ export function ProxyTasksView() {
             {/* Session timer */}
             <div className="rounded-2xl bg-(--app-surface-2) p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) inline-flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
+                <p className="text-xs uppercase tracking-wider font-bold text-(--app-ink-2) inline-flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
                   Session Time
                 </p>
-                <p className="text-[10px] text-(--app-ink-3) tabular-nums">
+                <p className="text-xs text-(--app-ink-2) tabular-nums">
                   {fmt(elapsedSec)} / {fmt(targetSec)}
                 </p>
               </div>
@@ -449,7 +467,7 @@ export function ProxyTasksView() {
               </div>
               <p
                 className={cn(
-                  "text-[11px] mt-1.5 font-medium",
+                  "text-xs mt-1.5 font-medium",
                   minTimeMet ? "text-emerald-400" : "text-amber-400"
                 )}
               >
@@ -473,13 +491,13 @@ export function ProxyTasksView() {
             {creds && (
               <div className="space-y-3 rounded-xl bg-(--app-page) border border-(--app-line) p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) inline-flex items-center gap-1">
-                    <KeyRound className="w-3 h-3" />
+                  <p className="text-xs uppercase tracking-wider font-bold text-(--app-ink-2) inline-flex items-center gap-1">
+                    <KeyRound className="w-3.5 h-3.5" />
                     Proxy Credentials
                   </p>
                   <p
                     className={cn(
-                      "text-[11px] font-mono tabular-nums",
+                      "text-xs font-mono tabular-nums",
                       credRemainSec < 30 ? "text-red-400" : "text-amber-400"
                     )}
                   >
@@ -492,7 +510,7 @@ export function ProxyTasksView() {
                   <CopyField label="Username" value={creds.username} />
                   <CopyField label="Password" value={creds.password} />
                 </div>
-                <p className="text-[10px] text-(--app-ink-3)">
+                <p className="text-xs text-(--app-ink-2)">
                   Protocol: <span className="font-mono text-(--app-ink-2)">{creds.protocol}</span> · Region: <span className="font-mono text-(--app-ink-2)">{active.country}</span>
                 </p>
               </div>
@@ -512,9 +530,13 @@ export function ProxyTasksView() {
                 Submit your proof
               </p>
               <div>
-                <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+                <label className="block text-xs font-semibold text-(--app-ink-2) mb-1.5">
                   Proof URL <span className="text-red-400">*</span>
                 </label>
+                <p className="text-xs text-(--app-ink-2) mb-1.5">
+                  While connected, open an IP-check page (e.g. ipinfo.io/json) or
+                  your session log and paste its URL here.
+                </p>
                 <input
                   type="url"
                   value={proofUrl}
@@ -524,7 +546,7 @@ export function ProxyTasksView() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+                <label className="block text-xs font-semibold text-(--app-ink-2) mb-1.5">
                   Screenshot <span className="text-(--app-ink-3)">(optional)</span>
                 </label>
                 <ProofImageUpload

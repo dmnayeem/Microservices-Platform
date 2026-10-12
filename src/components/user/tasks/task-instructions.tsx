@@ -28,14 +28,15 @@ import { OFFER_RICHTEXT_CLASS } from "@/lib/offers";
  *    scanning a task on a phone needs is to see "1", "2", "3" as separate
  *    things they do in order, which means giving each one a badge and real
  *    space. This is the "step 1 / step 2" the task pages were missing.
- *  - **Long instructions collapse.** Admins paste a lot. Six steps is a
- *    briefing; twenty is a document, and putting a document above the button
- *    the user came to press means they never reach the button.
+ *  - **Long instructions start fully open.** A collapsed block hid steps the
+ *    user needed and they did the task wrong (owner, 2026-10-13: always
+ *    visible). The toggle stays only so a user who has read them can fold
+ *    them away and reach the button.
  */
 
-/** Beyond this many steps, collapse by default. */
+/** Beyond this many steps, offer a fold-away toggle. */
 const COLLAPSE_AFTER_STEPS = 6;
-/** Beyond this much rich text, collapse by default. */
+/** Beyond this much rich text, offer a fold-away toggle. */
 const COLLAPSE_HTML_CHARS = 900;
 
 /**
@@ -69,7 +70,7 @@ export function TaskInstructions({
     ? (value ?? "").length > COLLAPSE_HTML_CHARS
     : steps.length > COLLAPSE_AFTER_STEPS;
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const collapsed = long && !open;
 
   if (!hasInstructions(value)) return null;
@@ -88,7 +89,7 @@ export function TaskInstructions({
           </span>
           <div className="min-w-0">
             <p className="text-sm font-bold text-(--app-ink)">{title}</p>
-            <p className="text-[11px] text-(--app-ink-3)">Read every step before you start</p>
+            <p className="text-xs text-(--app-ink-2)">Read every step before you start</p>
           </div>
         </div>
       )}
@@ -131,10 +132,10 @@ export function TaskInstructions({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-(--app-ink)"
+          className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-(--app-ink)"
         >
           <ChevronDown
-            className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
+            className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
           />
           {open
             ? "Show less"

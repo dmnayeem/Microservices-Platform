@@ -53,7 +53,7 @@ interface Props {
    * back its new id, then advance the wizard. Without this, the user
    * would have to click the outer "Create Task" button first.
    *
-   * `opts.isDraft` lets the wizard create the task as PAUSED (draft)
+   * `opts.isDraft` lets the wizard create the task as a DRAFT
    * instead of ACTIVE — used by Step 1's "Save as Draft" button.
    */
   onSaveTask?: (opts?: { isDraft?: boolean }) => Promise<string | null>;
@@ -629,7 +629,7 @@ function PagesStep({
             onClick={handleSaveAsDraft}
             disabled={saving || validCount === 0}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-sm font-semibold disabled:opacity-50"
-            title="Create the task as a draft (PAUSED) without publishing it"
+            title="Create the task as a draft without publishing it"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

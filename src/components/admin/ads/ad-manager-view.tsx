@@ -133,6 +133,7 @@ interface Ad {
   brandName: string | null;
   brandLogo: string | null;
   ctaLabel: string | null;
+  description?: string | null;
   targeting: AdTargeting | null;
   // Review state — the API always returned these; the client just dropped them,
   // which is why a rejection reason was never visible anywhere in the admin.
@@ -713,6 +714,15 @@ export function AdManagerView({
             </button>
             {tab === "ads" && (
               <button
+                type="button"
+                onClick={() => setTab("settings")}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800"
+              >
+                <Settings2 className="w-4 h-4" /> Ad timing
+              </button>
+            )}
+            {tab === "ads" && (
+              <button
                 onClick={() => setAdWizard(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
@@ -1177,6 +1187,9 @@ export function AdManagerView({
                               {!p.isActive && <span className="ml-1.5 text-[10px] text-slate-500">(off)</span>}
                             </td>
                             <td className="py-1.5 pr-3">
+                              {fullScreen ? (
+                                <span className="text-xs text-slate-500">Shows once — full-screen ads don&apos;t rotate</span>
+                              ) : (
                               <input
                                 type="number"
                                 min={10}
@@ -1191,6 +1204,7 @@ export function AdManagerView({
                                 }}
                                 className="w-20 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-white disabled:opacity-50"
                               />
+                              )}
                             </td>
                             <td className="py-1.5 pr-3">
                               {fullScreen ? (
@@ -2776,6 +2790,7 @@ function AdModal({
   const [brandName, setBrandName] = useState(ad?.brandName ?? "");
   const [brandLogo, setBrandLogo] = useState(ad?.brandLogo ?? "");
   const [ctaLabel, setCtaLabel] = useState(ad?.ctaLabel ?? "");
+  const [description, setDescription] = useState(ad?.description ?? "");
   // Targeting (audience filters) — single AdTargeting object owned by AudienceBuilder
   const [targeting, setTargeting] = useState<AdTargeting>(ad?.targeting ?? {});
   const [busy, setBusy] = useState(false);
@@ -2833,6 +2848,7 @@ function AdModal({
         rewardCooldownSec: Number(rewardCooldownSec) || 3600,
         headline,
         brandName,
+        description,
         brandLogo,
         ctaLabel,
         targeting,
@@ -3112,26 +3128,37 @@ function AdModal({
           )}
         </div>
 
-        {format === "NATIVE" && (
+        {(format === "NATIVE" || creative === "IMAGE" || creative === "VIDEO") && (
           <div className="rounded-lg border border-slate-800 p-3 space-y-2.5">
-            <p className="text-xs font-bold text-slate-400">Native creative</p>
+            <p className="text-xs font-bold text-slate-400">
+              {format === "NATIVE" ? "Native creative" : "Text on the ad (all optional)"}
+            </p>
+            {format !== "NATIVE" && (
+              <p className="text-[11px] text-slate-500 -mt-1.5">
+                Leave everything empty for an image-only ad — the whole image is the click. Fill only what you want shown.
+              </p>
+            )}
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Title (optional)</label>
+              <textarea value={headline} onChange={(e) => setHeadline(e.target.value)} rows={2} className={inputCls} placeholder="What are you promoting?" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Description (optional)</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={500} className={inputCls} placeholder="One or two lines under the title" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Brand name</label>
+                <label className="block text-xs text-slate-400 mb-1">Brand name (optional)</label>
                 <input value={brandName} onChange={(e) => setBrandName(e.target.value)} className={inputCls} placeholder="e.g. NordVPN" />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">CTA label</label>
-                <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} className={inputCls} placeholder="Learn More" />
+                <label className="block text-xs text-slate-400 mb-1">Button text (optional)</label>
+                <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} className={inputCls} placeholder="e.g. Learn More — empty = no button" />
               </div>
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Brand logo</label>
+              <label className="block text-xs text-slate-400 mb-1">Icon / brand logo (optional)</label>
               <ImageUploadField value={brandLogo} onChange={setBrandLogo} previewSize="square" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Headline / ad copy</label>
-              <textarea value={headline} onChange={(e) => setHeadline(e.target.value)} rows={3} className={inputCls} placeholder="What are you promoting?" />
             </div>
           </div>
         )}

@@ -39,13 +39,14 @@ import { decodeHtml, metaContent } from "@/lib/html-text";
 
 /* ────────────────────────────── config ────────────────────────────── */
 
-export type CriterionKind = "text" | "url" | "hashtag" | "username" | "code";
+export type CriterionKind = "text" | "url" | "hashtag" | "username" | "usertag" | "code";
 
 export const CRITERION_KINDS: CriterionKind[] = [
   "text",
   "url",
   "hashtag",
   "username",
+  "usertag",
   "code",
 ];
 
@@ -55,6 +56,7 @@ export const CRITERION_LABEL: Record<CriterionKind, string> = {
   url: "Contains link",
   hashtag: "Contains hashtag",
   username: "Mentions username",
+  usertag: "Member's own username hashtag",
   code: "Personal verification code",
 };
 
@@ -63,6 +65,7 @@ export const CRITERION_HINT: Record<CriterionKind, string> = {
   url: "A link that must be in the post (tracking parameters are ignored)",
   hashtag: "With or without the #",
   username: "With or without the @",
+  usertag: "#their-username — filled in per member (add it to the caption), no value needed",
   code: "The unique per-user code — no value needed, it is generated per user",
 };
 
@@ -79,8 +82,11 @@ export interface ContentRules {
   /**
    * What to do when the page WAS readable and did not match.
    * Never consulted for `unverifiable`.
+   *  - manual   an admin decides
+   *  - reject   reject on any miss
+   *  - partial  some rules matched → an admin decides; NOTHING matched → reject
    */
-  onMismatch: "manual" | "reject";
+  onMismatch: "manual" | "reject" | "partial";
 }
 
 export function defaultContentRules(): ContentRules {
@@ -100,7 +106,7 @@ export function parseContentRules(raw: unknown): ContentRules {
       if (!CRITERION_KINDS.includes(kind)) continue;
       // `code` needs no value; everything else without one is a rule that would
       // silently match anything, which is worse than not having it.
-      if (kind === "code") {
+      if (kind === "code" || kind === "usertag") {
         out.criteria.push({ kind, value: "" });
         continue;
       }
@@ -110,6 +116,7 @@ export function parseContentRules(raw: unknown): ContentRules {
   }
   if (r.matchMode === "any") out.matchMode = "any";
   if (r.onMismatch === "reject") out.onMismatch = "reject";
+  if (r.onMismatch === "partial") out.onMismatch = "partial";
   return out;
 }
 
@@ -415,6 +422,8 @@ export interface EvaluationContext {
   expectedCode?: string | null;
   /** Case-sensitive raw-HTML code check, reused from task-verify-code. */
   codeMatcher?: (html: string, code: string) => boolean;
+  /** The member's own hashtag (lib/social-caption `userHashtag`), for `usertag`. */
+  userTag?: string | null;
 }
 
 export interface Evaluation {
@@ -422,10 +431,13 @@ export interface Evaluation {
   results: CriterionResult[];
   /** Human sentence for a rejection reason / review badge. */
   summary: string;
+  /** How many rules matched (0 when the page was not read). */
+  matched: number;
 }
 
 function describe(c: Criterion): string {
   if (c.kind === "code") return "personal verification code";
+  if (c.kind === "usertag") return "your username hashtag";
   return `${CRITERION_LABEL[c.kind].toLowerCase()} “${c.value}”`;
 }
 
@@ -446,6 +458,7 @@ export function evaluateContentRules(
       verdict: "unverifiable",
       results: [],
       summary: "No verification rules configured",
+      matched: 0,
     };
   }
   if (!page) {
@@ -453,6 +466,7 @@ export function evaluateContentRules(
       verdict: "unverifiable",
       results: [],
       summary: "Couldn't open the link to check it",
+      matched: 0,
     };
   }
   if (detectLoginWall(page.html, page.text)) {
@@ -460,6 +474,7 @@ export function evaluateContentRules(
       verdict: "unverifiable",
       results: [],
       summary: "The page needs a login, so it couldn't be checked automatically",
+      matched: 0,
     };
   }
   // Read nothing? Then we know nothing -- and "we know nothing" must never be
@@ -470,6 +485,7 @@ export function evaluateContentRules(
       results: [],
       summary:
         "This page builds itself in the browser, so our server saw no content to check",
+      matched: 0,
     };
   }
 
@@ -487,6 +503,9 @@ export function evaluateContentRules(
         break;
       case "username":
         matched = matchesUsername(page.text, c.value, ctx.submittedUsername);
+        break;
+      case "usertag":
+        matched = !!ctx.userTag && matchesHashtag(page.text, ctx.userTag);
         break;
       case "code":
         matched =
@@ -517,6 +536,7 @@ export function evaluateContentRules(
         rules.matchMode === "any"
           ? `${matchedCount}/${results.length} matched (any required) — passed`
           : `${matchedCount}/${results.length} matched — 100%`,
+      matched: matchedCount,
     };
   }
 
@@ -525,6 +545,7 @@ export function evaluateContentRules(
     verdict: "criteria_failed",
     results,
     summary: `${matchedCount}/${results.length} matched — ${pct}%. Missing ${missing.join(", ")}`,
+    matched: matchedCount,
   };
 }
 
@@ -537,7 +558,16 @@ export function evaluateContentRules(
  */
 export function shouldAutoReject(
   verdict: VerifyVerdict,
-  rules: ContentRules
+  rules: ContentRules,
+  /** Rules that did match. `partial` rejects only when this is 0. */
+  matched = 0
 ): boolean {
-  return verdict === "criteria_failed" && rules.onMismatch === "reject";
+  if (verdict !== "criteria_failed") return false;
+  if (rules.onMismatch === "reject") return true;
+  return rules.onMismatch === "partial" && matched === 0;
+}
+
+/** The member-facing reason on an automatic rejection (always English). */
+export function autoRejectMessage(summary: string): string {
+  return `Rejected because the task was not completed perfectly. ${summary}`;
 }

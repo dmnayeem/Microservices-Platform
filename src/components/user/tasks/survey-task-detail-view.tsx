@@ -13,6 +13,7 @@ import {
   Clock,
   CheckCircle2,
   Info,
+  Video as VideoIcon,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -33,6 +34,8 @@ import {
 import { ensureAdsAllowed } from "@/lib/adblock";
 import { ShieldCheck } from "lucide-react";
 import { BUYER_SURVEY_NOTICE } from "@/lib/survey-buyer";
+import { TaskInstructions } from "./task-instructions";
+import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 
 interface SurveyTask {
   id: string;
@@ -43,6 +46,8 @@ interface SurveyTask {
   difficulty?: string | null;
   thumbnailUrl?: string | null;
   duration?: number | null;
+  instructions?: string | null;
+  instructionVideoUrl?: string | null;
   surveyConfig?: SurveyConfig | null;
   /** Set when an advertiser funded this survey rather than the platform. */
   fundedByUserId?: string | null;
@@ -336,6 +341,24 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
         </div>
       </div>
 
+      {/* The admin's instructions were stored but never shown on this page. */}
+      <TaskInstructions value={task.instructions} />
+
+      {task.instructionVideoUrl && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-bold text-(--app-ink-2) inline-flex items-center gap-1.5">
+            <VideoIcon className="w-3.5 h-3.5" />
+            Instruction video
+          </h2>
+          <div className="max-w-2xl mx-auto">
+            <InlineVideoEmbed
+              url={task.instructionVideoUrl}
+              title={`Instruction video — ${task.title}`}
+            />
+          </div>
+        </section>
+      )}
+
       <AdRenderer placement="TASK_START" />
 
       {/*
@@ -436,7 +459,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
         <section className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 sm:p-5 space-y-5">
           <div>
             <h2 className="text-base font-bold text-white">Your answers</h2>
-            <p className="text-xs text-(--app-ink-3) mt-0.5">
+            <p className="text-xs text-(--app-ink-2) mt-0.5">
               {orderedQuestions.filter((q) => q.required).length} required of{" "}
               {orderedQuestions.length} questions.
             </p>
