@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
           title: true,
           status: true,
           budget: true,
+          isHouse: true,
           startAt: true,
           endAt: true,
           advertiser: { select: { id: true, name: true, username: true } },

@@ -76,6 +76,9 @@ export function AdWizard({
   const [campaignId, setCampaignId] = useState(campaigns[0]?.id ?? "");
   const [newTitle, setNewTitle] = useState("");
   const [newBudget, setNewBudget] = useState("50");
+  // Your own ad (house): runs without a budget and is never billed. Off only
+  // for a campaign a real advertiser is paying for.
+  const [newIsHouse, setNewIsHouse] = useState(true);
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
 
@@ -129,7 +132,7 @@ export function AdWizard({
     if (s === 0)
       return campaignMode === "existing"
         ? !!campaignId
-        : newTitle.trim().length >= 2 && Number(newBudget) >= 1;
+        : newTitle.trim().length >= 2 && (newIsHouse || Number(newBudget) >= 1);
     if (s === 1) return selected.length >= 1;
     if (s === 2)
       return (
@@ -168,7 +171,8 @@ export function AdWizard({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: newTitle.trim(),
-            budget: Number(newBudget) || 0,
+            budget: newIsHouse ? 0 : Number(newBudget) || 0,
+            isHouse: newIsHouse,
             status: "ACTIVE",
             startAt: startAt ? new Date(startAt).toISOString() : null,
             endAt: endAt ? new Date(endAt).toISOString() : null,
@@ -324,16 +328,25 @@ export function AdWizard({
                     <label className="block text-xs text-slate-400 mb-1">Campaign title</label>
                     <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className={inputCls} placeholder="e.g. Summer promo" />
                   </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Budget ($)</label>
-                    <input type="number" min={1} value={newBudget} onChange={(e) => setNewBudget(e.target.value)} className={inputCls} />
-                    <p className="text-[11px] text-slate-500 mt-1">Charged per click from this budget; must be ≥ the click cost to serve. Budget ÷ CPC ≈ clicks.</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[11px] text-slate-500">
-                      You&apos;re charged the per-click cost from this budget; when it runs out the campaign pauses. Budget ÷ CPC ≈ clicks.
-                    </p>
-                  </div>
+                  <label className="col-span-2 flex items-start gap-2.5 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2.5 cursor-pointer">
+                    <input type="checkbox" checked={newIsHouse} onChange={(e) => setNewIsHouse(e.target.checked)} className="mt-0.5" />
+                    <span>
+                      <span className="block text-sm text-white font-medium">My own ad (no budget)</span>
+                      <span className="block text-xs text-slate-500 mt-0.5">
+                        Your promos, your network tags, your own offers — runs without dollars until you pause it. Turn
+                        off only for a campaign a real advertiser pays for.
+                      </span>
+                    </span>
+                  </label>
+                  {!newIsHouse && (
+                    <div className="col-span-2">
+                      <label className="block text-xs text-slate-400 mb-1">Budget ($)</label>
+                      <input type="number" min={1} value={newBudget} onChange={(e) => setNewBudget(e.target.value)} className={inputCls} />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Charged per click from this budget; when it runs out the campaign pauses. Budget ÷ CPC ≈ clicks.
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">Start date (optional)</label>
                     <DateField type="date" value={startAt} onChange={(v) => setStartAt(v)} className={inputCls} />

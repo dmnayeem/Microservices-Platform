@@ -32,7 +32,8 @@ import {
 
   CalendarClock,
   ReceiptText,
-  ExternalLink,} from "lucide-react";
+  ExternalLink,
+  Settings2,} from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
@@ -41,7 +42,7 @@ import { AdWizard } from "@/components/admin/ads/ad-wizard";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
-import { AD_PLACEMENTS, placementSizeKey, placementSpec } from "@/lib/ad-placements";
+import { AD_PLACEMENTS, placementLabel, placementSizeKey, placementSpec } from "@/lib/ad-placements";
 import { HTML_AD_NETWORKS } from "@/lib/ad-networks/registry";
 import { AD_SIZES, resolveAdSize } from "@/lib/ad-sizes";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
@@ -155,6 +156,7 @@ interface Ad {
     title: string;
     status?: string | null;
     budget?: number | null;
+    isHouse?: boolean | null;
     startAt?: string | null;
     endAt?: string | null;
     advertiser?: { id: string; name: string | null; username: string | null } | null;
@@ -167,6 +169,7 @@ const TABS = [
   { id: "approvals", label: "Approvals", icon: ShieldCheck },
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "placements", label: "Ad Spaces", icon: Layers },
+  { id: "settings", label: "Settings", icon: Settings2 },
   { id: "bookings", label: "Bookings", icon: CalendarClock },
   { id: "invoices", label: "Invoices", icon: ReceiptText },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -328,6 +331,8 @@ export function AdManagerView({
         setPlacements(p.placements ?? []);
         if (typeof p.rotationSeconds === "number") setRotationSeconds(p.rotationSeconds);
         if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
+        if (typeof p.pageScriptsMax === "number") setPageScriptsMax(p.pageScriptsMax);
+        if (typeof p.exactImpressions === "boolean") setExactImpressions(p.exactImpressions);
         if (p.density) {
           setFeedAdInterval(p.density.feedAdInterval ?? 2);
           setFeedPromoInterval(p.density.feedPromoInterval ?? 4);
@@ -829,10 +834,114 @@ export function AdManagerView({
                 Google ads and ads from networks that don&apos;t allow refresh (Ads → Networks) are never
                 rotated away once shown — reloading their code on a timer counts as invalid traffic.
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-3">
                 <p className="text-sm text-slate-400">
                   Toggle a space off to stop showing ads there. Stats are aggregated from all ads in each space.
+                  How long ads show and how often they change — for every space at once — is on the Settings tab.
                 </p>
+                <button type="button" onClick={() => setTab("settings")} className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300 hover:bg-blue-500/20">
+                  <Settings2 className="h-3.5 w-3.5" /> Ad settings
+                </button>
+              </div>
+
+              {/* Grant ad credit */}
+              {canManage && (
+                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+                  <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Grant ad credit</p>
+                  <p className="text-[11px] text-slate-500 -mt-1">Give an advertiser Ad Credit (USD, non-withdrawable). Negative amount deducts.</p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="flex-1 min-w-48">
+                      <label className="block text-xs text-slate-400 mb-1">Advertiser email</label>
+                      <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="advertiser@email.com" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Amount ($)</label>
+                      <input type="number" step={5} value={grantAmount} onChange={(e) => setGrantAmount(Number(e.target.value))} className="w-28 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm" />
+                    </div>
+                    <button onClick={grantAdCredit} disabled={grantBusy} className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                      {grantBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Grant
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* The "ADD CUSTOM SPACE" box that used to live here is gone.
+                  An ad space is a <AdRenderer> mounted in a page: typing a name
+                  into a box creates a database row that renders nowhere, which
+                  is precisely how `QW` came to exist and hold two funded ads
+                  that could never serve. The create API has refused
+                  non-canonical names since; the box could only ever 400. */}
+              {/* Rate-card discoverability.
+                  The per-space rate card has existed and worked since it
+                  shipped, and not one of the 29 spaces has ever had a price set
+                  — every click on every space bills the single global default.
+                  The controls were on each card, several scrolls down, with
+                  nothing saying they were all empty. This states the fact and
+                  points at the fix; it deliberately suggests no prices, because
+                  what a space is worth is the owner's call, not a default. */}
+              {(() => {
+                const priced = placements.filter((p) => p.cpcUsd != null).length;
+                if (placements.length === 0) return null;
+                return (
+                  <div
+                    className={cn(
+                      "rounded-xl border p-3 mb-1",
+                      priced === 0
+                        ? "border-amber-500/40 bg-amber-500/10"
+                        : "border-slate-800 bg-slate-900/40"
+                    )}
+                  >
+                    <p className="text-xs text-slate-200">
+                      <span className="font-bold">
+                        {priced} of {placements.length}
+                      </span>{" "}
+                      spaces have their own click price. The rest bill the global
+                      default of{" "}
+                      <span className="font-bold text-white">{usd(cpcUsd)}</span>{" "}
+                      per click.
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {priced === 0
+                        ? "So a click on Withdrawal — the longest-dwell page on the platform — earns exactly what a click on a slot nobody scrolls to earns. Set a price on the high-value spaces below (the “Click price” box on each card); leave it blank to keep the global rate."
+                        : "Blank means “use the global rate”. Spend already billed is never re-priced — each click snapshots the rate in force at the time."}
+                    </p>
+                  </div>
+                );
+              })()}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {placements.map((p) => (
+                  <AdSpaceCard
+                    key={p.id}
+                    placement={p}
+                    canManage={canManage}
+                    rotationSeconds={rotationSeconds}
+                    cpcUsd={cpcUsd}
+                    onToggle={() => togglePlacement(p)}
+                    onSetRotation={(secs) => setPlacementRotation(p, secs)}
+                    onSetInterstitial={(secs) => setPlacementInterstitial(p, secs)}
+                    onSetRate={(patch) => setPlacementRate(p, patch)}
+                    onDelete={() => deletePlacement(p.id, p.name)}
+                    reassignTargets={placements
+                      .filter((t) => t.id !== p.id && CANONICAL_NAMES.has(t.name))
+                      .map((t) => ({ id: t.id, name: t.name }))}
+                    onReassign={(targetId) => reassignPlacement(p, targetId)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === "settings" && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-3 text-sm text-blue-100/90">
+                <b className="text-white">Every ad setting, in one place.</b> How often ads change, how long
+                full-screen ads stay before they can be closed, page scripts, click price and the feed&apos;s ad density.
+                Settings that belong to one ad or one network are linked at the bottom.
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">General</p>
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-slate-400 whitespace-nowrap" title="Applies to spaces that don't set their own interval">Default rotate every</label>
@@ -946,90 +1055,96 @@ export function AdManagerView({
                 )}
               </div>
 
-              {/* Grant ad credit */}
-              {canManage && (
-                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
-                  <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Grant ad credit</p>
-                  <p className="text-[11px] text-slate-500 -mt-1">Give an advertiser Ad Credit (USD, non-withdrawable). Negative amount deducts.</p>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div className="flex-1 min-w-48">
-                      <label className="block text-xs text-slate-400 mb-1">Advertiser email</label>
-                      <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="advertiser@email.com" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Amount ($)</label>
-                      <input type="number" step={5} value={grantAmount} onChange={(e) => setGrantAmount(Number(e.target.value))} className="w-28 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm" />
-                    </div>
-                    <button onClick={grantAdCredit} disabled={grantBusy} className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
-                      {grantBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      Grant
-                    </button>
-                  </div>
-                </div>
-              )}
 
-              {/* The "ADD CUSTOM SPACE" box that used to live here is gone.
-                  An ad space is a <AdRenderer> mounted in a page: typing a name
-                  into a box creates a database row that renders nowhere, which
-                  is precisely how `QW` came to exist and hold two funded ads
-                  that could never serve. The create API has refused
-                  non-canonical names since; the box could only ever 400. */}
-              {/* Rate-card discoverability.
-                  The per-space rate card has existed and worked since it
-                  shipped, and not one of the 29 spaces has ever had a price set
-                  — every click on every space bills the single global default.
-                  The controls were on each card, several scrolls down, with
-                  nothing saying they were all empty. This states the fact and
-                  points at the fix; it deliberately suggests no prices, because
-                  what a space is worth is the owner's call, not a default. */}
-              {(() => {
-                const priced = placements.filter((p) => p.cpcUsd != null).length;
-                if (placements.length === 0) return null;
-                return (
-                  <div
-                    className={cn(
-                      "rounded-xl border p-3 mb-1",
-                      priced === 0
-                        ? "border-amber-500/40 bg-amber-500/10"
-                        : "border-slate-800 bg-slate-900/40"
-                    )}
-                  >
-                    <p className="text-xs text-slate-200">
-                      <span className="font-bold">
-                        {priced} of {placements.length}
-                      </span>{" "}
-                      spaces have their own click price. The rest bill the global
-                      default of{" "}
-                      <span className="font-bold text-white">{usd(cpcUsd)}</span>{" "}
-                      per click.
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {priced === 0
-                        ? "So a click on Withdrawal — the longest-dwell page on the platform — earns exactly what a click on a slot nobody scrolls to earns. Set a price on the high-value spaces below (the “Click price” box on each card); leave it blank to keep the global rate."
-                        : "Blank means “use the global rate”. Spend already billed is never re-priced — each click snapshots the rate in force at the time."}
-                    </p>
-                  </div>
-                );
-              })()}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {placements.map((p) => (
-                  <AdSpaceCard
-                    key={p.id}
-                    placement={p}
-                    canManage={canManage}
-                    rotationSeconds={rotationSeconds}
-                    cpcUsd={cpcUsd}
-                    onToggle={() => togglePlacement(p)}
-                    onSetRotation={(secs) => setPlacementRotation(p, secs)}
-                    onSetInterstitial={(secs) => setPlacementInterstitial(p, secs)}
-                    onSetRate={(patch) => setPlacementRate(p, patch)}
-                    onDelete={() => deletePlacement(p.id, p.name)}
-                    reassignTargets={placements
-                      .filter((t) => t.id !== p.id && CANONICAL_NAMES.has(t.name))
-                      .map((t) => ({ id: t.id, name: t.name }))}
-                    onReassign={(targetId) => reassignPlacement(p, targetId)}
-                  />
-                ))}
+              {/* Per-space timing — the same controls as each Ad Space card, as one table. */}
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Timing per ad space</p>
+                <p className="text-[11px] text-slate-500 -mt-1">
+                  Blank = the default above. &ldquo;Rotate every&rdquo; is how many seconds an ad stays before the next
+                  one shows (10–60s). &ldquo;Can close after&rdquo; is for full-screen ads: how many seconds before the
+                  close button appears (default 5s). An ad can override both in its own form.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-xs text-slate-500">
+                      <tr>
+                        <th className="py-1.5 pr-3">Space</th>
+                        <th className="py-1.5 pr-3">Rotate every (sec)</th>
+                        <th className="py-1.5 pr-3">Full-screen: can close after (sec)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {placements.map((p) => {
+                        const fullScreen = p.name.includes("INTERSTITIAL");
+                        return (
+                          <tr key={p.id} className="border-t border-slate-800">
+                            <td className="py-1.5 pr-3 text-slate-200">
+                              {placementLabel(p.name)}
+                              {!p.isActive && <span className="ml-1.5 text-[10px] text-slate-500">(off)</span>}
+                            </td>
+                            <td className="py-1.5 pr-3">
+                              <input
+                                type="number"
+                                min={10}
+                                max={60}
+                                placeholder={`${rotationSeconds}`}
+                                defaultValue={p.rotationSeconds ?? ""}
+                                disabled={!canManage}
+                                onBlur={(e) => {
+                                  const v = e.target.value.trim();
+                                  const next = v === "" ? null : Math.min(60, Math.max(10, Number(v) || 10));
+                                  if ((p.rotationSeconds ?? null) !== next) setPlacementRotation(p, next);
+                                }}
+                                className="w-20 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-white disabled:opacity-50"
+                              />
+                            </td>
+                            <td className="py-1.5 pr-3">
+                              {fullScreen ? (
+                                <input
+                                  type="number"
+                                  min={3}
+                                  max={60}
+                                  placeholder="5"
+                                  defaultValue={p.interstitialSeconds ?? ""}
+                                  disabled={!canManage}
+                                  onBlur={(e) => {
+                                    const v = e.target.value.trim();
+                                    const next = v === "" ? null : Math.min(60, Math.max(3, Number(v) || 3));
+                                    if ((p.interstitialSeconds ?? null) !== next) setPlacementInterstitial(p, next);
+                                  }}
+                                  className="w-20 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-white disabled:opacity-50"
+                                />
+                              ) : (
+                                <span className="text-xs text-slate-600">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+                  <p className="text-sm font-semibold text-white">One ad&apos;s own times</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    &ldquo;Skip after&rdquo; and &ldquo;Show for&rdquo; on an ad override the space — open the ad on the
+                    Ads tab and edit it.
+                  </p>
+                  <button type="button" onClick={() => setTab("ads")} className="mt-2 text-xs font-medium text-blue-300">Ads tab →</button>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+                  <p className="text-sm font-semibold text-white">Network ads</p>
+                  <p className="mt-1 text-[11px] text-slate-500">Which networks are on, may run on paid pages, and may be refreshed by rotation.</p>
+                  <Link href="/admin/ads/networks" className="mt-2 inline-block text-xs font-medium text-blue-300">Ad networks →</Link>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+                  <p className="text-sm font-semibold text-white">Google AdSense / Ad Manager</p>
+                  <p className="mt-1 text-[11px] text-slate-500">Publisher ids, consent, auto ads and ads.txt.</p>
+                  <Link href="/admin/monetization" className="mt-2 inline-block text-xs font-medium text-blue-300">Monetization →</Link>
+                </div>
               </div>
             </div>
           )}
@@ -1166,7 +1281,8 @@ function servingState(ad: Ad, cpc: number): { label: string; tone: ServingTone }
   if (s === "PAUSED") return { label: "Paused", tone: "slate" };
   if (s === "INACTIVE") return { label: "Inactive", tone: "slate" };
   if (ad.campaign?.status !== "ACTIVE") return { label: "Campaign paused", tone: "amber" };
-  if ((ad.campaign?.budget ?? 0) < cpc) return { label: "Out of budget", tone: "amber" };
+  // The platform's own (house) ads run without a budget — never "out of" one.
+  if (!ad.campaign?.isHouse && (ad.campaign?.budget ?? 0) < cpc) return { label: "Out of budget", tone: "amber" };
   if (ad.campaign?.startAt && new Date(ad.campaign.startAt) > new Date())
     return { label: "Scheduled", tone: "sky" };
   if (ad.campaign?.endAt && new Date(ad.campaign.endAt) < new Date())
@@ -2831,13 +2947,19 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
           </span>
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Budget ($)</label>
-            <input type="number" min={1} value={budget} onChange={(e) => setBudget(e.target.value)} className={inputCls} />
-            <p className="text-[11px] text-slate-500 mt-1">
-              {advertiserFunded ? "What's left to spend. " : ""}Budget must be ≥ the per-click cost for ads to serve.
-            </p>
-          </div>
+          {isHouse ? (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-200">
+              Your own ad — no budget needed. It runs until you pause or end it.
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Budget ($)</label>
+              <input type="number" min={1} value={budget} onChange={(e) => setBudget(e.target.value)} className={inputCls} />
+              <p className="text-[11px] text-slate-500 mt-1">
+                {advertiserFunded ? "What's left to spend. " : ""}Budget must be ≥ the per-click cost for ads to serve.
+              </p>
+            </div>
+          )}
           <div>
             <label className="block text-xs text-slate-400 mb-1">Status</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
