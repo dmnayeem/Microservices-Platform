@@ -49,6 +49,7 @@ import "./globals.css";
 
 // Never localhost: a dev .env must not reach canonical tags (lib/seo/site-url).
 import { SITE_URL } from "@/lib/seo/site-url";
+import { ShortcutInstallBanner } from "@/components/pwa/shortcut-install-banner";
 
 /**
  * Title, description, icons, share image, verification tags and indexing all
@@ -366,6 +367,9 @@ export default async function RootLayout({
             requireConsent={ui.cookiesPopup && !googleCmp}
           />
           <SplashScreen />
+          {/* Home-screen icon that opens in a browser tab (a shortcut, not the
+              installed app) → offer the real install. */}
+          <ShortcutInstallBanner />
           <CookieConsent enabled={ui.cookiesPopup && !googleCmp} />
           <ConfirmHost />
           <NotifyCenterHost />

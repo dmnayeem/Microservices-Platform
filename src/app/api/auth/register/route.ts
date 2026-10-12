@@ -25,7 +25,9 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const limited = enforceRateLimit(request, "register", 5, 60_000);
+  // Generous per IP: a carrier IP is shared by hundreds (CGNAT). One account
+  // per device and the email checks are what stop mass sign-ups.
+  const limited = enforceRateLimit(request, "register", 40, 60_000);
   if (limited) return limited;
   try {
     const body = await request.json();

@@ -9,7 +9,9 @@ const forgotPasswordSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const limited = enforceRateLimit(request, "forgot-password", 5, 60_000);
+  // Per IP is a flood ceiling only (carrier IPs are shared); the real limit
+  // is per email, below.
+  const limited = enforceRateLimit(request, "forgot-password", 60, 60_000);
   if (limited) return limited;
   try {
     const body = await request.json();
