@@ -59,6 +59,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.vastUrl !== undefined && body.vastUrl && !/^https:\/\/\S+$/i.test(String(body.vastUrl).trim())) {
     return NextResponse.json({ error: "The VAST tag URL must start with https://" }, { status: 400 });
   }
+  if (body.groupName !== undefined) data.groupName = body.groupName ? String(body.groupName).trim().slice(0, 60) || null : null;
   if (body.vastUrl !== undefined) data.vastUrl = body.vastUrl ? String(body.vastUrl).trim().slice(0, 2000) : null;
   if (body.mobileHtmlContent !== undefined)
     data.mobileHtmlContent = body.mobileHtmlContent ? String(body.mobileHtmlContent) : null;

@@ -216,6 +216,7 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           type: true,
+          groupName: true,
           campaign: { select: { id: true, title: true, isHouse: true } },
           placement: { select: { id: true, name: true } },
         },
@@ -279,6 +280,7 @@ export async function GET(req: NextRequest) {
       perAd: [],
       perPlacement: [],
       perCampaign: [],
+      perGroup: [],
       ...perCountry,
       countryCoverage,
     });
@@ -287,6 +289,8 @@ export async function GET(req: NextRequest) {
   const perAd = new Map<string, Agg & { type: string; campaign: string; placement: string }>();
   const perPlacement = new Map<string, Agg & { name: string }>();
   const perCampaign = new Map<string, Agg & { title: string }>();
+  // The admin's own grouping (Ad.groupName); ads without one share "Ungrouped".
+  const perGroup = new Map<string, Agg & { title: string }>();
 
   for (const s of stats) {
     const a = adMap.get(s.adId);
@@ -328,6 +332,11 @@ export async function GET(req: NextRequest) {
     const cp = perCampaign.get(cKey) ?? { ...EMPTY, title: a.campaign?.title ?? "—" };
     bump(cp);
     perCampaign.set(cKey, cp);
+
+    const gKey = a.groupName?.trim() || "Ungrouped";
+    const gp = perGroup.get(gKey) ?? { ...EMPTY, title: gKey };
+    bump(gp);
+    perGroup.set(gKey, gp);
   }
 
   const shape = <T extends Agg>(m: Map<string, T>, limit?: number) => {
@@ -396,6 +405,7 @@ export async function GET(req: NextRequest) {
       };
     }).sort((a, b) => b.impressions - a.impressions),
     perCampaign: shape(perCampaign, 50),
+    perGroup: shape(perGroup, 50),
     ...perCountry,
     countryCoverage,
   });

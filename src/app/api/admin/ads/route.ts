@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
           OR: [
             { headline: { contains: q, mode: "insensitive" } },
             { brandName: { contains: q, mode: "insensitive" } },
+            { groupName: { contains: q, mode: "insensitive" } },
             { targetUrl: { contains: q, mode: "insensitive" } },
             { campaign: { title: { contains: q, mode: "insensitive" } } },
           ],
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
     networkId:
       (body.type === "HTML" || body.type === "VAST") && body.networkId ? String(body.networkId).slice(0, 40) : null,
     vastUrl: body.type === "VAST" && body.vastUrl ? String(body.vastUrl).trim().slice(0, 2000) : null,
+    groupName: body.groupName ? String(body.groupName).trim().slice(0, 60) || null : null,
     mobileHtmlContent:
       body.type === "HTML" && body.mobileHtmlContent ? String(body.mobileHtmlContent) : null,
     mobileWidth: body.type === "HTML" && body.mobileHtmlContent ? optInt(body.mobileWidth, 2000) ?? null : null,

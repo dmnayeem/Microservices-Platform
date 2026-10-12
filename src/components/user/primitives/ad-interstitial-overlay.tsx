@@ -62,6 +62,9 @@ export function AdInterstitialOverlay({
   source?: { url: string; body?: unknown };
 }) {
   const [ad, setAd] = useState<Ad | null>(null);
+  // The network sent nothing for this full-screen slot: show a calm card
+  // instead of an empty (formerly white) box while the countdown runs.
+  const [empty, setEmpty] = useState(false);
   const [left, setLeft] = useState(skipSeconds);
   const [total, setTotal] = useState(skipSeconds);
   // Admin-set auto-close for this ad (seconds), or null = until closed.
@@ -91,6 +94,7 @@ export function AdInterstitialOverlay({
         if (cancel) return;
         if (d?.ad) {
           setAd(d.ad);
+          setEmpty(false);
           // Duration is admin-set per space (server), falling back to the prop.
           // Not `||`: that would turn an admin's 0 (skip instantly) into the default.
           const raw = Number(d.interstitialSeconds);
@@ -107,6 +111,7 @@ export function AdInterstitialOverlay({
       .catch(() => !cancel && doneRef.current());
     return () => {
       cancel = true;
+      setEmpty(false);
       setAd(null); // clear on close so a reopen never flashes a stale ad
     };
     // `source` is intentionally read by identity, not deep-compared: callers
@@ -193,14 +198,23 @@ export function AdInterstitialOverlay({
             </a>
           )}
         </div>
+      ) : ad.html && empty ? (
+        <div className="max-w-md w-full rounded-2xl border border-white/10 bg-(--app-surface) p-6 text-center">
+          <p className="text-base font-bold text-white">Your reward is almost ready</p>
+          <p className="mt-1 text-sm text-(--app-ink-3)">Thanks for waiting — it unlocks in a moment.</p>
+        </div>
       ) : ad.html ? (
         <div className="max-w-md w-full">
           <SandboxedAdFrame
+            key={ad.id}
             html={ad.html}
             frameUrl={ad.frameUrl}
             height={280}
             impressionPixel={ad.impressionPixel}
             badge={false}
+            onFill={(filled) => {
+              if (!filled) setEmpty(true);
+            }}
           />
         </div>
       ) : (

@@ -53,11 +53,14 @@ const STEPS = [
 export function AdWizard({
   campaigns,
   placements,
+  groups = [],
   onClose,
   onSaved,
 }: {
   campaigns: WizardCampaign[];
   placements: WizardPlacement[];
+  /** Group names already in use, offered as suggestions. */
+  groups?: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -112,6 +115,8 @@ export function AdWizard({
   const [height, setHeight] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
   const [weight, setWeight] = useState("10");
+  // Free-text group: every ad with the same name is listed and reported together.
+  const [groupName, setGroupName] = useState("");
   const [priority, setPriority] = useState("0");
   const [format, setFormat] = useState("BANNER");
   const [brandName, setBrandName] = useState("");
@@ -199,6 +204,7 @@ export function AdWizard({
         height: size === "custom" ? Number(height) || null : null,
         weight: Number(weight) || 10,
         priority: Number(priority) || 0,
+        groupName: groupName.trim() || null,
         status: "ACTIVE",
         headline,
         brandName,
@@ -531,6 +537,15 @@ export function AdWizard({
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Target URL (click destination)</label>
                 <input value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} placeholder="https://..." className={inputCls} />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs text-slate-400 mb-1">Group</label>
+                <input value={groupName} onChange={(e) => setGroupName(e.target.value)} list="ad-group-names" maxLength={60} placeholder="e.g. Adsterra, Monetag, Own promos" className={inputCls} />
+                <datalist id="ad-group-names">
+                  {groups.map((g) => <option key={g} value={g} />)}
+                </datalist>
+                <p className="text-[11px] text-slate-500 mt-1">Ads with the same group sit together on the Ads tab and in the report.</p>
               </div>
 
               <div>

@@ -2,7 +2,7 @@
 
 import { confirmDialog } from "@/lib/confirm";
 
-import { useEffect, useState, useSyncExternalStore} from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   Newspaper,
   Megaphone,
@@ -107,6 +107,8 @@ interface Ad {
   contentUrl: string | null;
   videoUrl: string | null;
   vastUrl?: string | null;
+  /** Admin's grouping label. */
+  groupName?: string | null;
   targetUrl: string | null;
   htmlContent: string | null;
   adSlot?: string | null;
@@ -223,6 +225,10 @@ export function AdManagerView({
   const [demoBusy, setDemoBusy] = useState(false);
   const [rotationSeconds, setRotationSeconds] = useState(12);
   const [pageScriptsMax, setPageScriptsMax] = useState(2);
+  // Every group name already in use (for the Group box's suggestions).
+  const groupNames = [...new Set(ads.map((a) => a.groupName?.trim()).filter((g): g is string => !!g))].sort();
+  // How the Ads tab groups its list.
+  const [adGroupBy, setAdGroupBy] = useState<"group" | "campaign" | "space" | "none">("group");
   const [exactImpressions, setExactImpressions] = useState(true);
   const [rotationBusy, setRotationBusy] = useState(false);
   const [cpcUsd, setCpcUsd] = useState(0.01);
@@ -539,6 +545,88 @@ export function AdManagerView({
   // Approve/reject now live in the review panel (AdReviewQueue), which shows the
   // destination URL, creative and advertiser history a decision actually needs.
   // Pause/resume of an ALREADY-approved ad stays here — it isn't a review action.
+  // One ad's row on the Ads tab (flat, or inside a group).
+  const renderAdRow = (ad: Ad) => {
+    const thumb = ad.contentUrl || ad.brandLogo;
+    const title = ad.brandName || ad.headline || ad.campaign.title;
+    const tgt = targetingSummary(ad.targeting);
+    const isFeed = ad.format === "NATIVE";
+    return (
+      <div key={ad.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 hover:border-slate-700 transition-colors">
+        <div className="flex items-center gap-3 min-w-0">
+          {thumb ? (
+            <SmartImage src={thumb} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover bg-slate-950 shrink-0" />
+          ) : (
+            <div className="w-14 h-14 rounded-lg bg-slate-950 grid place-items-center text-slate-600 shrink-0">
+              {isFeed ? <Rss className="w-5 h-5" /> : <Newspaper className="w-5 h-5" />}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white truncate">{title}</p>
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider", isFeed ? "bg-indigo-500/15 text-indigo-300" : "bg-slate-800 text-slate-400")}>
+                {isFeed ? "Feed" : "Banner"}
+              </span>
+              <StatusPill status={ad.status} />
+              <ServingPill ad={ad} cpc={cpcUsd} />
+              <span className="text-[10px] text-slate-500">{PLACEMENT_LABEL[ad.placement.name] ?? ad.placement.name}</span>
+              {ad.rewardPoints > 0 && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400">+{ad.rewardPoints}pts</span>
+              )}
+              {tgt && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-800 text-slate-300">🎯 {tgt}</span>
+              )}
+            </div>
+            {/* Where the ad actually sends people — previously
+                invisible anywhere in the admin. */}
+            {ad.targetUrl && (
+              <p className="text-[11px] text-sky-300/90 mt-0.5 truncate">{hostOf(ad.targetUrl)}</p>
+            )}
+            <p className="text-[11px] text-slate-500 mt-0.5 tabular-nums">
+              {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} billed clicks · w{ad.weight}{ad.skipAfterSeconds != null && ` · skip ${ad.skipAfterSeconds}s`}{ad.showSeconds != null && ` · ${ad.showSeconds}s`}
+            </p>
+            {ad.rejectionReason && (
+              <p className="text-[11px] text-red-300/80 mt-0.5 line-clamp-2">{ad.rejectionReason}</p>
+            )}
+          </div>
+        </div>
+        {canManage && (
+          <div className="flex gap-1">
+            {(ad.status === "ACTIVE" || ad.status === "PAUSED") && (
+              <IconBtn
+                onClick={() => setAdStatus(ad, ad.status === "ACTIVE" ? "PAUSED" : "ACTIVE")}
+                title={ad.status === "ACTIVE" ? "Pause" : "Resume"}
+              >
+                {ad.status === "ACTIVE" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </IconBtn>
+            )}
+            <IconBtn onClick={() => setReviewAdId(ad.id)} title="Review"><ShieldCheck className="w-4 h-4" /></IconBtn>
+            <IconBtn onClick={() => setAdModal(ad)} title="Edit"><Pencil className="w-4 h-4" /></IconBtn>
+            <IconBtn onClick={() => deleteAd(ad.id)} title="Delete" danger><Trash2 className="w-4 h-4" /></IconBtn>
+          </div>
+        )}
+      </div>
+    );
+
+  };
+
+  // Pause / resume every ad in a group (only ones that can move).
+  const setGroupStatus = async (list: Ad[], status: "ACTIVE" | "PAUSED") => {
+    const targets = list.filter((a) => (status === "PAUSED" ? a.status === "ACTIVE" : a.status === "PAUSED"));
+    if (targets.length === 0) return toast.info(status === "PAUSED" ? "Nothing to pause" : "Nothing to resume");
+    let ok = 0;
+    for (const a of targets) {
+      const res = await fetch(`/api/admin/ads/${a.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }).catch(() => null);
+      if (res?.ok) ok++;
+    }
+    toast.success(`${ok} of ${targets.length} ads ${status === "ACTIVE" ? "resumed" : "paused"}`);
+    loadAll();
+  };
+
   const setAdStatus = async (ad: Ad, status: string) => {
     const res = await fetch(`/api/admin/ads/${ad.id}`, {
       method: "PATCH",
@@ -686,7 +774,7 @@ export function AdManagerView({
                   value={adFilter.q}
                   onChange={(e) => setAdFilter((f) => ({ ...f, q: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && loadAll()}
-                  placeholder="Search headline, brand, destination, campaign"
+                  placeholder="Search headline, brand, group, destination, campaign"
                   className="flex-1 min-w-52 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                 />
                 <select
@@ -717,68 +805,36 @@ export function AdManagerView({
                 </button>
               </div>
               {ads.length === 0 && <Empty text="No ads match." />}
-              {ads.map((ad) => {
-                const thumb = ad.contentUrl || ad.brandLogo;
-                const title = ad.brandName || ad.headline || ad.campaign.title;
-                const tgt = targetingSummary(ad.targeting);
-                const isFeed = ad.format === "NATIVE";
-                return (
-                  <div key={ad.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 hover:border-slate-700 transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {thumb ? (
-                        <SmartImage src={thumb} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover bg-slate-950 shrink-0" />
-                      ) : (
-                        <div className="w-14 h-14 rounded-lg bg-slate-950 grid place-items-center text-slate-600 shrink-0">
-                          {isFeed ? <Rss className="w-5 h-5" /> : <Newspaper className="w-5 h-5" />}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{title}</p>
-                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                          <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider", isFeed ? "bg-indigo-500/15 text-indigo-300" : "bg-slate-800 text-slate-400")}>
-                            {isFeed ? "Feed" : "Banner"}
-                          </span>
-                          <StatusPill status={ad.status} />
-                          <ServingPill ad={ad} cpc={cpcUsd} />
-                          <span className="text-[10px] text-slate-500">{PLACEMENT_LABEL[ad.placement.name] ?? ad.placement.name}</span>
-                          {ad.rewardPoints > 0 && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400">+{ad.rewardPoints}pts</span>
-                          )}
-                          {tgt && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-800 text-slate-300">🎯 {tgt}</span>
-                          )}
-                        </div>
-                        {/* Where the ad actually sends people — previously
-                            invisible anywhere in the admin. */}
-                        {ad.targetUrl && (
-                          <p className="text-[11px] text-sky-300/90 mt-0.5 truncate">{hostOf(ad.targetUrl)}</p>
-                        )}
-                        <p className="text-[11px] text-slate-500 mt-0.5 tabular-nums">
-                          {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} billed clicks · w{ad.weight}{ad.skipAfterSeconds != null && ` · skip ${ad.skipAfterSeconds}s`}{ad.showSeconds != null && ` · ${ad.showSeconds}s`}
-                        </p>
-                        {ad.rejectionReason && (
-                          <p className="text-[11px] text-red-300/80 mt-0.5 line-clamp-2">{ad.rejectionReason}</p>
-                        )}
-                      </div>
-                    </div>
-                    {canManage && (
-                      <div className="flex gap-1">
-                        {(ad.status === "ACTIVE" || ad.status === "PAUSED") && (
-                          <IconBtn
-                            onClick={() => setAdStatus(ad, ad.status === "ACTIVE" ? "PAUSED" : "ACTIVE")}
-                            title={ad.status === "ACTIVE" ? "Pause" : "Resume"}
-                          >
-                            {ad.status === "ACTIVE" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                          </IconBtn>
-                        )}
-                        <IconBtn onClick={() => setReviewAdId(ad.id)} title="Review"><ShieldCheck className="w-4 h-4" /></IconBtn>
-                        <IconBtn onClick={() => setAdModal(ad)} title="Edit"><Pencil className="w-4 h-4" /></IconBtn>
-                        <IconBtn onClick={() => deleteAd(ad.id)} title="Delete" danger><Trash2 className="w-4 h-4" /></IconBtn>
-                      </div>
+              <AdStatusOverview ads={ads} cpc={cpcUsd} />
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                Group by
+                {(["group", "campaign", "space", "none"] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setAdGroupBy(g)}
+                    className={cn(
+                      "rounded-full px-3 py-1 font-semibold",
+                      adGroupBy === g ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
                     )}
-                  </div>
-                );
-              })}
+                  >
+                    {g === "group" ? "Group" : g === "campaign" ? "Campaign" : g === "space" ? "Ad space" : "No grouping"}
+                  </button>
+                ))}
+              </div>
+              {adGroupBy === "none"
+                ? ads.map(renderAdRow)
+                : groupAds(ads, adGroupBy).map((g) => (
+                    <AdGroupSection
+                      key={g.key}
+                      label={g.label}
+                      ads={g.ads}
+                      canManage={canManage}
+                      onSetAll={(status) => setGroupStatus(g.ads, status)}
+                    >
+                      {g.ads.map(renderAdRow)}
+                    </AdGroupSection>
+                  ))}
             </div>
           )}
 
@@ -1175,6 +1231,7 @@ export function AdManagerView({
         <AdWizard
           campaigns={campaigns}
           placements={placements}
+          groups={groupNames}
           onClose={() => setAdWizard(false)}
           onSaved={() => {
             setAdWizard(false);
@@ -1187,6 +1244,7 @@ export function AdManagerView({
           ad={adModal === "new" ? null : adModal}
           campaigns={campaigns}
           placements={placements}
+          groups={groupNames}
           onClose={() => setAdModal(null)}
           onSaved={() => {
             setAdModal(null);
@@ -1268,6 +1326,105 @@ const SERVING_TONE_CLS: Record<ServingTone, string> = {
   sky: "bg-sky-500/15 text-sky-400",
   emerald: "bg-emerald-500/15 text-emerald-400",
 };
+
+/** Ads split into groups by the admin's group name, campaign or ad space. */
+function groupAds(list: Ad[], by: "group" | "campaign" | "space"): { key: string; label: string; ads: Ad[] }[] {
+  const map = new Map<string, { key: string; label: string; ads: Ad[] }>();
+  for (const ad of list) {
+    const key =
+      by === "group" ? ad.groupName?.trim() || "" : by === "campaign" ? ad.campaign?.id ?? "" : ad.placement?.name ?? "";
+    const label =
+      by === "group"
+        ? ad.groupName?.trim() || "Ungrouped"
+        : by === "campaign"
+          ? ad.campaign?.title ?? "No campaign"
+          : (ad.placement?.name ? placementLabel(ad.placement.name) : "No space");
+    const g = map.get(key) ?? { key: key || "__none", label, ads: [] };
+    g.ads.push(ad);
+    map.set(key, g);
+  }
+  // Named groups A→Z, the catch-all last.
+  return [...map.values()].sort((a, b) => (a.key === "__none" ? 1 : b.key === "__none" ? -1 : a.label.localeCompare(b.label)));
+}
+
+/** A collapsible group of ads with its totals and pause / resume-all. */
+function AdGroupSection({
+  label,
+  ads,
+  canManage,
+  onSetAll,
+  children,
+}: {
+  label: string;
+  ads: Ad[];
+  canManage: boolean;
+  onSetAll: (status: "ACTIVE" | "PAUSED") => void;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  const impressions = ads.reduce((n, a) => n + (a.impressions ?? 0), 0);
+  const clicks = ads.reduce((n, a) => n + (a.clicks ?? 0), 0);
+  const active = ads.filter((a) => a.status === "ACTIVE").length;
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/40">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+        <button type="button" onClick={() => setOpen((o) => !o)} className="flex min-w-0 items-center gap-2 text-left">
+          <span className={cn("text-slate-400 transition-transform", open ? "rotate-90" : "")}>▸</span>
+          <span className="truncate font-semibold text-white">{label}</span>
+          <span className="text-xs text-slate-500">
+            {ads.length} ad{ads.length === 1 ? "" : "s"} · {active} active · {impressions.toLocaleString()} impr ·{" "}
+            {clicks.toLocaleString()} clicks · CTR {impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00"}%
+          </span>
+        </button>
+        {canManage && (
+          <div className="flex gap-1.5">
+            <button type="button" onClick={() => onSetAll("PAUSED")} className="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800">
+              Pause all
+            </button>
+            <button type="button" onClick={() => onSetAll("ACTIVE")} className="rounded-lg border border-emerald-600/40 px-2.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/10">
+              Resume all
+            </button>
+          </div>
+        )}
+      </div>
+      {open && <div className="space-y-2 border-t border-slate-800 p-2">{children}</div>}
+    </div>
+  );
+}
+
+/** What is happening across all ads: how many serve, and why the rest don't. */
+function AdStatusOverview({ ads, cpc }: { ads: Ad[]; cpc: number }) {
+  if (ads.length === 0) return null;
+  const counts = new Map<string, { n: number; tone: ServingTone }>();
+  for (const ad of ads) {
+    const st = servingState(ad, cpc);
+    const cur = counts.get(st.label) ?? { n: 0, tone: st.tone };
+    cur.n++;
+    counts.set(st.label, cur);
+  }
+  const impressions = ads.reduce((n, a) => n + (a.impressions ?? 0), 0);
+  const clicks = ads.reduce((n, a) => n + (a.clicks ?? 0), 0);
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold text-white">
+          {ads.length} ads · {impressions.toLocaleString()} impressions · {clicks.toLocaleString()} clicks · CTR{" "}
+          {impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00"}%
+        </p>
+        <p className="text-[11px] text-slate-500">Lifetime, for the ads listed below</p>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {[...counts.entries()]
+          .sort((a, b) => b[1].n - a[1].n)
+          .map(([label, v]) => (
+            <span key={label} className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", SERVING_TONE_CLS[v.tone])}>
+              {label}: {v.n}
+            </span>
+          ))}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Whether (and why) an ad is actually serving to users — folds the ad's own
@@ -1733,6 +1890,7 @@ function AnalyticsTab() {
   const [perAd, setPerAd] = useState<AdRow[]>([]);
   const [perPlacement, setPerPlacement] = useState<PlacementRow[]>([]);
   const [perCampaign, setPerCampaign] = useState<CampaignRow[]>([]);
+  const [perGroup, setPerGroup] = useState<CampaignRow[]>([]);
   const [perCountry, setPerCountry] = useState<CountryRow[]>([]);
   const [countryTotals, setCountryTotals] = useState<CountryTotals | null>(null);
   const [countryCoverage, setCountryCoverage] = useState<CountryCoverage | null>(null);
@@ -1755,6 +1913,7 @@ function AnalyticsTab() {
         setPerAd(rep.perAd ?? []);
         setPerPlacement(rep.perPlacement ?? []);
         setPerCampaign(rep.perCampaign ?? []);
+        setPerGroup(rep.perGroup ?? []);
         setPerCountry(rep.perCountry ?? []);
         setCountryTotals(rep.countryTotals ?? null);
         setCountryCoverage(rep.countryCoverage ?? null);
@@ -1884,6 +2043,18 @@ function AnalyticsTab() {
               <td className="py-1.5 text-right tabular-nums text-slate-300">{usd(r.spend)}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">
                 {r.paidImpressions > 0 ? usd(r.ecpm) : "house"}
+              </td>
+            </tr>
+          ))}
+        </ReportTable>
+        <ReportTable title="By group" cols={["Group", "Impr", "Clicks", "CTR"]}>
+          {perGroup.map((r, i) => (
+            <tr key={i} className="border-t border-slate-800">
+              <td className="py-1.5 pr-2 text-white truncate max-w-40">{r.title}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.clicks.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">
+                {r.impressions > 0 ? ((r.clicks / r.impressions) * 100).toFixed(2) : "0.00"}%
               </td>
             </tr>
           ))}
@@ -2393,15 +2564,18 @@ function AdModal({
   ad,
   campaigns,
   placements,
+  groups,
   onClose,
   onSaved,
 }: {
   ad: Ad | null;
   campaigns: Campaign[];
   placements: Placement[];
+  groups: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [groupName, setGroupName] = useState(ad?.groupName ?? "");
   const [campaignId, setCampaignId] = useState(ad?.campaign.id ?? campaigns[0]?.id ?? "");
   const [placementId, setPlacementId] = useState(ad?.placement.id ?? placements[0]?.id ?? "");
   const [contentUrl, setContentUrl] = useState(ad?.contentUrl ?? "");
@@ -2525,6 +2699,7 @@ function AdModal({
         height: size === "custom" ? Number(height) || null : null,
         weight: Number(weight) || 10,
         priority: Number(priority) || 0,
+        groupName: groupName.trim() || null,
         skipAfterSeconds: skipSecs.trim() === "" ? null : Number(skipSecs),
         showSeconds: showSecs.trim() === "" ? null : Number(showSecs),
         // No `status` — an edit must never change review state. New admin ads are
@@ -2753,6 +2928,14 @@ function AdModal({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs text-slate-400 mb-1">Group</label>
+            <input value={groupName} onChange={(e) => setGroupName(e.target.value)} list="ad-group-names" maxLength={60} placeholder="e.g. Adsterra, Monetag, Own promos" className={inputCls} />
+            <datalist id="ad-group-names">
+              {groups.map((g) => <option key={g} value={g} />)}
+            </datalist>
+            <p className="text-[11px] text-slate-500 mt-1">Ads with the same group sit together on the Ads tab and in the report.</p>
+          </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">Weight</label>
             <input type="number" min={1} value={weight} onChange={(e) => setWeight(e.target.value)} className={inputCls} />
