@@ -228,7 +228,9 @@ export function AdManagerView({
   // Every group name already in use (for the Group box's suggestions).
   const groupNames = [...new Set(ads.map((a) => a.groupName?.trim()).filter((g): g is string => !!g))].sort();
   // How the Ads tab groups its list.
-  const [adGroupBy, setAdGroupBy] = useState<"group" | "campaign" | "space" | "none">("group");
+  // Campaigns first: the Ads tab opens on the campaign list, a campaign opens its ads.
+  const [adGroupBy, setAdGroupBy] = useState<"group" | "campaign" | "space" | "none">("campaign");
+  const [openCampaign, setOpenCampaign] = useState<string | null>(null);
   const [exactImpressions, setExactImpressions] = useState(true);
   const [rotationBusy, setRotationBusy] = useState(false);
   const [cpcUsd, setCpcUsd] = useState(0.01);
@@ -807,22 +809,58 @@ export function AdManagerView({
               {ads.length === 0 && <Empty text="No ads match." />}
               <AdStatusOverview ads={ads} cpc={cpcUsd} />
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                Group by
-                {(["group", "campaign", "space", "none"] as const).map((g) => (
+                View
+                {(["campaign", "group", "space", "none"] as const).map((g) => (
                   <button
                     key={g}
                     type="button"
-                    onClick={() => setAdGroupBy(g)}
+                    onClick={() => {
+                      setAdGroupBy(g);
+                      setOpenCampaign(null);
+                    }}
                     className={cn(
                       "rounded-full px-3 py-1 font-semibold",
                       adGroupBy === g ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
                     )}
                   >
-                    {g === "group" ? "Group" : g === "campaign" ? "Campaign" : g === "space" ? "Ad space" : "No grouping"}
+                    {g === "group" ? "By group" : g === "campaign" ? "Campaigns" : g === "space" ? "By ad space" : "All ads"}
                   </button>
                 ))}
               </div>
-              {adGroupBy === "none"
+              {adGroupBy === "campaign"
+                ? openCampaign
+                  ? (() => {
+                      const list = ads.filter((a) => a.campaign?.id === openCampaign);
+                      const camp = campaigns.find((c) => c.id === openCampaign);
+                      return (
+                        <div className="space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => setOpenCampaign(null)}
+                            className="text-sm text-blue-400 hover:underline"
+                          >
+                            ← All campaigns
+                          </button>
+                          <AdGroupSection
+                            label={camp?.title ?? list[0]?.campaign?.title ?? "Campaign"}
+                            ads={list}
+                            canManage={canManage}
+                            onSetAll={(status) => setGroupStatus(list, status)}
+                          >
+                            {list.length > 0 ? list.map(renderAdRow) : <Empty text="No ads in this campaign (with these filters)." />}
+                          </AdGroupSection>
+                        </div>
+                      );
+                    })()
+                  : (
+                    <CampaignCards
+                      ads={ads}
+                      campaigns={campaigns}
+                      showEmpty={!adFilter.q && !adFilter.status && !adFilter.placement}
+                      onOpen={setOpenCampaign}
+                    />
+                  )
+                : adGroupBy === "none"
                 ? ads.map(renderAdRow)
                 : groupAds(ads, adGroupBy).map((g) => (
                     <AdGroupSection
@@ -1326,6 +1364,82 @@ const SERVING_TONE_CLS: Record<ServingTone, string> = {
   sky: "bg-sky-500/15 text-sky-400",
   emerald: "bg-emerald-500/15 text-emerald-400",
 };
+
+/** The Ads tab's first screen: one card per campaign with its ads' totals. */
+function CampaignCards({
+  ads,
+  campaigns,
+  showEmpty,
+  onOpen,
+}: {
+  ads: Ad[];
+  campaigns: Campaign[];
+  /** Also list campaigns with no ads (off while a filter is narrowing the ads). */
+  showEmpty: boolean;
+  onOpen: (id: string) => void;
+}) {
+  const byId = new Map<string, { id: string; title: string; status: string; isHouse: boolean; ads: Ad[] }>();
+  if (showEmpty) {
+    for (const c of campaigns) byId.set(c.id, { id: c.id, title: c.title, status: c.status, isHouse: !!c.isHouse, ads: [] });
+  }
+  for (const a of ads) {
+    const id = a.campaign?.id;
+    if (!id) continue;
+    const cur =
+      byId.get(id) ??
+      { id, title: a.campaign.title, status: a.campaign.status ?? "", isHouse: !!a.campaign.isHouse, ads: [] as Ad[] };
+    cur.ads.push(a);
+    byId.set(id, cur);
+  }
+  const cards = [...byId.values()]
+    .map((c) => ({
+      ...c,
+      live: c.ads.filter((a) => a.status === "ACTIVE").length,
+      impressions: c.ads.reduce((n, a) => n + (a.impressions ?? 0), 0),
+      clicks: c.ads.reduce((n, a) => n + (a.clicks ?? 0), 0),
+    }))
+    .sort((a, b) => b.live - a.live || b.ads.length - a.ads.length || a.title.localeCompare(b.title));
+  if (cards.length === 0) return null;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {cards.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onOpen(c.id)}
+          className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-left transition-colors hover:border-blue-500/50 hover:bg-slate-900/80"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 truncate font-semibold text-white">{c.title}</p>
+            <span
+              className={cn(
+                "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase",
+                c.status === "ACTIVE" ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-400"
+              )}
+            >
+              {c.status || "—"}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-slate-500">{c.isHouse ? "Your own ads" : "Advertiser campaign"}</p>
+          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+            {[
+              ["Ads", `${c.live}/${c.ads.length}`],
+              ["Impr", c.impressions.toLocaleString()],
+              ["Clicks", c.clicks.toLocaleString()],
+              ["CTR", `${c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(2) : "0.00"}%`],
+            ].map(([k, v]) => (
+              <div key={k} className="rounded-lg bg-slate-950/60 py-1.5">
+                <p className="text-sm font-semibold tabular-nums text-white">{v}</p>
+                <p className="text-[10px] text-slate-500">{k === "Ads" ? "live / ads" : k}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs font-medium text-blue-400">Open ads →</p>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Ads split into groups by the admin's group name, campaign or ad space. */
 function groupAds(list: Ad[], by: "group" | "campaign" | "space"): { key: string; label: string; ads: Ad[] }[] {

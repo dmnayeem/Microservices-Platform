@@ -19,6 +19,7 @@ import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { AD_PLACEMENTS, placementSpec } from "@/lib/ad-placements";
 import { HTML_AD_NETWORKS } from "@/lib/ad-networks/registry";
+import { checkHtmlAd } from "@/lib/ad-networks/validate";
 import { AD_SIZES } from "@/lib/ad-sizes";
 import { type AdTargeting } from "@/lib/ad-targeting";
 import { DateField } from "@/components/ui/date-field";
@@ -132,6 +133,30 @@ export function AdWizard({
   const selectAll = () => setSelected(placements.map((p) => p.id));
   const clearAll = () => setSelected([]);
 
+  // The server's own HTML checks (size, network kind…) for EVERY selected
+  // space, run here so the Creative step says what is wrong — they used to
+  // surface only as a "Failed" toast after the last step.
+  const htmlProblems =
+    creative === "HTML"
+      ? [
+          ...new Set(
+            selectedNames.flatMap((nm) =>
+              checkHtmlAd({
+                placementName: nm,
+                type: "HTML",
+                size,
+                width: Number(width) || null,
+                height: Number(height) || null,
+                networkId: netFields.networkId || null,
+                mobileHtml: netFields.mobileHtml,
+                mobileWidth: Number(netFields.mobileWidth) || null,
+                mobileHeight: Number(netFields.mobileHeight) || null,
+              }).map((p) => p.message)
+            )
+          ),
+        ]
+      : [];
+
   // Per-step validity
   const stepValid = (s: number): boolean => {
     if (s === 0)
@@ -143,7 +168,7 @@ export function AdWizard({
       return (
         (creative === "IMAGE" && !!contentUrl) ||
         (creative === "VIDEO" && !!videoUrl) ||
-        (creative === "HTML" && !!htmlContent.trim()) ||
+        (creative === "HTML" && !!htmlContent.trim() && htmlProblems.length === 0) ||
         (creative === "VAST" && /^https:\/\/\S+$/i.test(vastUrl.trim())) ||
         !!headline.trim()
       );
@@ -516,7 +541,11 @@ export function AdWizard({
                     1080x1920 "story" used to write a full-screen creative into
                     every slot on the platform. The server refuses the same
                     combinations; this just stops the admin getting there. */}
-                <select value={size} onChange={(e) => setSize(e.target.value)} className={inputCls}>
+                <select
+                  value={size}
+                  onChange={(e) => setSize(e.target.value)}
+                  className={cn(inputCls, htmlProblems.length > 0 && "border-red-500/70")}
+                >
                   {allowedSizes.map((s) => (
                     <option key={s.key} value={s.key}>{s.label}</option>
                   ))}
@@ -526,6 +555,14 @@ export function AdWizard({
                     ? `Sizes that fit all ${selected.length} selected spaces. Tallest allowed: ${maxHeightAcrossSelected}px.`
                     : `Max height for this space: ${maxHeightAcrossSelected}px.`}
                 </p>
+                {htmlProblems.length > 0 && (
+                  <div className="mt-2 space-y-1 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                    {htmlProblems.map((m) => (
+                      <p key={m}>{m}</p>
+                    ))}
+                    <p className="text-red-300/80">Use the size the network gave you for this tag (it is in the tag&apos;s settings there).</p>
+                  </div>
+                )}
                 {size === "custom" && (
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <input type="number" min={1} value={width} onChange={(e) => setWidth(e.target.value)} placeholder="Width (px)" className={inputCls} />

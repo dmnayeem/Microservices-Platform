@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Lock, Save } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import {
   AD_NETWORKS,
   EMPTY_NETWORK_ENTRY,
@@ -22,6 +22,70 @@ const KIND_LABEL: Record<string, string> = {
   NATIVE_WIDGET: "Native",
   PAGE_SCRIPT: "Page script",
 };
+
+/** One network's numbers from /api/admin/ads/networks/stats. */
+interface NetStats {
+  ads: number;
+  active: number;
+  paused: number;
+  served: number;
+  validViews: number;
+  invalidViews: number;
+  clicks: number;
+  /** Null when the viewer has no finance access. */
+  revenueUsd: number | null;
+}
+
+const EMPTY_STATS: NetStats = {
+  ads: 0,
+  active: 0,
+  paused: 0,
+  served: 0,
+  validViews: 0,
+  invalidViews: 0,
+  clicks: 0,
+  revenueUsd: null,
+};
+
+type Health = { tone: "green" | "amber" | "red" | "slate"; text: string };
+
+const HEALTH_CLS: Record<Health["tone"], string> = {
+  green: "bg-emerald-500/15 text-emerald-300",
+  amber: "bg-amber-500/15 text-amber-300",
+  red: "bg-red-500/15 text-red-300",
+  slate: "bg-slate-800 text-slate-400",
+};
+
+/** The one thing the owner should know about this network right now. */
+function healthOf(opts: {
+  google: boolean;
+  configured: boolean;
+  enabled: boolean;
+  needsPubId: boolean;
+  st: NetStats;
+  days: number;
+}): Health {
+  const { st } = opts;
+  if (opts.google) {
+    if (st.ads > 0 && !opts.configured) return { tone: "red", text: `Not configured — its ${st.ads} ad(s) cannot show` };
+    if (!opts.configured) return { tone: "slate", text: "Not set up" };
+  } else {
+    if (st.ads > 0 && !opts.enabled) return { tone: "red", text: `Switched off — its ${st.ads} ad(s) are not showing anywhere` };
+    if (!opts.enabled) return { tone: "slate", text: "Off" };
+    if (opts.needsPubId) return { tone: "amber", text: "Publisher id missing — its ads.txt line is not published" };
+  }
+  if (st.ads === 0) return { tone: "amber", text: "On, but no ad uses it — create an HTML ad and pick this network" };
+  if (st.active === 0) return { tone: "amber", text: "All its ads are paused or not approved" };
+  if (st.validViews === 0)
+    return {
+      tone: "amber",
+      text:
+        st.served > 0
+          ? `Delivered ${st.served.toLocaleString()} times in ${opts.days}d but no viewable impression — the network is not filling, or it is blocked`
+          : `Live, but nothing delivered in ${opts.days}d — check its ad spaces are on`,
+    };
+  return { tone: "green", text: "Running" };
+}
 
 function Toggle({
   on,
@@ -69,6 +133,41 @@ export function AdNetworksView({
   const [frameOrigin, setFrameOrigin] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  const [days, setDays] = useState(7);
+  const [stats, setStats] = useState<Record<string, NetStats> | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState<string | null>(null);
+
+  const loadStats = useCallback(() => {
+    fetch(`/api/admin/ads/networks/stats?days=${days}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setStats(d?.rows ?? {}))
+      .catch(() => setStats({}));
+  }, [days]);
+  useEffect(() => loadStats(), [loadStats]);
+
+  const setAllStatus = async (network: string, name: string, status: "ACTIVE" | "PAUSED") => {
+    setBulkBusy(network);
+    try {
+      const res = await fetch("/api/admin/ads/networks/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ network, status }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      if (d.total === 0) toast.info(status === "PAUSED" ? `No live ${name} ads to pause` : `No paused ${name} ads to resume`);
+      else
+        toast.success(`${d.changed} ${name} ad(s) ${status === "PAUSED" ? "paused" : "resumed"}`, {
+          description: d.skipped ? `${d.skipped} never approved — approve them in the Ads Manager` : undefined,
+        });
+      loadStats();
+    } catch (err) {
+      toast.error("Failed", { description: err instanceof Error ? err.message : "Try again" });
+    } finally {
+      setBulkBusy(null);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/admin/ads/networks")
@@ -157,8 +256,26 @@ export function AdNetworksView({
         />
       </div>
 
+      <NetworkSummary
+        days={days}
+        onDays={setDays}
+        stats={stats}
+        own={stats?.own ?? null}
+      />
+
       <div className="space-y-2">
-        {AD_NETWORKS.map((n) => {
+        {[...AD_NETWORKS]
+          .map((n) => ({ n, st: stats?.[n.id] ?? EMPTY_STATS, on: n.google ? false : !!settings.networks[n.id]?.enabled }))
+          // Networks in use first (live ads, then any ads, then switched on); the rest A→Z.
+          .sort(
+            (a, b) =>
+              b.st.active - a.st.active ||
+              b.st.ads - a.st.ads ||
+              Number(b.on) - Number(a.on) ||
+              a.n.name.localeCompare(b.n.name)
+          )
+          .filter(({ n, st, on }) => showAll || on || st.ads > 0 || st.served > 0 || (n.google && (n.id === "adsense" ? !!google?.adsenseClient : !!google?.gamNetworkCode)))
+          .map(({ n, st }) => {
           const e = settings.networks[n.id] ?? EMPTY_NETWORK_ENTRY;
           const googleId =
             n.id === "adsense" ? google?.adsenseClient : n.id === "gam" ? google?.gamNetworkCode : "";
@@ -184,6 +301,21 @@ export function AdNetworksView({
                     {n.kinds.map((k) => KIND_LABEL[k]).join(" · ")}
                   </p>
                 </div>
+                {(() => {
+                  const h = healthOf({
+                    google: !!n.google,
+                    configured: !!googleId,
+                    enabled: e.enabled,
+                    needsPubId: !!n.adsTxt && !e.publisherId.trim(),
+                    st,
+                    days,
+                  });
+                  return (
+                    <span className={cn("order-last basis-full rounded-lg px-2.5 py-1 text-xs font-medium sm:order-none sm:basis-auto", HEALTH_CLS[h.tone])}>
+                      {h.text}
+                    </span>
+                  );
+                })()}
                 {n.google ? (
                   <span className="inline-flex items-center gap-1 text-xs text-slate-400">
                     <Lock className="h-3.5 w-3.5" />
@@ -211,6 +343,45 @@ export function AdNetworksView({
                   {expanded ? "Close" : "Settings"}
                 </button>
               </div>
+
+              {(st.ads > 0 || st.served > 0) && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-800 pt-3 text-xs">
+                  <Stat label="Ads" value={`${st.active} live / ${st.ads}`} />
+                  <Stat label={`Delivered (${days}d)`} value={st.served.toLocaleString()} />
+                  <Stat label="Viewable impressions" value={st.validViews.toLocaleString()} />
+                  <Stat label="Clicks" value={st.clicks.toLocaleString()} />
+                  {st.invalidViews > 0 && <Stat label="Filtered (bots/fraud)" value={st.invalidViews.toLocaleString()} />}
+                  {st.revenueUsd !== null && (
+                    <>
+                      <Stat label="Earned (entered)" value={usd(st.revenueUsd)} />
+                      <Stat
+                        label="eCPM"
+                        value={st.validViews > 0 && st.revenueUsd > 0 ? usd((st.revenueUsd / st.validViews) * 1000) : "—"}
+                      />
+                    </>
+                  )}
+                  {canManage && st.ads > 0 && (
+                    <span className="ml-auto flex gap-1.5">
+                      <button
+                        type="button"
+                        disabled={bulkBusy === n.id}
+                        onClick={() => setAllStatus(n.id, n.name, "PAUSED")}
+                        className="rounded-lg border border-slate-700 px-2.5 py-1 text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        Pause all
+                      </button>
+                      <button
+                        type="button"
+                        disabled={bulkBusy === n.id}
+                        onClick={() => setAllStatus(n.id, n.name, "ACTIVE")}
+                        className="rounded-lg border border-emerald-600/40 px-2.5 py-1 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50"
+                      >
+                        Resume all
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
 
               {expanded && (
                 <div className="mt-3 space-y-3 border-t border-slate-800 pt-3">
@@ -285,6 +456,13 @@ export function AdNetworksView({
             </div>
           );
         })}
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="w-full rounded-xl border border-dashed border-slate-700 py-2.5 text-sm text-slate-400 hover:bg-slate-900"
+        >
+          {showAll ? "Show only networks in use" : `Show all ${AD_NETWORKS.length} networks`}
+        </button>
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm space-y-2">
@@ -312,6 +490,82 @@ export function AdNetworksView({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <span>
+      <span className="text-slate-500">{label} </span>
+      <span className="font-semibold tabular-nums text-white">{value}</span>
+    </span>
+  );
+}
+
+/** The whole picture first: how every network together did in the window. */
+function NetworkSummary({
+  days,
+  onDays,
+  stats,
+  own,
+}: {
+  days: number;
+  onDays: (d: number) => void;
+  stats: Record<string, NetStats> | null;
+  own: NetStats | null;
+}) {
+  const nets = Object.entries(stats ?? {}).filter(([id]) => id !== "own").map(([, v]) => v);
+  const sum = (k: keyof NetStats) => nets.reduce((n, v) => n + (Number(v[k]) || 0), 0);
+  const money = nets.some((v) => v.revenueUsd !== null);
+  const views = sum("validViews");
+  const revenue = sum("revenueUsd");
+  return (
+    <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-semibold text-white">All networks — last {days} days</p>
+        <div className="flex gap-1">
+          {[7, 30, 90].map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => onDays(d)}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-semibold",
+                d === days ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              )}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+      {!stats ? (
+        <p className="flex items-center gap-2 text-sm text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading numbers…
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <Stat label="Network ads live" value={`${sum("active")} / ${sum("ads")}`} />
+          <Stat label="Delivered" value={sum("served").toLocaleString()} />
+          <Stat label="Viewable impressions" value={views.toLocaleString()} />
+          <Stat label="Clicks" value={sum("clicks").toLocaleString()} />
+          {money && <Stat label="Earned (entered)" value={usd(revenue)} />}
+          {money && <Stat label="eCPM" value={views > 0 && revenue > 0 ? usd((revenue / views) * 1000) : "—"} />}
+          {own && own.ads > 0 && (
+            <Stat label="Your own ads" value={`${own.validViews.toLocaleString()} views · ${own.clicks.toLocaleString()} clicks`} />
+          )}
+        </div>
+      )}
+      <p className="text-[11px] text-slate-500">
+        Our count: an impression is counted when at least half the ad is on screen for 1 second, with bots
+        and staff filtered out. Each network counts in its own dashboard and pays on its own count, so
+        expect the numbers to differ. Earnings are what you enter per day in{" "}
+        <Link href="/admin/ads?tab=analytics" className="text-blue-400 hover:underline">
+          Ads Manager → Analytics
+        </Link>
+        .
+      </p>
     </div>
   );
 }
