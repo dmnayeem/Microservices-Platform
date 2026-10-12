@@ -31,15 +31,37 @@ self.addEventListener("install", (event) => {
 
 // The page tells a waiting SW to take over (after pull-to-refresh / reopen). The
 // resulting `controllerchange` triggers a single guarded reload on the client.
+// The app-icon number is notifications + tasks waiting. A push only knows the
+// notifications, so the open app tells the SW how many tasks are waiting and
+// the SW adds them when a push arrives with the app closed.
+const BADGE_CACHE = "eg-badge-v1";
+function readTaskBadge() {
+  return caches
+    .open(BADGE_CACHE)
+    .then((c) => c.match("/__badge"))
+    .then((r) => (r ? r.json() : { tasks: 0 }))
+    .then((d) => Math.max(0, Number(d.tasks) || 0))
+    .catch(() => 0);
+}
+
 self.addEventListener("message", (event) => {
   const data = event.data;
   if (data === "SKIP_WAITING" || (data && data.type === "SKIP_WAITING")) {
     self.skipWaiting();
   }
+  if (data && data.type === "BADGE_BASE") {
+    const tasks = Math.max(0, Math.floor(Number(data.tasks) || 0));
+    event.waitUntil(
+      caches
+        .open(BADGE_CACHE)
+        .then((c) => c.put("/__badge", new Response(JSON.stringify({ tasks }))))
+        .catch(() => {})
+    );
+  }
 });
 
 self.addEventListener("activate", (event) => {
-  const keep = new Set([CACHE, RUNTIME]);
+  const keep = new Set([CACHE, RUNTIME, BADGE_CACHE]);
   event.waitUntil(
     caches
       .keys()
@@ -169,12 +191,17 @@ self.addEventListener("push", (event) => {
   // Mark the app icon even while the app is closed: the exact count when the
   // server sent one, otherwise a plain "something new" dot. The app replaces
   // it with the real unread number the next time it opens.
+  // Unread notifications (sent by the server) + tasks waiting (last told by
+  // the app). Without a server count: tasks + this one notification.
   const badge =
     self.navigator && self.navigator.setAppBadge
-      ? (typeof data.badgeCount === "number"
-          ? self.navigator.setAppBadge(data.badgeCount)
-          : self.navigator.setAppBadge()
-        ).catch(() => {})
+      ? readTaskBadge()
+          .then((tasks) =>
+            typeof data.badgeCount === "number"
+              ? self.navigator.setAppBadge(data.badgeCount + tasks)
+              : self.navigator.setAppBadge(tasks + 1)
+          )
+          .catch(() => {})
       : Promise.resolve();
   event.waitUntil(Promise.all([self.registration.showNotification(title, options), badge]));
 });

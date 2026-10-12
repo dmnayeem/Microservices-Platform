@@ -1,8 +1,12 @@
 // Sequential task unlock (feature #7).
 //
-// When the admin toggle `tasks.sequential_unlock` is ON, a user's eligible tasks
-// form ONE GLOBAL ordered chain: only the first not-yet-done task is startable;
-// everything after it is locked until the previous one is completed. "Completed"
+// When the admin toggle `tasks.sequential_unlock` is ON, each task CATEGORY
+// (task type — Video, Social, Article…) is its own ordered chain: only the
+// first not-yet-done task of that category is startable; the rest of the
+// category is locked until the previous one is completed. (It used to be one
+// chain across every type, so a video task could be locked behind a quiz.)
+// Tasks above the member's plan (Standard / Premium) are not in the chain at
+// all — they are shown as upgrade offers and never block the free tasks. "Completed"
 // means a submission exists TODAY (user-local midnight) — PENDING counts, so a
 // submit unlocks the next task without waiting for admin approval. The chain
 // resets every local day. Admins bypass the lock entirely.
@@ -26,14 +30,17 @@ export interface TaskChainState {
   enabled: boolean;
   /** Task ids that are locked (strictly after the active task in the chain). */
   lockedTaskIds: Set<string>;
-  /** The first not-yet-done task in the chain (the only newly-startable one). */
+  /** The first not-yet-done task of the first category (kept for callers). */
   activeTaskId: string | null;
+  /** The startable task of each category (task type). */
+  activeByType: Map<string, string>;
 }
 
 const DISABLED: TaskChainState = {
   enabled: false,
   lockedTaskIds: new Set(),
   activeTaskId: null,
+  activeByType: new Map(),
 };
 
 /**
@@ -75,15 +82,18 @@ export async function getTaskChainState(userId: string): Promise<TaskChainState>
   const orderedTasks = (await prisma.task.findMany({
     where: chainWhere,
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    select: { id: true, totalLimit: true, completedCount: true },
+    select: { id: true, type: true, totalLimit: true, completedCount: true },
     cacheStrategy: { ttl: 30, swr: 60 },
   })) as unknown as Array<{
     id: string;
+    type: string;
     totalLimit: number | null;
     completedCount: number;
   }>;
 
-  if (orderedTasks.length === 0) return { enabled: true, lockedTaskIds: new Set(), activeTaskId: null };
+  if (orderedTasks.length === 0) {
+    return { enabled: true, lockedTaskIds: new Set(), activeTaskId: null, activeByType: new Map() };
+  }
 
   // Task ids the user has a submission for TODAY (any consuming status). This
   // MUST stay fresh (no caching) so a just-submitted task advances the chain.
@@ -101,22 +111,24 @@ export async function getTaskChainState(userId: string): Promise<TaskChainState>
   // Walk the chain. A task is "satisfied" (chain advances past it) if it was
   // submitted today OR it is globally full (totalLimit reached) — the latter
   // prevents an exhausted task from deadlocking everyone behind it.
+  // One walk per category, in the admin's order within it.
   const lockedTaskIds = new Set<string>();
+  const activeByType = new Map<string, string>();
   let activeTaskId: string | null = null;
-  let frontierPassed = false;
   for (const t of orderedTasks) {
     const satisfied =
       doneToday.has(t.id) ||
       (t.totalLimit != null && t.completedCount >= t.totalLimit);
-    if (frontierPassed) {
+    if (activeByType.has(t.type)) {
+      // This category's frontier is already set: everything after it waits.
       lockedTaskIds.add(t.id);
       continue;
     }
     if (satisfied) continue;
-    // First non-satisfied task = the active/unlocked one; lock everything after.
-    activeTaskId = t.id;
-    frontierPassed = true;
+    // First non-satisfied task of the category = its startable one.
+    activeByType.set(t.type, t.id);
+    activeTaskId ??= t.id;
   }
 
-  return { enabled: true, lockedTaskIds, activeTaskId };
+  return { enabled: true, lockedTaskIds, activeTaskId, activeByType };
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
+import { openPlanUpsell, type PlanLock } from "@/components/user/tasks/plan-upsell";
 import { Clock, Coins, Lock, Check, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 import { SmartImage } from "./smart-image";
@@ -30,6 +32,8 @@ interface TaskCardProps {
   requiredLevel?: number;
   /** The admin's per-task device switches (lib/task-device-gate.ts). */
   deviceNeeds?: TaskDeviceNeeds;
+  /** Sequential lock / plan lock from the task list (lib/task-list.ts). */
+  gate?: TaskGate;
   icon?: ReactNode;
   thumbnail?: string;
   onAction?: () => void;
@@ -67,6 +71,9 @@ const STATUS_TONE: Record<TaskStatus, string> = {
     "bg-(--app-out-soft) border border-(--app-out-line) text-(--app-out)",
 };
 
+/** Sequential and plan locks on a task row (lib/task-list.ts). */
+export type TaskGate = { locked?: boolean | null; lockReason?: string | null; planLock?: PlanLock | null };
+
 /** Shape of the two switches on a task row; anything else on it is ignored. */
 export type TaskDeviceNeeds = { requireApp?: boolean | null; requirePush?: boolean | null };
 
@@ -99,12 +106,13 @@ export function TaskCard({
   type,
   reward,
   xpReward,
-  status = "AVAILABLE",
+  status: statusProp = "AVAILABLE",
   difficulty,
   durationMin,
   cooldownText,
   requiredLevel,
   deviceNeeds,
+  gate,
   icon,
   thumbnail,
   onAction,
@@ -112,11 +120,28 @@ export function TaskCard({
   href,
   className,
 }: TaskCardProps) {
+  // A task above the member's plan is an upgrade offer; a task behind an
+  // unfinished one in its category waits. Both draw as locked, and both say
+  // why when tapped instead of doing nothing.
+  const planLock = gate?.planLock ?? null;
+  const chainLocked = !planLock && !!gate?.locked;
+  const status: TaskStatus = planLock || chainLocked ? "LOCKED" : statusProp;
+  const lockTap = planLock
+    ? () => openPlanUpsell(planLock)
+    : chainLocked
+      ? () =>
+          toast.info("This task is locked", {
+            description: gate?.lockReason ?? "Complete the task before this one in this category first.",
+          })
+      : null;
   const isLocked = status === "LOCKED";
   const isDone = status === "COMPLETED";
   const onCooldown = status === "COOLDOWN";
-  const label =
-    actionLabel ??
+  const label = planLock
+    ? `${planLock.name} plan`
+    : chainLocked
+    ? "Locked"
+    : actionLabel ??
     (isLocked
       ? `Lvl ${requiredLevel ?? "?"}`
       : isDone
@@ -193,6 +218,11 @@ export function TaskCard({
                 {durationMin}m
               </span>
             )}
+            {planLock && (
+              <span className="app-chip bg-amber-500/15 text-amber-300" title={`Needs the ${planLock.name} plan`}>
+                ⭐ {planLock.name}
+              </span>
+            )}
             <TaskDeviceChips needs={deviceNeeds} />
           </div>
         </div>
@@ -216,7 +246,9 @@ export function TaskCard({
         <ActionTag
           {...(ActionTag === "a"
             ? { href }
-            : { onClick: onAction, disabled: isLocked || isDone || onCooldown })}
+            : lockTap
+              ? { onClick: lockTap, type: "button" as const }
+              : { onClick: onAction, disabled: isLocked || isDone || onCooldown })}
           className={cn(
             "app-press app-tap-row shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-(--app-r-control) text-xs font-extrabold",
             STATUS_TONE[status]

@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { TaskDeviceChips, type TaskDeviceNeeds } from "@/components/user/primitives/task-card";
+import { openPlanUpsell } from "@/components/user/tasks/plan-upsell";
+import { toast } from "@/lib/toast";
+import type { TaskGate } from "@/components/user/primitives/task-card";
 import {
   SOCIAL_PLATFORMS,
   getAction,
@@ -212,10 +215,26 @@ export function SocialTasksView({
                 </span>
               </div>
               <div className="mt-auto pt-3">
-                {t.locked ? (
-                  <span className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-3) text-xs font-bold cursor-not-allowed">
+                {(t as unknown as TaskGate).planLock ? (
+                  <button
+                    type="button"
+                    onClick={() => openPlanUpsell((t as unknown as TaskGate).planLock!)}
+                    className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-amber-500/15 text-amber-300 text-xs font-bold"
+                  >
+                    ⭐ {(t as unknown as TaskGate).planLock!.name} plan
+                  </button>
+                ) : t.locked ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toast.info("This task is locked", {
+                        description: "Complete the task before this one in this category first — then this one unlocks.",
+                      })
+                    }
+                    className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-3) text-xs font-bold"
+                  >
                     🔒 Locked
-                  </span>
+                  </button>
                 ) : (
                   <Link
                     href={`/social-tasks/${t.id}`}

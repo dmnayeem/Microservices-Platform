@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Smartphone } from "lucide-react";
-import { TaskCard, type TaskDeviceNeeds } from "@/components/user/primitives/task-card";
+import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user/primitives/task-card";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -75,6 +75,7 @@ export function AppInstallListView() {
               key={t.id}
               title={t.title}
               deviceNeeds={t as unknown as TaskDeviceNeeds}
+              gate={t as unknown as TaskGate}
               description={t.description ?? undefined}
               type="app"
               reward={t.pointsReward}

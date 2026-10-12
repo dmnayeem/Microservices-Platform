@@ -330,7 +330,7 @@ export async function POST(request: NextRequest) {
     if (lockedTaskIds.has(taskId)) {
       return NextResponse.json(
         {
-          error: "Complete the previous task first to unlock this one.",
+          error: "Complete the task before this one in this category first — then this one unlocks.",
           code: "TASK_LOCKED",
         },
         { status: 403 }
