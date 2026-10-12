@@ -84,6 +84,16 @@ function normalizeRuleValue(raw: string): string {
   return raw.trim().toLowerCase().replace(/\/+$/, "");
 }
 
+/** "Share Post" → "post", "Follow Page" → "page": what the Open button opens. */
+function targetNoun(label?: string | null): string {
+  if (!label) return "target";
+  const noun = label
+    .toLowerCase()
+    .replace(/^(share|like|follow|save|watch|comment on|join|subscribe to|visit|repost|retweet|react to|review|rate|install|download|listen to|play|upvote|star|fork|clap)\s+/, "")
+    .trim();
+  return noun || "target";
+}
+
 export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<SocialTaskView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1086,17 +1096,30 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
               )
             ) : (
               item.targetUrl && (
-                // The one thing every step starts with — a real button, centred.
-                <div className="flex justify-center py-1">
+                // The one thing every step starts with — a real button, centred,
+                // in the platform's own colour with its logo, so a member knows
+                // before tapping where it takes them.
+                <div className="flex flex-col items-center gap-1.5 py-1">
                   <a
                     href={item.targetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="app-press inline-flex min-h-11 w-full max-w-xs items-center justify-center gap-2 rounded-(--app-r-control) bg-(--app-cta) px-5 text-sm font-bold text-(--app-on-cta)"
+                    className={cn(
+                      "app-press inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2.5 rounded-(--app-r-control) px-5 text-base font-bold shadow-lg ring-1 ring-white/15 transition hover:brightness-110",
+                      platform?.brandColor ?? "bg-(--app-cta) text-(--app-on-cta)"
+                    )}
                   >
-                    <ExternalLink className="h-4 w-4" />
-                    Open {def?.label ? def.label.toLowerCase().replace(/^(share|like|follow|save|watch|comment on|join|subscribe to|visit) /, "") : "target"}
+                    {platform ? (
+                      <BrandIcon brand={platform.key} fallback={platform.emoji} className="h-5 w-5 shrink-0" />
+                    ) : null}
+                    <span className="truncate">
+                      Open {targetNoun(def?.label)}
+                    </span>
+                    <ExternalLink className="h-4 w-4 shrink-0 opacity-90" />
                   </a>
+                  <p className="text-center text-xs text-(--app-ink-2)">
+                    Opens the {platform?.label ?? "target"} {targetNoun(def?.label)} in a new tab. Do the step there, then come back here.
+                  </p>
                 </div>
               )
             )}

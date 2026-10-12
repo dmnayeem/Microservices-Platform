@@ -155,6 +155,8 @@ export default async function TaskDetailPage({ params }: PageProps) {
                 <span className={`px-2 py-0.5 rounded-full text-xs ${
                   task.status === "ACTIVE"
                     ? "bg-emerald-500/10 text-emerald-400"
+                    : task.status === "DRAFT"
+                    ? "bg-slate-500/15 text-slate-300"
                     : task.status === "PAUSED"
                     ? "bg-amber-500/10 text-amber-400"
                     : task.status === "COMPLETED"
