@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { realIpOrUnknown } from "@/lib/client-ip";
 
 /**
  * Lightweight in-memory sliding-window rate limiter.
@@ -50,18 +51,10 @@ export function rateLimit(
  * which is the address the last proxy actually saw.
  */
 export function clientIp(req: NextRequest): string {
-  const vercel = req.headers.get("x-vercel-forwarded-for");
-  if (vercel) return vercel.split(",")[0]!.trim();
-
-  const real = req.headers.get("x-real-ip");
-  if (real) return real.trim();
-
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    const hops = xff.split(",").map((h) => h.trim()).filter(Boolean);
-    if (hops.length) return hops[hops.length - 1]!;
-  }
-  return "unknown";
+  // Behind Cloudflare the edge hop is a Cloudflare server; the member's own
+  // address is CF-Connecting-IP, trusted only on a real Cloudflare hop
+  // (lib/client-ip.ts).
+  return realIpOrUnknown(req.headers);
 }
 
 /**

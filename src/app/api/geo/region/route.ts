@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { countryOfIp } from "@/lib/geo";
 import { clientIp } from "@/lib/rate-limit";
 import { needsConsentBanner } from "@/lib/consent-region";
+import { realCountry } from "@/lib/client-ip";
 
 /**
  * GET — does this visitor need the cookie banner? Public (visitors have no
@@ -12,9 +13,7 @@ import { needsConsentBanner } from "@/lib/consent-region";
  * asking is the safe side.
  */
 export function GET(req: NextRequest) {
-  const fromEdge =
-    req.headers.get("cf-ipcountry") || req.headers.get("x-vercel-ip-country") || req.headers.get("x-geo-country");
-  const edge = fromEdge && /^[A-Za-z]{2}$/.test(fromEdge) && fromEdge.toUpperCase() !== "XX" ? fromEdge.toUpperCase() : null;
+  const edge = realCountry(req.headers);
   const country = edge ?? countryOfIp(clientIp(req));
   return NextResponse.json(
     { country: country ?? null, consent: country ? needsConsentBanner(country) : true },

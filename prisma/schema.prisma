@@ -899,6 +899,9 @@ model Ad {
   /// (never our server — the network must see the real viewer), followed
   /// through wrappers and played in-slot (src/lib/vast-client.ts).
   vastUrl           String?
+  /// Admin's own label for grouping ads (e.g. "Adsterra", "Summer promo") —
+  /// the Ads tab groups by it and the report breaks down by it.
+  groupName         String?
   targetUrl         String?
   htmlContent       String?              @db.Text
   // Third-party ad-network config (type ADSENSE | GAM). The self-contained
@@ -983,6 +986,7 @@ model Ad {
   updatedAt         DateTime             @updatedAt
 
   @@index([campaignId])
+  @@index([groupName])
   @@index([placementId])
   @@index([status])
   @@index([promotedPostId])

@@ -31,6 +31,7 @@ import { GuestShell } from "@/components/public/guest-shell";
 import { guestCatalogStatus } from "@/lib/public-catalog-data";
 import { utcDay } from "@/lib/active-days";
 import { checkAndNoteVpn, getVpnSettings, pathVpnLocked } from "@/lib/vpn";
+import { realIp } from "@/lib/client-ip";
 
 export default async function MainLayout({
   children,
@@ -129,11 +130,7 @@ export default async function MainLayout({
   const vpnCfg = await getVpnSettings().catch(() => null);
   const vpnLockedPaths = vpnCfg?.lockedPaths ?? [];
   if (pathname && pathname !== "/vpn-blocked" && vpnCfg && pathVpnLocked(pathname, vpnLockedPaths)) {
-    const ip =
-      hdrs.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
-      hdrs.get("x-real-ip")?.trim() ||
-      hdrs.get("x-forwarded-for")?.split(",").pop()?.trim() ||
-      null;
+    const ip = realIp(hdrs);
     if (await checkAndNoteVpn(session.user.id, ip, vpnCfg).catch(() => false)) {
       redirect(`/vpn-blocked?from=${encodeURIComponent(pathname)}`);
     }

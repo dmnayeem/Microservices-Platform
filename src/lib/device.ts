@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getFraudConfig, accountsOnIp, recordFraudEvent } from "@/lib/fraud";
 import { parseDevice, type DeviceHints } from "@/lib/device-info";
 import { getSetting } from "@/lib/system-settings";
+import { realCountry, realIp } from "@/lib/client-ip";
 
 /**
  * Devices, for multi-account detection that works in the real world.
@@ -43,17 +44,14 @@ const usableIp = (ip: string | null | undefined) =>
 /** The current request's device, IP, browser and country (from Vercel's geo header). */
 export async function readDevice(): Promise<SeenDevice> {
   const [c, h] = await Promise.all([cookies(), headers()]);
-  const ip =
-    h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
-    h.get("x-real-ip")?.trim() ||
-    h.get("x-forwarded-for")?.split(",").pop()?.trim() ||
-    null;
+  // The member's real address and country, not Cloudflare's (lib/client-ip.ts).
+  const ip = realIp(h);
   return {
     deviceId: clean(c.get(DEVICE_COOKIE)?.value),
     fpHash: clean(c.get(FP_COOKIE)?.value),
     ip: usableIp(ip),
     userAgent: h.get("user-agent")?.slice(0, 500) ?? null,
-    country: (h.get("x-vercel-ip-country") || h.get("cf-ipcountry") || null)?.toUpperCase() ?? null,
+    country: realCountry(h),
   };
 }
 

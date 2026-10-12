@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { realIp } from "@/lib/client-ip";
 
 /**
  * Central audit-log writer. Records an admin/user action into `AuditLog` for the
@@ -35,10 +36,7 @@ export async function writeAudit(opts: WriteAuditOpts): Promise<void> {
     let userAgent: string | null = null;
     try {
       const h = await headers();
-      ipAddress =
-        h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-        h.get("x-real-ip") ||
-        null;
+      ipAddress = realIp(h);
       userAgent = h.get("user-agent");
     } catch {
       /* headers() unavailable outside a request — fine */
@@ -85,10 +83,7 @@ export async function writeAuditMany(
     let userAgent: string | null = null;
     try {
       const h = await headers();
-      ipAddress =
-        h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-        h.get("x-real-ip") ||
-        null;
+      ipAddress = realIp(h);
       userAgent = h.get("user-agent");
     } catch {
       /* headers() unavailable outside a request — fine */

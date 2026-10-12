@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { realCountry } from "@/lib/client-ip";
 
 /**
  * The one place an ad event's country is decided.
@@ -28,20 +29,11 @@ import { prisma } from "@/lib/prisma";
 export const UNKNOWN_COUNTRY = "ZZ";
 
 /**
- * Vercel resolves the client IP to a country at the edge and puts it on every
- * request. It costs nothing — no lookup, no third-party call, no added latency —
- * and it is the client's real country rather than whatever they typed into a
- * profile form. That makes it the primary source.
- *
- * `x-vercel-ip-country` is the header Vercel sets; the others are the equivalents
- * from Cloudflare and a generic proxy, checked so that this keeps working if the
- * platform ever sits behind one. First match wins.
+ * The country comes from the edge for free — no lookup, no third-party call —
+ * and it is the member's real country rather than whatever they typed into a
+ * profile form. Read through lib/client-ip.ts `realCountry`, which knows that
+ * behind Cloudflare Vercel's own header is the Cloudflare data centre's.
  */
-const COUNTRY_HEADERS = [
-  "x-vercel-ip-country",
-  "cf-ipcountry",
-  "x-geo-country",
-] as const;
 
 /**
  * Codes an edge can emit that are not places.
@@ -80,13 +72,10 @@ export function normalizeCountry(raw: string | null | undefined): string {
 async function headerCountry(): Promise<string | null> {
   try {
     const h = await headers();
-    for (const name of COUNTRY_HEADERS) {
-      const v = h.get(name);
-      if (v) {
-        const code = normalizeCountry(v);
-        if (code !== UNKNOWN_COUNTRY) return code;
-      }
-    }
+    // The member's real country — through Cloudflare, Vercel's header is the
+    // Cloudflare data centre's (lib/client-ip.ts).
+    const code = normalizeCountry(realCountry(h));
+    if (code !== UNKNOWN_COUNTRY) return code;
   } catch {
     /* not in a request scope */
   }

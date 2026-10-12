@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { realIp } from "@/lib/client-ip";
 
 // POST /api/courses/:id/view
 // Records a view + bumps Course.uniqueViewers if this sessionHash hasn't been
@@ -16,10 +17,7 @@ export async function POST(
     const userId = session?.user?.id ?? null;
 
     // Build a stable sessionHash: prefer userId, fall back to IP + UA
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      req.headers.get("x-real-ip") ??
-      "anon";
+    const ip = realIp(req.headers) ?? "anon";
     const ua = req.headers.get("user-agent") ?? "anon";
     const seed = userId ?? `${ip}|${ua}`;
     const sessionHash = crypto.createHash("sha256").update(seed).digest("hex").slice(0, 32);

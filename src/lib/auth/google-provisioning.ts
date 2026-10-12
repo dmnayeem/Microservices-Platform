@@ -10,6 +10,7 @@ import {
   generateUniqueUsername,
 } from "@/lib/auth/services";
 import { REFERRAL_COOKIE } from "./config";
+import { realIp } from "@/lib/client-ip";
 
 /**
  * Google sign-in: creating the account, and repairing one that predates this
@@ -78,12 +79,7 @@ async function readRefCookie(): Promise<string | null> {
 async function readClientIp(): Promise<string | null> {
   try {
     const h = await headers();
-    const ip =
-      h.get("x-vercel-forwarded-for") ||
-      h.get("x-real-ip") ||
-      // Rightmost hop: the leftmost XFF entry is client-controlled.
-      h.get("x-forwarded-for")?.split(",").pop()?.trim() ||
-      null;
+    const ip = realIp(h);
     return ip && ip !== "unknown" ? ip : null;
   } catch {
     return null;

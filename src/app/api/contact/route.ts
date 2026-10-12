@@ -4,6 +4,7 @@ import { sendNotificationEmail } from "@/lib/email";
 import { SUPPORT_EMAIL } from "@/config/company";
 import { z } from "zod";
 import { screenLinks } from "@/lib/link-safety";
+import { realIp } from "@/lib/client-ip";
 
 const schema = z.object({
   name: z.string().min(1).max(120),
@@ -23,7 +24,7 @@ const MAX = 5;
 // POST /api/contact — public contact form. Stores a ContactMessage and emails
 // support when SMTP is configured.
 export async function POST(request: NextRequest) {
-  const ip = (request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || "unknown";
+  const ip = realIp(request.headers) ?? "unknown";
   const now = Date.now();
   const h = hits.get(ip);
   if (h && now - h.at < WINDOW) {

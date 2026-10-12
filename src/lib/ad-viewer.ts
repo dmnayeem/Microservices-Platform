@@ -1,6 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { adViewerKey, shortHash } from "@/lib/ad-serve-token";
+import { realIpOrUnknown } from "@/lib/client-ip";
 
 /**
  * Who is looking, as the ad measurement layer sees it — derived from request
@@ -21,16 +22,7 @@ export interface AdViewer {
 
 /** Same precedence as `clientIp()` in rate-limit.ts, for a bare Headers. */
 export function ipFromHeaders(h: Headers): string {
-  const vercel = h.get("x-vercel-forwarded-for");
-  if (vercel) return vercel.split(",")[0]!.trim();
-  const real = h.get("x-real-ip");
-  if (real) return real.trim();
-  const xff = h.get("x-forwarded-for");
-  if (xff) {
-    const hops = xff.split(",").map((s) => s.trim()).filter(Boolean);
-    if (hops.length) return hops[hops.length - 1]!;
-  }
-  return "unknown";
+  return realIpOrUnknown(h);
 }
 
 export function viewerFromHeaders(h: Headers | null, userId: string | null | undefined): AdViewer {

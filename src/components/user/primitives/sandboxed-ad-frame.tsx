@@ -135,6 +135,13 @@ export function SandboxedAdFrame({
           referrerPolicy="strict-origin-when-cross-origin"
           className="block border-0"
           style={{
+            // The app runs in a dark colour scheme; an iframe whose document
+            // doesn't declare the same scheme is painted on an OPAQUE white
+            // canvas — every ad that hadn't drawn yet (or never would) showed
+            // as a bright white box. "normal" matches the ad's own document,
+            // so the frame stays transparent.
+            colorScheme: "normal",
+            background: "transparent",
             width: width ?? "100%",
             height,
             transform: scale < 1 ? `scale(${scale})` : undefined,

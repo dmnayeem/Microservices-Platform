@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { realIp } from "@/lib/client-ip";
 
 // POST /api/marketplace/listings/:id/view — record a per-listing view.
 //
@@ -21,7 +22,7 @@ export async function POST(
     // Build a stable per-viewer hash. Mix user id (if logged in) or IP +
     // user-agent (anon) into a short hash so we dedupe per browser session.
     const ua = request.headers.get("user-agent") ?? "";
-    const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "anon";
+    const ip = realIp(request.headers) ?? "anon";
     const seed = session?.user?.id
       ? `u:${session.user.id}`
       : `a:${ip}:${ua}`;
