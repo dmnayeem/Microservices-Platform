@@ -106,6 +106,7 @@ import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
 import { clientIp } from "@/lib/rate-limit";
 import { realIp } from "@/lib/client-ip";
 import { userHashtag } from "@/lib/social-caption";
+import { taskDeviceGate } from "@/lib/task-device-gate";
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
@@ -198,6 +199,12 @@ export async function POST(
         }
       }
     }
+    // Admin's "installed app only" / "notifications on" switches, checked at
+    // submit too. Manual tasks never call /start, so this is the only place
+    // they were ever checked; for the rest it stops a start from the app and a
+    // submit from a browser tab.
+    const deviceBlocked = await taskDeviceGate(request, task, session.user.id);
+    if (deviceBlocked) return deviceBlocked;
     // Start checks these, submit did not: a task the admin paused, retired or
     // let expire kept accepting (and paying) work begun before the change.
     if (task.status !== "ACTIVE" || (task.expiresAt && task.expiresAt.getTime() < Date.now())) {

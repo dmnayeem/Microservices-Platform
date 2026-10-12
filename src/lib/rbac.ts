@@ -1403,6 +1403,15 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "FINANCE",
   },
   {
+    // Income from outside companies (AdSense, Adsterra, Monetag, Amazon…),
+    // entered daily; feeds every finance report.
+    name: "Platform Income",
+    href: "/admin/finance/platform-income",
+    icon: "Globe",
+    permissions: ["finance.view"],
+    category: "FINANCE",
+  },
+  {
     name: "Company Books",
     href: "/admin/finance/company",
     icon: "BookOpenCheck",

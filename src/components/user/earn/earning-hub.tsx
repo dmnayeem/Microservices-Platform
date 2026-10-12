@@ -30,7 +30,7 @@ import {
   CheckCircle,
   BadgeDollarSign,
 } from "lucide-react";
-import { TaskCard } from "@/components/user/primitives/task-card";
+import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user/primitives/task-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
@@ -326,6 +326,8 @@ function TasksTab({
             <TaskCard
               key={t.id}
               title={t.title}
+              deviceNeeds={t as unknown as TaskDeviceNeeds}
+              gate={t as unknown as TaskGate}
               description={t.description ?? undefined}
               type={t.type.toLowerCase()}
               reward={t.pointsReward}

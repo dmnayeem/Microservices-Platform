@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -38,6 +39,7 @@ import {
 } from "@/lib/finance/scope";
 import { getRevenueBreakdown } from "@/lib/finance/revenue";
 import { getDailySeries, getLedgerTotals } from "@/lib/finance/series";
+import { thirdPartyDaily } from "@/lib/finance/platform-income";
 import { getFinancePulse } from "@/lib/finance/pulse";
 import { getPointsBreakdown } from "@/lib/finance/points-breakdown";
 import { POINT_SOURCE_META } from "@/lib/finance/points-source";
@@ -135,6 +137,18 @@ export default async function AdminFinancePage({
     getFinanceTestUserIds(),
   ]);
   const canManageTestUsers = await can(session.user.id, "finance.settings");
+
+  // Third-party income (AdSense, Adsterra…) per UTC day, beside the ledger's
+  // money in / out — the same figures the revenue total above includes.
+  if (from) {
+    const tp = await thirdPartyDaily(from, new Date()).catch(() => null);
+    if (tp) {
+      const byDay = new Map(tp.days.map((d) => [d.date, d.usd]));
+      for (const d of series as unknown as Array<Record<string, unknown>>) {
+        d.thirdParty = Math.round((byDay.get(String(d.date)) ?? 0) * 100) / 100;
+      }
+    }
+  }
 
   // Points by source: the Points tab's own range, and today's for the Overview
   // card, so the card can say what today's number is mostly made of. Only
@@ -317,7 +331,7 @@ function OverviewTab({
         <StatCard
           title="Revenue"
           value={usd(revenue.totalUsd)}
-          subtext={`${rangeLabel} · fees, ads, subscriptions`}
+          subtext={`${rangeLabel} · own ${usd(revenue.platformUsd)} · third-party ${usd(revenue.thirdPartyUsd)}`}
           icon={TrendingUp}
           tone="green"
         />
@@ -560,6 +574,7 @@ function OverviewTab({
           height={240}
           series={[
             { key: "revenue", label: "Revenue", color: "#10b981" },
+            { key: "thirdParty", label: "Third-party income", color: "#a3e635" },
             { key: "cost", label: "Paid to users", color: "#ef4444" },
           ]}
           emptyLabel="No settled money movement in this range."
@@ -638,7 +653,32 @@ function SourcesTab({
               </tr>
             </thead>
             <tbody>
-              {revenue.streams.map((s) => (
+              {(
+                [
+                  ["platform", "The platform's own income — counted automatically"],
+                  ["third_party", "Third-party platforms — entered daily at Platform income"],
+                ] as const
+              ).map(([group, title]) => {
+                const rows = revenue.streams.filter((s) => s.group === group);
+                const sub = group === "platform" ? revenue.platformUsd : revenue.thirdPartyUsd;
+                return (
+                  <Fragment key={group}>
+                    <tr className="border-t border-slate-700">
+                      <td colSpan={4} className="pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        {title}
+                        {group === "third_party" && (
+                          <Link href="/admin/finance/platform-income" className="ml-2 normal-case tracking-normal text-blue-400 hover:underline">
+                            Enter / view →
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                    {group === "third_party" && rows.length === 0 && (
+                      <tr className="border-t border-slate-800">
+                        <td colSpan={4} className="py-2 text-slate-500">Nothing entered for this range yet.</td>
+                      </tr>
+                    )}
+                    {rows.map((s) => (
                 <tr key={s.key} className="border-t border-slate-800">
                   <td className="py-2 text-white">
                     {s.label}
@@ -660,6 +700,14 @@ function SourcesTab({
                   </td>
                 </tr>
               ))}
+                    <tr className="border-t border-slate-800">
+                      <td className="py-1.5 text-right text-slate-400" colSpan={1}>Subtotal</td>
+                      <td className="py-1.5 text-right tabular-nums font-semibold text-slate-200">{usd(sub)}</td>
+                      <td colSpan={2} />
+                    </tr>
+                  </Fragment>
+                );
+              })}
               <tr className="border-t-2 border-slate-700">
                 <td className="py-2 font-bold text-white">Total</td>
                 <td className="py-2 text-right tabular-nums font-bold text-emerald-400">

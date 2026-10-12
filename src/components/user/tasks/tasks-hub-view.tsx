@@ -41,6 +41,7 @@ import {
   type UserSummary,
 } from "@/components/user/earn/earning-hub";
 import { isPathHidden } from "@/lib/page-visibility";
+import { DailyMissionCard } from "@/components/user/tasks/daily-mission-card";
 
 type SummaryRow = {
   available: number;
@@ -65,7 +66,6 @@ const TABS: { key: TabKey; label: string; icon: typeof ListTodo }[] = [
   { key: "tasks", label: "Tasks", icon: ListTodo },
   { key: "learn", label: "Learn", icon: GraduationCap },
   { key: "rank", label: "Rank", icon: TrendingUp },
-  { key: "promote", label: "Promote", icon: Megaphone },
   { key: "leaderboard", label: "Leaderboard", icon: Award },
   { key: "offerwall", label: "Offerwall", icon: Globe },
 ];
@@ -349,57 +349,72 @@ export function TasksHubView({
           />
         ) : (
           <div className="space-y-6">
-            {next && (
-              <Link
-                href={next.cat.href}
-                className="app-card app-press block border-(--app-accent-edge) bg-(--app-nav-wash)"
-              >
-                <p className="text-[11px] font-black uppercase tracking-widest text-(--app-accent-ink)">
-                  Start here
-                </p>
-                <div className="mt-2 flex items-center gap-3">
-                  <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-2xl", TONE[next.cat.color])}>
-                    <next.cat.icon className="h-6 w-6" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-lg font-black text-white">{next.cat.label}</p>
-                    <p className="t-meta text-(--app-ink-3)">
-                      {next.left} task{next.left === 1 ? "" : "s"} waiting
-                      {next.points > 0 ? ` · up to ${pts(next.points)} pts` : ""}
+            {/* Today's Daily Mission first — progress, what is left, what it
+                pays, and a Start button. Without a mission it is the old
+                "Start here" pick. */}
+            <DailyMissionCard
+              hrefForType={(type) =>
+                visibleCategories.find((c) => c.taskType === type || (type.startsWith("SOCIAL") && c.taskType === "SOCIAL"))?.href ?? null
+              }
+              fallback={
+                <>
+                {next && (
+                  <Link
+                    href={next.cat.href}
+                    className="app-card app-press block border-(--app-accent-edge) bg-(--app-nav-wash)"
+                  >
+                    <p className="text-[11px] font-black uppercase tracking-widest text-(--app-accent-ink)">
+                      Start here
                     </p>
-                  </div>
-                </div>
-                <span className="mt-3 flex w-full items-center justify-center gap-2 app-accent rounded-xl py-3 text-sm font-black">
-                  Start {next.cat.label} <ArrowRight className="h-4 w-4" />
-                </span>
-              </Link>
-            )}
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-2xl", TONE[next.cat.color])}>
+                        <next.cat.icon className="h-6 w-6" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-black text-white">{next.cat.label}</p>
+                        <p className="t-meta text-(--app-ink-3)">
+                          {next.left} task{next.left === 1 ? "" : "s"} waiting
+                          {next.points > 0 ? ` · up to ${pts(next.points)} pts` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="mt-3 flex w-full items-center justify-center gap-2 app-accent rounded-xl py-3 text-sm font-black">
+                      Start {next.cat.label} <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </Link>
+                )}
+                </>
+              }
+            />
 
             {ready.length > 0 && (
               <section>
                 <h2 className="t-section text-white">Tasks for you</h2>
-                <p className="t-meta text-(--app-ink-3) mt-0.5">In order of what they pay — do number 1 first.</p>
-                <ol className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                <p className="t-meta text-(--app-ink-3) mt-0.5">In order of what they pay — start with number 1.</p>
+                <ol className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
                   {ready.map((r, i) => (
                     <li key={r.cat.key}>
-                      <Link href={r.cat.href} className="app-card app-press app-lift flex items-center gap-3 !p-3">
-                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-(--app-surface-2) text-xs font-black text-(--app-ink-2)">
+                      <Link href={r.cat.href} className="app-card app-press app-lift relative flex h-full flex-col gap-2.5 !p-4">
+                        <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-(--app-surface-2) text-xs font-black text-(--app-ink-2)">
                           {i + 1}
                         </span>
-                        <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", TONE[r.cat.color])}>
-                          <r.cat.icon className="h-5 w-5" />
+                        <span className={cn("grid h-12 w-12 place-items-center rounded-2xl", TONE[r.cat.color])}>
+                          <r.cat.icon className="h-6 w-6" />
                         </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-bold text-white">{r.cat.label}</p>
-                          <p className="truncate t-meta text-(--app-ink-3)">
-                            {r.left} left{r.points > 0 ? ` · ${pts(r.points)} pts` : ""}
-                            {r.row.completedToday > 0 ? ` · ${r.row.completedToday} done today` : ""}
-                          </p>
-                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-(--app-surface-2)">
-                            <div className="h-full rounded-full bg-(image:--app-rail)" style={{ width: `${r.pct}%` }} />
-                          </div>
+                        <div className="min-w-0">
+                          <p className="text-base font-black text-white">{r.cat.label}</p>
+                          <p className="t-meta text-(--app-ink-3) line-clamp-2">{r.cat.description}</p>
                         </div>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-(--app-ink-3)" />
+                        <p className="text-sm font-bold text-(--app-ink)">
+                          {r.left} left
+                          {r.points > 0 ? <span className="text-amber-300"> · {pts(r.points)} pts</span> : null}
+                        </p>
+                        {r.row.completedToday > 0 && (
+                          <p className="t-meta text-emerald-300">{r.row.completedToday} done today</p>
+                        )}
+                        <div className="mt-auto h-1.5 overflow-hidden rounded-full bg-(--app-surface-2)">
+                          <div className="h-full rounded-full bg-(image:--app-rail)" style={{ width: `${r.pct}%` }} />
+                        </div>
                       </Link>
                     </li>
                   ))}
@@ -429,14 +444,20 @@ export function TasksHubView({
                 <h2 className="t-meta font-bold uppercase tracking-wider text-(--app-ink-3)">
                   No tasks right now — check back soon
                 </h2>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                   {empty.map((cat) => (
                     <Link
                       key={cat.key}
                       href={cat.href}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-(--app-line) bg-(--app-surface) px-3 py-1.5 text-xs font-semibold text-(--app-ink-3) hover:text-(--app-ink)"
+                      className="app-card app-press flex items-center gap-2.5 !p-3 opacity-70 hover:opacity-100"
                     >
-                      <cat.icon className="h-3.5 w-3.5" /> {cat.label}
+                      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", TONE[cat.color])}>
+                        <cat.icon className="h-4.5 w-4.5" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-bold text-white">{cat.label}</span>
+                        <span className="block t-meta text-(--app-ink-3)">No tasks now</span>
+                      </span>
                     </Link>
                   ))}
                 </div>

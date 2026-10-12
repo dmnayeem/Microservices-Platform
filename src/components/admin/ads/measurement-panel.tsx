@@ -61,7 +61,7 @@ export function MeasurementPanel() {
   const [from, setFrom] = useState(() => ymd(new Date(Date.now() - 13 * 86_400_000)));
   const [rep, setRep] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [reloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -218,144 +218,21 @@ export function MeasurementPanel() {
         </>
       )}
 
-      {rep?.seesMoney && <NetworkRevenueEditor onSaved={() => setReloadKey((k) => k + 1)} />}
-      <IvtSettingsEditor />
-    </div>
-  );
-}
-
-/**
- * Hand entry of what each network's dashboard says it paid for a day
- * (/api/admin/ads/network-revenue). Setting a day again replaces it.
- */
-function NetworkRevenueEditor({ onSaved }: { onSaved: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [data, setData] = useState<{
-    canEdit: boolean;
-    networks: { id: string; name: string }[];
-    rows: { id: string; date: string; network: string; networkName: string; revenueUsd: number; note: string | null }[];
-  } | null>(null);
-  const [date, setDate] = useState(() => ymd(new Date(Date.now() - 86_400_000)));
-  const [network, setNetwork] = useState("adsense");
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const load = useCallback(() => {
-    fetch("/api/admin/ads/network-revenue")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setData(d))
-      .catch(() => {});
-  }, []);
-  useEffect(() => {
-    if (open && !data) load();
-  }, [open, data, load]);
-
-  const save = async () => {
-    const value = Number(amount);
-    if (!Number.isFinite(value) || value < 0) {
-      toast.error("Enter the amount in USD (0 or more).");
-      return;
-    }
-    setSaving(true);
-    try {
-      const r = await fetch("/api/admin/ads/network-revenue", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, network, revenueUsd: value, note: note.trim() || null }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error || "Could not save.");
-      toast.success("Network revenue saved.");
-      setAmount("");
-      setNote("");
-      load();
-      onSaved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const remove = async (id: string) => {
-    const r = await fetch(`/api/admin/ads/network-revenue?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    if (r.ok) {
-      load();
-      onSaved();
-    } else toast.error("Could not delete.");
-  };
-
-  const field = "rounded-lg bg-slate-800 border border-slate-700 px-2 py-1 text-xs text-slate-100";
-  return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="text-xs font-semibold text-slate-200">
-        {open ? "▾" : "▸"} Network revenue (from each network&apos;s dashboard)
-      </button>
-      {open && !data && <Loader2 className="w-4 h-4 animate-spin text-slate-500 mt-2" />}
-      {open && data && (
-        <div className="mt-3 space-y-3">
-          <p className="text-[11px] text-slate-500">
-            Copy the day&apos;s earnings from AdSense, Adsterra, etc. The report divides it by our valid viewable
-            impressions to show eCPM. Entering the same day and network again replaces the old figure.
+      {/* Network earnings are typed in ONE place, Finance > Platform income, so
+          a figure can never be entered twice. Linked platforms feed eCPM. */}
+      {rep?.seesMoney && (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm">
+          <p className="font-semibold text-white">Network earnings (AdSense, Adsterra…)</p>
+          <p className="mt-1 text-slate-400">
+            Entered daily at Finance → Platform income. Link a platform to its network there and its
+            income shows as eCPM here.
           </p>
-          {data.canEdit ? (
-            <div className="flex flex-wrap items-end gap-2">
-              <input type="date" value={date} max={ymd(new Date())} onChange={(e) => setDate(e.target.value)} className={field} />
-              <select value={network} onChange={(e) => setNetwork(e.target.value)} className={field}>
-                {data.networks.map((nw) => (
-                  <option key={nw.id} value={nw.id}>
-                    {nw.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                inputMode="decimal"
-                placeholder="USD"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className={`${field} w-28 text-right`}
-              />
-              <input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} className={`${field} w-48`} />
-              <button
-                type="button"
-                onClick={save}
-                disabled={saving || amount === ""}
-                className="rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5"
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-            </div>
-          ) : (
-            <p className="text-[11px] text-slate-500">Read-only — entering revenue needs ads.manage.</p>
-          )}
-          {data.rows.length === 0 ? (
-            <p className="text-[11px] text-slate-500">Nothing entered in the last 30 days.</p>
-          ) : (
-            <div className="max-h-64 overflow-auto divide-y divide-slate-800 text-xs">
-              {data.rows.map((r) => (
-                <div key={r.id} className="flex items-center justify-between gap-3 py-1.5">
-                  <span className="text-slate-300">
-                    {r.date} · {r.networkName}
-                    {r.note && <span className="text-slate-500"> · {r.note}</span>}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span className="tabular-nums text-emerald-400">{usd(r.revenueUsd)}</span>
-                    {data.canEdit && (
-                      <button type="button" onClick={() => remove(r.id)} className="text-[11px] text-red-400 hover:text-red-300">
-                        Delete
-                      </button>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <a href="/admin/finance/platform-income" className="mt-2 inline-block text-xs font-medium text-blue-400 hover:underline">
+            Open Platform income →
+          </a>
         </div>
       )}
+      <IvtSettingsEditor />
     </div>
   );
 }

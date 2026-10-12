@@ -100,6 +100,14 @@ export async function GET(request: NextRequest) {
   }
 
   const accessLevel = userPackage?.accessLevel ?? 0;
+  // Higher-plan tasks are listed as upgrade offers (same rule as lib/task-list).
+  const plans = (await prisma.package.findMany({
+    where: { isActive: true },
+    select: { name: true, slug: true, accessLevel: true },
+    orderBy: { accessLevel: "asc" },
+    cacheStrategy: { ttl: 300, swr: 600 },
+  })) as unknown as { name: string; slug: string; accessLevel: number }[];
+  const previewLevel = Math.max(accessLevel, ...plans.map((p) => p.accessLevel));
 
   // Hide tasks the user has already SUBMITTED or been paid for — they belong in
   // the Submitted / Approved tabs (this list once showed "Start" on a submitted
@@ -126,7 +134,7 @@ export async function GET(request: NextRequest) {
       // Shared visibility rules (adds the `hidden` flag and the startsAt window
       // this route used to skip).
       ...visibleTaskWhere({ ...user, device: await currentDevice() }, {
-        accessLevel,
+        accessLevel: previewLevel,
         allowedTypes: [TaskType.SOCIAL],
         type: TaskType.SOCIAL,
       }),
@@ -144,7 +152,16 @@ export async function GET(request: NextRequest) {
     tasks: tasks
       .map((t) => ({
         ...mapSocialTaskRow(t),
-        locked: lockedTaskIds.has(t.id),
+        requireApp: t.requireApp,
+        requirePush: t.requirePush,
+        planLock:
+          t.requiredAccessLevel > accessLevel
+            ? (() => {
+                const pl = plans.find((p) => p.accessLevel >= t.requiredAccessLevel);
+                return pl ? { name: pl.name, slug: pl.slug } : null;
+              })()
+            : null,
+        locked: t.requiredAccessLevel <= accessLevel && lockedTaskIds.has(t.id),
         inProgress: inProgressIds.has(t.id),
       }))
       .filter(matchesKind)

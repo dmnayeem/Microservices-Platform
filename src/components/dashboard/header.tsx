@@ -1,6 +1,7 @@
 "use client";
 
 import { syncAppBadge } from "@/lib/app-badge";
+import { navCountMap, useNavCounts } from "@/hooks/use-nav-counts";
 import { BALANCE_EVENT, fetchHeaderData } from "@/lib/header-data";
 import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { Fragment, useState, useEffect, useCallback, useRef } from "react";
@@ -112,10 +113,13 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
   }, [isNotificationOpen, isProfileOpen]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  // Mirror the unread count onto the installed app's icon badge.
+  // The installed app's icon number: unread notifications + tasks waiting
+  // (the same "/tasks" count as the menu and bottom bar). It used to be the
+  // notifications alone, so a new task never showed on the home screen.
+  const tasksWaiting = navCountMap(useNavCounts())["/tasks"] ?? 0;
   useEffect(() => {
-    syncAppBadge(unreadCount);
-  }, [unreadCount]);
+    syncAppBadge(unreadCount, tasksWaiting);
+  }, [unreadCount, tasksWaiting]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(0);

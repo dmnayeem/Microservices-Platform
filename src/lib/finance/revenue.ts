@@ -4,6 +4,7 @@ import { toNum } from "@/lib/money";
 import { adRevenueWindow } from "@/lib/ad-revenue";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
+import { thirdPartyIncome } from "@/lib/finance/platform-income";
 
 /**
  * What the platform actually earns, from the columns that already record it.
@@ -39,11 +40,21 @@ export interface RevenueStream {
   measured: boolean;
   /** Set when the figure is reconstructed rather than read from a column. */
   note?: string;
+  /**
+   * `platform` — the platform's own income, measured by the app.
+   * `third_party` — what an outside company (AdSense, Adsterra…) paid, typed in
+   * by finance at /admin/finance/platform-income. Shown as two separate groups.
+   */
+  group: "platform" | "third_party";
 }
 
 export interface RevenueBreakdown {
   streams: RevenueStream[];
   totalUsd: number;
+  /** Sum of the `group: "platform"` streams. */
+  platformUsd: number;
+  /** Sum of the `group: "third_party"` streams (incl. month-end adjustments). */
+  thirdPartyUsd: number;
   /**
    * Tax charged on marketplace commission and collected from buyers.
    *
@@ -244,21 +255,67 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
   const lotteryPoints =
     (lottery._sum.houseCutPoints ?? 0) + (lottery._sum.overflowToHouse ?? 0);
 
-  // Third-party network earnings (AdSense, Adsterra, …), typed in by hand at
-  // Ad Manager → Analytics → Network revenue. The "ads" stream below excludes
-  // network inventory, so this never double counts it. Windowed on the day the
-  // network earned it, not on when it was typed in.
-  const networkRev = await prisma.adNetworkRevenue
-    .aggregate({
-      where: range.from || range.to ? { date: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } } : {},
-      _sum: { revenueUsd: true },
+  // Paid features that were charged and never reported (2026-10-13):
+  // post boosts, Spotlight wins, own-product promotions, ad-space rentals.
+  //
+  // Post boost: points only. `amount` on these rows is the points' USD value,
+  // NOT a second (cash) charge — summing both would count every boost twice.
+  // Promotions (course / marketplace listing): cash OR points, one or the
+  // other per row (the unused side is 0). Signs are not trusted (abs).
+  const [boosts, promos, spotlight, rentals] = (await Promise.all([
+    prisma.transaction.aggregate({
+      where: x({ type: "PURCHASE", status: "COMPLETED", reference: { startsWith: "boost_" }, ...(created ? { createdAt: created } : {}) }),
+      _sum: { points: true },
       _count: true,
-    })
-    .catch(() => null);
-  const networkRevUsd = networkRev ? toNum(networkRev._sum.revenueUsd as never) : 0;
-  const networkRevCount = networkRev?._count ?? 0;
+    }),
+    prisma.transaction.aggregate({
+      where: x({
+        type: "PURCHASE",
+        status: "COMPLETED",
+        OR: [{ reference: { startsWith: "promo_course_" } }, { reference: { startsWith: "promo_marketplace_" } }],
+        ...(created ? { createdAt: created } : {}),
+      }),
+      _sum: { amount: true, points: true },
+      _count: true,
+    }),
+    // Spotlight: only the WINNING bid is income — every other bid is held and
+    // refunded in full. Dated on the award.
+    prisma.spotlightAuction.aggregate({
+      where: x({ status: "AWARDED", ...(created ? { awardedAt: created } : {}) }, "winnerUserId", true),
+      _sum: { winnerBid: true },
+      _count: true,
+    }),
+    // Ad-space rentals: a booking an advertiser paid for (ACTIVE, or ENDED
+    // after running). Read from the booking, not the invoice, so a rental paid
+    // off-app and activated by hand counts too and an invoice can never count
+    // it twice. The platform's own bookings (no advertiser) are not income.
+    // Dated on the start of the rented period.
+    prisma.adSlotBooking.aggregate({
+      where: x(
+        { status: { in: ["ACTIVE", "ENDED"] }, advertiserId: { not: null }, ...(created ? { startAt: created } : {}) },
+        "advertiserId",
+        true
+      ),
+      _sum: { priceUsd: true },
+      _count: true,
+    }),
+  ])) as unknown as [
+    SumCount<{ points: number | null }>,
+    SumCount<{ amount: unknown; points: number | null }>,
+    SumCount<{ winnerBid: number | null }>,
+    SumCount<{ priceUsd: unknown }>,
+  ];
+  const boostPoints = Math.abs(boosts._sum.points ?? 0);
+  const promoUsd = Math.abs(toNum(promos._sum.amount as never)) + Math.abs(promos._sum.points ?? 0) / pointsPerUsd;
+  const spotlightPoints = Math.abs(spotlight._sum.winnerBid ?? 0);
 
-  const streams: RevenueStream[] = [
+  // Third-party companies (AdSense, Adsterra, Monetag, Amazon…), typed in by
+  // finance per day — lib/finance/platform-income, which also applies the
+  // month-end payout. The "ads" stream excludes network inventory, so nothing
+  // is counted on both sides.
+  const third = await thirdPartyIncome(range).catch(() => null);
+
+  const own: Omit<RevenueStream, "group">[] = [
     {
       key: "marketplace",
       label: "Marketplace commission",
@@ -344,15 +401,6 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
       note: "First terms are read from Subscription, not the ledger (plans paid offline are activated without a COMPLETED purchase row until approved); auto-renewal charges are read from their `sub_renew_*` ledger rows.",
     },
     {
-      key: "adnetworks",
-      label: "Ad network earnings",
-      usd: networkRevUsd,
-      count: networkRevCount,
-      from: "AdNetworkRevenue (entered by hand per day)",
-      measured: networkRevCount > 0,
-      note: "What AdSense and the other networks report in their own dashboards, entered at Ad Manager → Analytics. Count = days entered.",
-    },
-    {
       key: "badges",
       label: "Blue badges",
       usd: badgeUsd,
@@ -361,11 +409,79 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
       measured: badgeSales._count > 0,
       note: "Blue badge and badge-style sales, paid from the wallet (points at the published rate).",
     },
+    {
+      key: "boosts",
+      label: "Post boosts",
+      usd: boostPoints / pointsPerUsd,
+      count: boosts._count,
+      from: "Transaction PURCHASE boost_* (points)",
+      measured: boosts._count > 0,
+      note: `${boostPoints.toLocaleString()} points at ${pointsPerUsd.toLocaleString()}/USD.`,
+    },
+    {
+      key: "spotlight",
+      label: "Spotlight (winning bids)",
+      usd: spotlightPoints / pointsPerUsd,
+      count: spotlight._count,
+      from: "SpotlightAuction.winnerBid (AWARDED)",
+      measured: spotlight._count > 0,
+      note: `${spotlightPoints.toLocaleString()} points at ${pointsPerUsd.toLocaleString()}/USD. Losing bids are refunded and never count.`,
+    },
+    {
+      key: "promotions",
+      label: "Promotions (courses & listings)",
+      usd: promoUsd,
+      count: promos._count,
+      from: "Transaction PURCHASE promo_course_* / promo_marketplace_*",
+      measured: promos._count > 0,
+    },
+    {
+      key: "adrentals",
+      label: "Ad space rentals",
+      usd: toNum(rentals._sum.priceUsd as never),
+      count: rentals._count,
+      from: "AdSlotBooking.priceUsd (ACTIVE / ENDED, advertiser-paid)",
+      measured: rentals._count > 0,
+    },
   ];
+  const streams: RevenueStream[] = own.map((st) => ({ ...st, group: "platform" as const }));
 
+  // One stream per third-party company with income in the range, plus one for
+  // the month-end payout corrections, so every total traces back to a name.
+  if (third) {
+    for (const pl of third.platforms) {
+      if (pl.days === 0) continue;
+      streams.push({
+        key: `tp_${pl.id}`,
+        label: pl.name,
+        usd: pl.estimatedUsd,
+        count: pl.days,
+        from: `Platform income — ${pl.type} (entered daily by finance)`,
+        measured: true,
+        group: "third_party",
+      });
+    }
+    if (third.adjustmentUsd !== 0) {
+      streams.push({
+        key: "tp_adjustment",
+        label: "Month-end payout adjustment",
+        usd: third.adjustmentUsd,
+        count: third.platforms.filter((pl) => pl.adjustmentUsd !== 0).length,
+        from: "PlatformPayout minus that month's daily figures",
+        measured: true,
+        note: "Actual payout minus the daily figures for the same month, dated on the month's last day.",
+        group: "third_party",
+      });
+    }
+  }
+
+  const platformUsd = streams.filter((st) => st.group === "platform").reduce((n, st) => n + st.usd, 0);
+  const thirdPartyUsd = streams.filter((st) => st.group === "third_party").reduce((n, st) => n + st.usd, 0);
   return {
     streams,
-    totalUsd: streams.reduce((s, x) => s + x.usd, 0),
+    platformUsd,
+    thirdPartyUsd,
+    totalUsd: platformUsd + thirdPartyUsd,
     taxCollectedUsd: toNum(marketplace._sum.tax as never),
   };
 }

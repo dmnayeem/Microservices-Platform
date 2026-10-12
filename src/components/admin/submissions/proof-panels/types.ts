@@ -17,6 +17,8 @@ export interface PanelSubmission {
   rejectionReason: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
+  /** When it was submitted. `updatedAt` moves on every later review/re-check. */
+  submittedAt?: Date | string | null;
 }
 
 export interface PanelTask {

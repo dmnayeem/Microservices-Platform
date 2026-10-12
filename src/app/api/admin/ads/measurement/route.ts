@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { realMeasurementSince } from "@/lib/ad-measure";
 import { IVT_REASON_LABELS } from "@/lib/ad-ivt";
+import { incomeByNetworkKey } from "@/lib/finance/platform-income";
 
 /**
  * GET /api/admin/ads/measurement?from=YYYY-MM-DD&to=YYYY-MM-DD[&format=csv&scope=ad|placement|network|day|reasons]
@@ -192,12 +193,9 @@ export async function GET(req: NextRequest) {
   // Network-reported revenue (entered by hand) for eCPM — money, so finance only.
   const netRevenue = new Map<string, number>();
   if (seesMoney) {
-    const rev = (await prisma.adNetworkRevenue.groupBy({
-      by: ["network"],
-      where: { date: { gte: from, lte: to } },
-      _sum: { revenueUsd: true },
-    })) as unknown as Array<{ network: string; _sum: { revenueUsd: unknown } }>;
-    for (const r of rev) netRevenue.set(r.network, toNum(r._sum.revenueUsd as never));
+    // Entered at Finance → Platform income; a platform linked to a network
+    // supplies that network's revenue (with the month-end payout applied).
+    for (const [k, v] of await incomeByNetworkKey({ from, to })) netRevenue.set(k, v);
   }
 
   const byViews = <T extends Row>(m: Map<string, T>) =>

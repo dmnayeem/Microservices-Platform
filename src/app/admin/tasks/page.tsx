@@ -36,6 +36,8 @@ import { TaskActions } from "@/components/admin/task-actions";
 import { TaskReviewActions } from "@/components/admin/task-review-actions";
 import { AWAITING_REVIEW_WHERE } from "@/lib/submission-status";
 import { ArchivedBulkDelete } from "@/components/admin/task-archived-bulk-delete";
+import { SequentialUnlockToggle } from "@/components/admin/tasks/sequential-unlock-toggle";
+import { getSetting } from "@/lib/system-settings";
 import { LISTED_TASK_STATUSES, LISTED_TASK_WHERE } from "@/lib/task-audit";
 
 interface PageProps {
@@ -285,9 +287,14 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
   const canCreate = await can(session.user.id, "tasks.create");
   const canEdit = await can(session.user.id, "tasks.edit");
   const canDelete = await can(session.user.id, "tasks.delete");
+  const [sequentialOn, canEditSettings] = await Promise.all([
+    getSetting<boolean>("tasks.sequential_unlock", false),
+    can(session.user.id, "settings.edit"),
+  ]);
 
   return (
     <div className="space-y-8">
+      <SequentialUnlockToggle initial={sequentialOn === true} canEdit={canEditSettings} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

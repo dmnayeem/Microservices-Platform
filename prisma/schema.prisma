@@ -1209,10 +1209,88 @@ model AdMeasureDaily {
   @@index([date])
 }
 
+/// A third-party company the platform earns from, whose earnings only that
+/// company's own dashboard knows — Google AdSense, Adsterra, Monetag, Amazon
+/// Affiliates. Finance admins add them and type the income in by hand
+/// (src/lib/finance/platform-income.ts). The platform's OWN income (ads,
+/// marketplace, courses…) is never entered here: the app measures it.
+model IncomePlatform {
+  id         String   @id @default(cuid())
+  /// "Google AdSense". Unique, case-insensitively enforced in the API.
+  name       String   @unique
+  /// "Ad network", "Affiliate", "Sponsorship"… — free text, grouped by it.
+  type       String   @default("Ad network")
+  /// Optional link to an ad-network registry id (src/lib/ad-networks/registry.ts),
+  /// so Ad Manager's eCPM uses this income. One platform per network.
+  networkKey String?  @unique
+  color      String?
+  /// Never deleted (its income rows are the record); switched off instead.
+  isActive   Boolean  @default(true)
+  createdById String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  entries PlatformIncomeEntry[]
+  payouts PlatformPayout[]
+
+  @@index([isActive])
+}
+
+/// One platform's income for ONE day, in USD (converted by the admin when the
+/// company pays in another currency). One row per platform per day: saving the
+/// day again REPLACES the figure — a double click can never double the money.
+/// A wrong row is voided with a reason, never deleted.
+model PlatformIncomeEntry {
+  id          String         @id @default(cuid())
+  platformId  String
+  platform    IncomePlatform @relation(fields: [platformId], references: [id], onDelete: Restrict)
+  /// The day the company says it was earned (its report's date). A DATE, not a
+  /// timestamp, so no timezone can move it to the next or previous day.
+  date        DateTime       @db.Date
+  amountUsd   Decimal        @db.Decimal(18, 6)
+  note        String?
+  /// ACTIVE | VOID
+  status      String         @default("ACTIVE")
+  voidReason  String?
+  enteredById String?
+  updatedById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([platformId, date])
+  @@index([date, status])
+}
+
+/// What a platform ACTUALLY paid for a month. Daily figures are the company's
+/// estimates; the month-end payment is final. The difference is reported as a
+/// month-end adjustment on the month's last day, so a month with a payout
+/// totals exactly what was paid.
+model PlatformPayout {
+  id          String         @id @default(cuid())
+  platformId  String
+  platform    IncomePlatform @relation(fields: [platformId], references: [id], onDelete: Restrict)
+  /// `YYYY-MM`
+  period      String
+  actualUsd   Decimal        @db.Decimal(18, 6)
+  receivedAt  DateTime?
+  reference   String?
+  note        String?
+  enteredById String?
+  updatedById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([platformId, period])
+  @@index([period])
+}
+
 /// Revenue a third-party ad network (AdSense, Adsterra, …) reports in its OWN
 /// dashboard, entered by hand per day so the measurement report can show eCPM
 /// beside our measured viewable impressions. `network` uses the registry id
 /// (src/lib/ad-networks/registry.ts) — the same key AdMeasureDaily stores.
+/// DEPRECATED 2026-10-13 — read and written by nothing. Replaced by
+/// IncomePlatform / PlatformIncomeEntry (Finance → Platform income). It never
+/// held a row; kept only so no migration has to drop a table.
 model AdNetworkRevenue {
   id          String   @id @default(cuid())
   date        DateTime @db.Date

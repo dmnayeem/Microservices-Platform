@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList } from "lucide-react";
-import { TaskCard } from "@/components/user/primitives/task-card";
+import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user/primitives/task-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
@@ -119,6 +119,8 @@ export function SurveyTasksView() {
             <TaskCard
               key={t.id}
               title={t.title}
+              deviceNeeds={t as unknown as TaskDeviceNeeds}
+              gate={t as unknown as TaskGate}
               description={t.description}
               type="custom"
               reward={t.pointsReward}

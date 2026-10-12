@@ -98,10 +98,24 @@ export async function listTasksForUser(
     (t) => packageHasFeature(userPackage, TASK_TYPE_FEATURE[t]),
   );
 
+  // Tasks for a HIGHER plan (Standard / Premium) are listed too, as upgrade
+  // offers: shown between the free ones, never startable (start/submit still
+  // enforce the plan), and never part of the sequential chain. Everything
+  // else about visibility (audience, level, dates, types) still applies.
+  const plans = (await prisma.package.findMany({
+    where: { isActive: true },
+    select: { name: true, slug: true, accessLevel: true },
+    orderBy: { accessLevel: "asc" },
+    cacheStrategy: { ttl: 300, swr: 600 },
+  })) as unknown as { name: string; slug: string; accessLevel: number }[];
+  const previewLevel = Math.max(accessLevel, ...plans.map((p) => p.accessLevel));
+  /** The cheapest plan that unlocks a task needing `level`. */
+  const planFor = (level: number) => plans.find((p) => p.accessLevel >= level) ?? null;
+
   // ONE definition of task visibility — src/lib/task-visibility.ts. Every
   // other task route builds its where from the same function now.
   const where = visibleTaskWhere({ ...user, device: await currentDevice() }, {
-    accessLevel,
+    accessLevel: previewLevel,
     allowedTypes,
     type,
     category,
@@ -179,6 +193,8 @@ export async function listTasksForUser(
         completedCount: true,
         dailyLimit: true,
         totalLimit: true,
+        requireApp: true,
+        requirePush: true,
       },
     }),
     prisma.task.count({ where }),
@@ -280,16 +296,20 @@ export async function listTasksForUser(
     const reachedTotalLimit =
       task.totalLimit && task.completedCount >= task.totalLimit;
 
-    const canStart = hasPending || (!dailyLimitReached && !reachedTotalLimit);
+    // Above the member's plan: an upgrade offer, not a task they can do.
+    const needPlan = task.requiredAccessLevel > accessLevel ? planFor(task.requiredAccessLevel) : null;
+    const planLock = needPlan ? { name: needPlan.name, slug: needPlan.slug } : null;
 
-    const completedToday = !canStart;
+    const canStart = !planLock && (hasPending || (!dailyLimitReached && !reachedTotalLimit));
+
+    const completedToday = !canStart && !planLock;
 
     const remainingToday = Math.max(0, dailyLimit - todayCount);
     const remainingSlots = task.totalLimit
       ? task.totalLimit - task.completedCount
       : null;
 
-    const locked = lockedTaskIds.has(task.id);
+    const locked = !planLock && lockedTaskIds.has(task.id);
 
     return {
       id: task.id,
@@ -312,6 +332,10 @@ export async function listTasksForUser(
       socialAction: task.socialAction,
       autoApprove: task.autoApprove,
       expiresAt: task.expiresAt,
+      // Admin's "installed app only" / "notifications on" switches, so the card
+      // can say so before the member opens the task.
+      requireApp: task.requireApp,
+      requirePush: task.requirePush,
       // `completedCount` is the CREDITED count the slot limit is enforced
       // against (Task.completedCount). The number of attempts is a different
       // thing and now ships under its own name — shipping attempts as
@@ -335,7 +359,8 @@ export async function listTasksForUser(
       canStart,
       completedToday,
       locked,
-      lockReason: locked ? "Complete the previous task first" : null,
+      planLock,
+      lockReason: locked ? "Complete the task before this one in this category first — then this one unlocks." : null,
       reason: !canStart
         ? dailyLimitReached
           ? "Daily limit reached"
@@ -357,7 +382,7 @@ export async function listTasksForUser(
   // the Approved tab; it comes back here only when the user may repeat it.
   const visibleTasks = processedTasks.filter(
     (t) =>
-      (t.canStart || t.locked || t.userStatus !== "AVAILABLE") &&
+      (t.canStart || t.locked || !!t.planLock || t.userStatus !== "AVAILABLE") &&
       !(t.userStatus === "COMPLETED" && !t.canStart && !t.locked),
   );
 

@@ -6,6 +6,7 @@ import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { BalanceSync } from "@/components/providers/balance-sync";
 import { FirstTouchReport } from "@/components/providers/first-touch";
 import { TaskRequirementsGate } from "@/components/user/tasks/task-requirements-gate";
+import { PlanUpsellModal } from "@/components/user/tasks/plan-upsell";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -241,6 +242,7 @@ export default async function MainLayout({
       <FirstTouchReport />
       {/* "App only" / "notifications on" tasks — opens only when a start is refused. */}
       <TaskRequirementsGate />
+      <PlanUpsellModal />
       {/* "Allow notifications" and "Install the app" — signed-in users only
           (a visitor on the landing page has nothing to be notified about),
           and asked again at the moment it matters: starting a task. */}

@@ -106,7 +106,7 @@ export function ArticleProofPanel({ submission, task }: Props) {
         {requiredSec > 0 && (
           <DurationCard
             startedAt={submission.createdAt}
-            submittedAt={submission.updatedAt}
+            submittedAt={submission.submittedAt ?? submission.updatedAt}
             requiredSeconds={requiredSec}
             verb="Read"
           />

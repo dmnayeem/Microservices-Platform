@@ -21,6 +21,7 @@ import {
   visibleTaskWhere,
 } from "@/lib/task-visibility";
 import { profileGateResponse } from "@/lib/profile-gate-server";
+import { taskDeviceGate } from "@/lib/task-device-gate";
 
 /**
  * POST /api/article-tasks/[taskId]/start
@@ -103,13 +104,18 @@ export async function POST(
     return NextResponse.json({ error: "Article task not found" }, { status: 404 });
   }
 
+  // Admin's "installed app only" / "notifications on" switches — the same
+  // check /api/tasks/[id]/start applies; article tasks start here instead.
+  const deviceBlocked = await taskDeviceGate(request, task, session.user.id);
+  if (deviceBlocked) return deviceBlocked;
+
   // Sequential-unlock chain — the same guard `/api/tasks/[id]/start` applies,
   // so this path can't be used to skip a locked task.
   const { lockedTaskIds } = await getTaskChainState(session.user.id);
   if (lockedTaskIds.has(task.id)) {
     return NextResponse.json(
       {
-        error: "Complete the previous task first to unlock this one.",
+        error: "Complete the task before this one in this category first — then this one unlocks.",
         code: "TASK_LOCKED",
       },
       { status: 403 }

@@ -8,6 +8,9 @@ import { toNum, type MoneyInput } from "@/lib/money";
 import { isAdmin, type UserRole } from "@/lib/rbac";
 import { Users, Activity, DollarSign, GitBranch, Clock, TrendingUp, CalendarDays, ListTodo, ClipboardCheck, Wallet, CheckCircle, Banknote, ArrowDownToLine, Megaphone } from "lucide-react";
 import { StatCard } from "@/components/admin/stat-card";
+import { getRevenueBreakdown } from "@/lib/finance/revenue";
+import { getDailySeries } from "@/lib/finance/series";
+import { thirdPartyDaily } from "@/lib/finance/platform-income";
 import { UserGrowthChart } from "@/components/admin/user-growth-chart";
 import { RevenueTrendChart } from "@/components/admin/revenue-trend-chart";
 import { PlatformStats } from "@/components/admin/platform-stats";
@@ -338,7 +341,28 @@ export default async function AdminDashboardPage() {
   ];
 
   const growthSeries = buildGrowthSeries(last7DaysUsers);
-  const revenueSeries = buildRevenueSeries(last30DaysRevenue);
+  // Revenue cards and the 30-day trend: the SAME figures /admin/finance shows.
+  // "Total" and "Today" used to be subscription sales only, under a "Revenue"
+  // title, so the dashboard and the finance hub never agreed. Finance only.
+  const money = seesMoney
+    ? await Promise.all([
+        getRevenueBreakdown({}).catch(() => null),
+        getRevenueBreakdown({ from: todayStart }).catch(() => null),
+        getDailySeries({ from: thirtyDaysAgo }).catch(() => null),
+        thirdPartyDaily(thirtyDaysAgo, now).catch(() => null),
+      ])
+    : null;
+  const allTimeRev = money?.[0] ?? null;
+  const todayRev = money?.[1] ?? null;
+  const revenueSeries = money?.[2]
+    ? (() => {
+        const tp = new Map((money[3]?.days ?? []).map((d) => [d.date, d.usd]));
+        return money[2]!.map((d) => ({
+          label: format(new Date(`${d.date}T00:00:00.000Z`), "MMM d"),
+          revenue: Math.round((d.revenue + (tp.get(d.date) ?? 0)) * 100) / 100,
+        }));
+      })()
+    : buildRevenueSeries(last30DaysRevenue);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -438,15 +462,19 @@ export default async function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           title="Total Revenue"
-          value={usd(totalRevenue)}
-          subtext="all time"
+          value={usd(allTimeRev?.totalUsd ?? totalRevenue)}
+          subtext={
+            allTimeRev
+              ? `all time · own ${usd(allTimeRev.platformUsd)} · third-party ${usd(allTimeRev.thirdPartyUsd)}`
+              : "all time"
+          }
           icon={TrendingUp}
           tone="green"
-          href="/admin/analytics"
+          href="/admin/finance"
         />
         <StatCard
           title="Today Revenue"
-          value={usd(todayRevenue)}
+          value={usd(todayRev?.totalUsd ?? todayRevenue)}
           subtext={format(now, "MMM d, yyyy")}
           icon={CalendarDays}
           tone="blue"

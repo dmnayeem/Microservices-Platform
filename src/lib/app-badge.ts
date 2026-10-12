@@ -10,10 +10,25 @@ type BadgeNavigator = Navigator & {
 };
 
 let last: number | null = null;
+let lastTasks: number | null = null;
 
-export function syncAppBadge(count: number): void {
+/**
+ * The icon number = unread notifications + tasks waiting. `tasks` is also
+ * handed to the service worker, so a push that arrives while the app is closed
+ * keeps the tasks in the number instead of replacing them.
+ */
+export function syncAppBadge(count: number, tasks = 0): void {
   if (typeof navigator === "undefined") return;
-  const n = Math.max(0, Math.floor(count || 0));
+  const t = Math.max(0, Math.floor(tasks || 0));
+  if (t !== lastTasks) {
+    lastTasks = t;
+    try {
+      navigator.serviceWorker?.controller?.postMessage({ type: "BADGE_BASE", tasks: t });
+    } catch {
+      /* no service worker — nothing to remember */
+    }
+  }
+  const n = Math.max(0, Math.floor(count || 0)) + t;
   if (n === last) return;
   last = n;
   const nav = navigator as BadgeNavigator;
