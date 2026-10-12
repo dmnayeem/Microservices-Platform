@@ -30,7 +30,10 @@ export default async function SocialPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  // Floored to the minute: it sits in the cached banner read's predicate, and an
+  // exact timestamp made every render a distinct Accelerate cache key (never hit).
   const now = new Date();
+  now.setSeconds(0, 0);
   const userId = session.user.id;
 
   // Every read on this page is a sidebar/discovery widget — none of it is

@@ -327,7 +327,10 @@ export function AdRenderer({
         } catch {
           /* ignore */
         }
-        return true;
+        // The id now on screen — callers compare it against an ad that came
+        // back empty (the server re-serves the on-screen ad when it is the
+        // only one in the space).
+        return String(data.ad.id);
       } catch {
         if (opts?.initial) setError(true);
         return false;
@@ -779,10 +782,19 @@ export function AdRenderer({
           key={ad.id}
           tagUrl={ad.vastUrl}
           height={vh}
-          onDone={() => {
-            if (emptyHandledRef.current.has(ad.id)) return;
+          onDone={(reason) => {
+            if (emptyHandledRef.current.has(ad.id)) {
+              // Empty a second time: collapse instead of a black box.
+              if (reason === "empty") setError(true);
+              return;
+            }
             emptyHandledRef.current.add(ad.id);
-            void loadAd({ rotate: true });
+            const emptyId = ad.id;
+            void loadAd({ rotate: true }).then((next) => {
+              // Nothing else to show (or the same empty tag again) → collapse
+              // rather than leave a permanent black box.
+              if (reason === "empty" && (!next || next === emptyId)) setError(true);
+            });
           }}
         />
       </div>
@@ -829,9 +841,20 @@ export function AdRenderer({
             // A network that drew nothing: show the next ad instead of a blank
             // box (once per ad, so an all-empty pool can't loop).
             onFill={(filled) => {
-              if (filled || emptyHandledRef.current.has(ad.id)) return;
+              if (filled) return;
+              // The same creative empty a second time (the pool cycled back to
+              // it): collapse rather than keep a blank bordered box.
+              if (emptyHandledRef.current.has(ad.id)) {
+                setError(true);
+                return;
+              }
               emptyHandledRef.current.add(ad.id);
-              void loadAd({ rotate: true });
+              const emptyId = ad.id;
+              void loadAd({ rotate: true }).then((next) => {
+                // No other ad, or the server re-served this same empty one
+                // (it does when it is the only ad in the space) → collapse.
+                if (!next || next === emptyId) setError(true);
+              });
             }}
           />
         )}

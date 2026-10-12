@@ -1540,6 +1540,21 @@ export async function POST(
       }
     }
 
+    // Proof that matches ANOTHER member's (same post link, screenshot or social
+    // username) is flagged above — but a flag on an auto-approved claim is read
+    // by nobody, because it was already paid. Hold it for a person instead.
+    // social-recheck.ts already treats `fraudFlags` as a reason never to pay
+    // automatically; this makes the first decision agree with the re-check.
+    if (
+      shouldAutoApprove &&
+      isSocial &&
+      Array.isArray(submissionMetadata.fraudFlags) &&
+      submissionMetadata.fraudFlags.length > 0
+    ) {
+      shouldAutoApprove = false;
+      submissionMetadata.heldForReview = "duplicate_proof";
+    }
+
     // Computed after all metadata (incl. heldForReview) is finalized.
     const hasMetadata = Object.keys(submissionMetadata).length > 0;
 

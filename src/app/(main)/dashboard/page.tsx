@@ -497,11 +497,16 @@ async function DashboardAd({ userId }: { userId: string }) {
     console.error("[dashboard] serveAd failed:", e);
     return null;
   });
+  // The serve answered "nothing eligible": render nothing. Handing AdRenderer a
+  // null initialAd made it ask the same question again from the browser.
+  if (dashAd && !dashAd.ad) return null;
   return (
     <AdRenderer
       placement="DASHBOARD"
       initialAd={(dashAd?.ad ?? null) as AdResponse | null}
-      initialRotateMs={dashAd?.rotateMs}
+      // Same rule as ServerAdSlot: a one-ad pool has nothing to rotate to, and
+      // a timer there re-requested the same creative every 10s.
+      initialRotateMs={dashAd && dashAd.poolSize > 1 ? dashAd.rotateMs : 0}
     />
   );
 }

@@ -16,7 +16,10 @@ import { TASK_VIEWER_SELECT } from "@/lib/task-visibility";
  */
 
 export async function activeBannersAt(locations: BannerLocation[]): Promise<Banner[]> {
+  // Minute-floored so the cached read below actually hits (an exact timestamp
+  // is a new Accelerate cache key on every call).
   const now = new Date();
+  now.setSeconds(0, 0);
   return prisma.banner.findMany({
     where: {
       isActive: true,

@@ -181,6 +181,21 @@ const VIEWER_SELECT = {
 } as const;
 
 /**
+ * `now`, floored to the minute, for the CACHED pool reads below.
+ *
+ * Accelerate keys its cache on the whole query, parameters included. With the
+ * exact `new Date()` in the flight-window predicate every serve was a distinct
+ * key, so the `cacheStrategy` on the pool reads never hit (measured against the
+ * live DB: `cacheStatus: "miss"` on every call, ~90ms; floored: `ttl`, ~25ms).
+ * A campaign's start/end therefore takes effect up to a minute late, which is
+ * inside the cache's own staleness anyway. Billing (`ad-measure.ts`) keeps the
+ * exact time.
+ */
+function cacheableNow(): Date {
+  return new Date(Math.floor(Date.now() / 60_000) * 60_000);
+}
+
+/**
  * The campaign an ad must belong to in order to serve. Applied on EVERY path —
  * interstitials used to skip it entirely, which let ads run on a paused, ended,
  * out-of-window or $0 campaign (i.e. for free). House inventory is exempt from
@@ -349,7 +364,7 @@ async function serveAdInner(opts: {
         // what a space renders while a campaign is paused.
         ...(preview
           ? {}
-          : { campaign: servableCampaignWhere(cost, now, houseOnly) }),
+          : { campaign: servableCampaignWhere(cost, cacheableNow(), houseOnly) }),
         ...(opts.ownInventoryOnly || opts.rotation
           ? { type: { notIn: ["ADSENSE", "GAM"] } }
           : {}),
@@ -634,13 +649,12 @@ export async function serveFeedAds(opts: {
 
   // IN_FEED has its own rate on the card, like every other space.
   const cost = await getPlacementClickCost("IN_FEED");
-  const now = new Date();
   const ads = await prisma.ad.findMany({
     where: {
       placementId: placement.id,
       status: "ACTIVE",
       format: "NATIVE",
-      campaign: servableCampaignWhere(cost, now, false),
+      campaign: servableCampaignWhere(cost, cacheableNow(), false),
     },
     select: {
       id: true,
@@ -895,7 +909,7 @@ export async function servePageScripts(opts: {
         status: "ACTIVE",
         type: "HTML",
         // No click is ever billed on a page script, so no budget floor.
-        campaign: servableCampaignWhere(0, new Date(), false),
+        campaign: servableCampaignWhere(0, cacheableNow(), false),
       },
       select: {
         id: true,

@@ -204,7 +204,10 @@ export async function heartbeat(
   opts: { loaded: boolean }
 ): Promise<HeartbeatOutcome> {
   const game = await prisma.game.findUnique({ where: { id: gameId } });
-  if (!game) return { ok: false, reason: "no_session" };
+  // A game the admin switched off must stop paying open sessions too —
+  // `startSession` checks `isActive`, but a tab opened before the switch
+  // would otherwise keep earning until its session went stale.
+  if (!game || !game.isActive) return { ok: false, reason: "no_session" };
 
   const globals = await getGamesGlobalConfig();
   const reward = resolveGameReward(game, globals);
