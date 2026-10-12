@@ -85,6 +85,10 @@
 # of its own. Exactly one path is served; the app itself is never reachable on
 # this host, and middleware refuses any request this origin sends to the app.
 ads.{$APP_DOMAIN} {
+	# Never in search results. Every response (frame, 404) says noindex; no
+	# robots.txt Disallow on purpose - a blocked crawler never sees the header.
+	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+
 	handle /api/ads/frame/* {
 		reverse_proxy app:3000 {
 			header_up X-Forwarded-Proto {scheme}
