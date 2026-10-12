@@ -12,6 +12,18 @@ import { DurationCard } from "@/components/admin/submissions/duration-card";
 import type { VideoConfig } from "@/lib/video-tasks";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+
+/** "13 Oct 2026, 15:27" in Bangladesh time — the staff's own clock. */
+const WHEN = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Dhaka",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const fmtWhen = (d: Date | string) => `${WHEN.format(new Date(d))} BDT`;
 import { Prisma } from "@/generated/prisma/client";
 
 interface PageProps {
@@ -166,6 +178,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
             socialAction: true,
             socialUrl: true,
             boardId: true,
+            status: true,
           },
         },
       },
@@ -228,6 +241,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
       socialAction: string | null;
       socialUrl: string | null;
       boardId: string | null;
+      status: string;
     };
   };
   const submissionsRows = submissionsRaw as SubmissionRow[];
@@ -480,6 +494,15 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
                       >
                         {submission.task.title}
                       </Link>
+                      {/* The task's state NOW. A submission made while the task
+                          was live stays in this list after the task is paused or
+                          archived; without this it read as if it had been done
+                          on a task that was already off. */}
+                      {submission.task.status !== "ACTIVE" && (
+                        <span className="shrink-0 rounded-md bg-slate-700/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-300">
+                          Task {submission.task.status.toLowerCase().replace(/_/g, " ")} now
+                        </span>
+                      )}
                       {submission.task.board && (
                         <Link
                           href={`/admin/submissions?board=${submission.task.boardId}`}
@@ -506,7 +529,9 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
                           return (
                             <DurationCard
                               startedAt={submission.createdAt}
-                              submittedAt={submission.updatedAt}
+                              // Not updatedAt: a later review or re-check moves
+                              // it, and the "time spent" grew by the review wait.
+                              submittedAt={submission.submittedAt ?? submission.updatedAt}
                               requiredSeconds={reqSec}
                               compact
                             />
@@ -575,9 +600,19 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
                       {submission.status.replace(/_/g, " ")}
                     </span>
 
-                    <p className="text-xs text-gray-500">
-                      {formatDistanceToNow(submission.createdAt, { addSuffix: true })}
+                    {/* Exact times, not only "2 days ago": when it was SUBMITTED
+                        (not when the task was opened) and when it was decided. */}
+                    <p className="text-xs text-gray-400" title={`Opened ${fmtWhen(submission.createdAt)}`}>
+                      Submitted {fmtWhen(submission.submittedAt ?? submission.createdAt)}
+                      <span className="text-gray-500">
+                        {" "}· {formatDistanceToNow(submission.submittedAt ?? submission.createdAt, { addSuffix: true })}
+                      </span>
                     </p>
+                    {submission.reviewedAt && submission.status !== "PENDING" && (
+                      <p className="text-xs text-gray-500">
+                        {submission.status === "AUTO_APPROVED" ? "Auto-approved" : "Decided"} {fmtWhen(submission.reviewedAt)}
+                      </p>
+                    )}
 
                     {submission.status === "PENDING" &&
                       (submission.task.type === "SOCIAL" ? (
