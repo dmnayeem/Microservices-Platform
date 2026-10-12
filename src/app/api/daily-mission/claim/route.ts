@@ -22,6 +22,7 @@ import { usd } from "@/lib/utils";
 import { getUserDayContext, localDayKeyDaysAgo } from "@/lib/user-day";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 import { requireActiveUser } from "@/lib/require-active";
+import { zoneShiftBlock } from "@/lib/zone-shift-guard";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -63,6 +64,8 @@ export async function POST(request: NextRequest) {
   }
 
   const { dayKey: today, tz } = await getUserDayContext(userId);
+  const zoneWait = await zoneShiftBlock(userId, "daily_mission_");
+  if (zoneWait) return zoneWait;
 
   // Server-side completion check using shared progress builder
   const countByType = await buildDailyProgress(userId, mission.items);

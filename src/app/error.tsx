@@ -23,10 +23,15 @@ export default function Error({
         {error.digest && (
           <p className="mt-3 text-[11px] text-(--app-ink-3) font-mono">Ref: {error.digest}</p>
         )}
-        {process.env.NODE_ENV !== "production" && error.message && (
-          <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-(--app-surface) border border-(--app-line) p-2 text-left text-[11px] text-red-400/90 whitespace-pre-wrap">
-            {error.message}
-          </pre>
+        {/* The first line of the error, in production too: Sentry is not set
+            up, so this short code on a user's screenshot is the only record of
+            what went wrong. Messages carry no secrets (server errors are
+            replaced by the digest above). */}
+        {error.message && (
+          <p className="mt-2 break-words font-mono text-[11px] text-(--app-ink-3)">
+            Code: {error.name && error.name !== "Error" ? `${error.name}: ` : ""}
+            {error.message.split(String.fromCharCode(10))[0].slice(0, 140)}
+          </p>
         )}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <button

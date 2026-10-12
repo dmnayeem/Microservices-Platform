@@ -296,6 +296,13 @@ export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
       if (overrides[key] === false) continue;
       enabled.add(key);
     }
+    // Donations: admin staff, or a member an admin granted it to — never a
+    // plan (owner, 2026-10-13). A donation post lets many accounts pour points
+    // into one, so who may RECEIVE them is decided person by person.
+    const role = (user?.role as UserRole) ?? "USER";
+    const staff = role === "SUPER_ADMIN" || role === "ADMIN";
+    if (overrides.donations === true || (staff && overrides.donations !== false)) enabled.add("donations");
+    else enabled.delete("donations");
     const value: FeatureResult = { pkg, overrides, enabled };
     _featCache.delete(userId);
     _featCache.set(userId, { value, at: Date.now() });

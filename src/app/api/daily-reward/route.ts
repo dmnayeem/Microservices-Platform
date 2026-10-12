@@ -19,6 +19,7 @@ import {
 
 import { getDailyRewardConfig } from "@/lib/reward-config-server";
 import type { MysteryBoxOutcome } from "@/lib/reward-config";
+import { zoneShiftBlock } from "@/lib/zone-shift-guard";
 
 /**
  * The 7-day ladder, from the admin setting `daily_reward.config`
@@ -155,6 +156,9 @@ export async function POST() {
 
     // Reset boundary is the user's LOCAL day (country-based), not UTC/server.
     const { dayKey: todayKey, tz } = await getUserDayContext(session.user.id);
+    // A recent country / time-zone jump can't open "tomorrow" early.
+    const zoneWait = await zoneShiftBlock(session.user.id, "daily_20");
+    if (zoneWait) return zoneWait;
     const lastKey = user.lastCheckIn
       ? localDayKey(tz, new Date(user.lastCheckIn))
       : null;

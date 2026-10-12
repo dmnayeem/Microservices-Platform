@@ -179,6 +179,19 @@ export default async function RootLayout({
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        {/* Chrome on Android auto-translates English pages (here, into
+            Bangla). Translation rewrites text nodes behind React's back, and
+            React's next update then fails in removeChild / insertBefore —
+            "Something went wrong" on a real phone and never in a test browser.
+            The guard React's maintainers recommend: when the node React wants
+            to move is no longer where React put it, skip instead of throwing.
+            Must run before hydration, so it is the body's first child. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){if(typeof Node!=='function'||!Node.prototype)return;var r=Node.prototype.removeChild;Node.prototype.removeChild=function(c){if(c.parentNode!==this)return c;return r.apply(this,arguments)};var i=Node.prototype.insertBefore;Node.prototype.insertBefore=function(n,b){if(b&&b.parentNode!==this)return n;return i.apply(this,arguments)}})();",
+          }}
+        />
         {/* Site-wide structured data (Organization + WebSite w/ SearchAction) —
             sitelinks search box, entity/E-E-A-T + GEO signals. */}
         <JsonLd

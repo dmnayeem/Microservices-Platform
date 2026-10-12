@@ -10,6 +10,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 
 import { getSoloRewardConfig } from "@/lib/reward-config-server";
 import { requireActiveUser } from "@/lib/require-active";
+import { zoneShiftBlock } from "@/lib/zone-shift-guard";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -38,6 +39,8 @@ export async function POST(request: NextRequest) {
   // "Today" is the user's LOCAL day (country-based).
   const { dayKey: todayKey, startOfDayUtc: todayStart } =
     await getUserDayContext(userId);
+  const zoneWait = await zoneShiftBlock(userId, "solo_");
+  if (zoneWait) return zoneWait;
   const tomorrowStart = new Date(todayStart.getTime() + 86_400_000);
 
   const [tasksToday, earnTransactions, claimedToday] = await Promise.all([
