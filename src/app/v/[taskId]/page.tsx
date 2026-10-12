@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { allowedShortenerHosts, hostMatches } from "@/lib/visit-tasks";
 import { displayPass, issueVisitPass, loadVisitTask, openAttempt, visitCodeFor } from "@/lib/visit-tasks-server";
 import { VISIT_PASS_TTL_MIN } from "@/lib/visit-tasks";
+import { realIp } from "@/lib/client-ip";
 
 /**
  * The destination of a URL-shortener VISIT task. The admin sets the
@@ -39,8 +40,7 @@ function refererHost(h: Headers): string | null {
 }
 
 function requestIp(h: Headers): string | null {
-  const v = h.get("x-vercel-forwarded-for") ?? h.get("x-real-ip") ?? h.get("x-forwarded-for");
-  return v ? v.split(",")[0]!.trim() : null;
+  return realIp(h);
 }
 
 function Shell({ children }: { children: React.ReactNode }) {

@@ -30,6 +30,7 @@ import { Avatar } from "@/components/user/primitives/avatar";
 import { userDisplayId } from "@/lib/display-id";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
+import { isCloudflareIp } from "@/lib/client-ip";
 
 // Staff accounts only the super admin may sign in as (src/lib/impersonation.ts).
 const STAFF_ROLE_SET = new Set<string>(STAFF_ROLES);
@@ -692,11 +693,24 @@ export function UsersTableClient({
  * in one country and now logs in from another.
  */
 function LocationCell({ u }: { u: UserRow }) {
-  const ipCountry = u.lastCountry ?? u.signupCountry;
-  const ip = u.lastIp ?? u.signupIp;
+  // Addresses recorded before real IPs were read behind Cloudflare are
+  // Cloudflare servers, and their "country" is a Cloudflare data centre —
+  // shown as unknown rather than as a wrong country. The next visit records
+  // the member's real address.
+  const lastOk = u.lastIp ? !isCloudflareIp(u.lastIp) : !!u.lastCountry;
+  const signupOk = u.signupIp ? !isCloudflareIp(u.signupIp) : !!u.signupCountry;
+  const ipCountry = (lastOk ? u.lastCountry : null) ?? (signupOk ? u.signupCountry : null);
+  const ip = (lastOk ? u.lastIp : null) ?? (signupOk ? u.signupIp : null);
+  if (!ip && !ipCountry && (u.lastIp || u.signupIp)) {
+    return (
+      <span className="text-xs text-slate-500" title="Recorded through Cloudflare before real IPs were read">
+        Real location shows after their next visit
+      </span>
+    );
+  }
   const profile = u.country && /^[A-Za-z]{2}$/.test(u.country) ? u.country.toUpperCase() : null;
   const mismatch = profile && ipCountry && profile !== ipCountry;
-  const moved = u.signupCountry && u.lastCountry && u.signupCountry !== u.lastCountry;
+  const moved = signupOk && lastOk && u.signupCountry && u.lastCountry && u.signupCountry !== u.lastCountry;
   if (!ipCountry && !ip) return <span className="text-xs text-slate-600">Not seen yet</span>;
   return (
     <div className="min-w-0 max-w-[11rem] text-sm">

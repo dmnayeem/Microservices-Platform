@@ -103,6 +103,7 @@ import { runAchievementCheck } from "@/lib/achievements";
 import { closeTaskIfFull } from "@/lib/task-slots";
 import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
 import { clientIp } from "@/lib/rate-limit";
+import { realIp } from "@/lib/client-ip";
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
@@ -1394,11 +1395,7 @@ export async function POST(
     // For PROXY: record the submit IP so the admin fraud surface can verify the
     // user actually browsed through the assigned proxy region.
     if (task.type === "PROXY") {
-      const submitIp = (
-        request.headers.get("x-forwarded-for")?.split(",")[0] ??
-        request.headers.get("x-real-ip") ??
-        ""
-      ).trim();
+      const submitIp = realIp(request.headers) ?? "";
       submissionMetadata.submitIp = submitIp || null;
     }
     // For VIDEO with YouTube-style engagement: record which steps the user

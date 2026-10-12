@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { realCountry, realIp, viaCloudflare } from "@/lib/client-ip";
 
 // Reads the request edge headers Vercel/CloudFlare set so the client can
 // suggest a country (and timezone) on first profile load when those fields
@@ -13,26 +14,15 @@ export async function GET(req: NextRequest) {
   const h = req.headers;
   // Vercel: x-vercel-ip-country / -country-region / -timezone / -latitude / -longitude
   // Cloudflare: cf-ipcountry / cf-timezone
-  const country =
-    h.get("x-vercel-ip-country") ??
-    h.get("cf-ipcountry") ??
-    h.get("x-country") ??
-    null;
-  const region =
-    h.get("x-vercel-ip-country-region") ??
-    h.get("x-region") ??
-    null;
-  const city =
-    h.get("x-vercel-ip-city") ?? h.get("x-city") ?? null;
-  const timezone =
-    h.get("x-vercel-ip-timezone") ??
-    h.get("cf-timezone") ??
-    h.get("x-timezone") ??
-    null;
-  const ip =
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    h.get("x-real-ip") ??
-    null;
+  // Through Cloudflare, Vercel's x-vercel-ip-* headers describe the
+  // Cloudflare data centre, not the member — use Cloudflare's own (region /
+  // city / timezone need its "visitor location headers" transform).
+  const cf = viaCloudflare(h);
+  const country = realCountry(h);
+  const region = cf ? h.get("cf-region-code") ?? h.get("cf-region") ?? null : h.get("x-vercel-ip-country-region") ?? null;
+  const city = cf ? h.get("cf-ipcity") ?? null : h.get("x-vercel-ip-city") ?? null;
+  const timezone = cf ? h.get("cf-timezone") ?? null : h.get("x-vercel-ip-timezone") ?? null;
+  const ip = realIp(h);
 
   return NextResponse.json({
     country,

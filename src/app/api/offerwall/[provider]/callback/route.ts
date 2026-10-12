@@ -8,6 +8,7 @@ import {
 } from "@/lib/offerwall";
 import { processOfferwallReferralCommissions } from "@/lib/referral-commissions";
 import { raiseAbuseSignal } from "@/lib/abuse/signal";
+import { realIp } from "@/lib/client-ip";
 import {
   parseSignatureConfig,
   providedSignature,
@@ -87,7 +88,7 @@ async function handle(request: NextRequest, provider: string) {
   const clickId = pick(url, body, "clickId", "click_id", "s2", "sub2", "aff_sub2") || null;
   const state = pick(url, body, "state", "status", "type").toLowerCase();
   const isReversal = /reject|revers|chargeback|declin/.test(state) || payoutAmount < 0;
-  const ip = (request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
+  const ip = realIp(request.headers);
 
   if (!transactionId || !userId) {
     return NextResponse.json({ error: "Missing transactionId/userId" }, { status: 400 });

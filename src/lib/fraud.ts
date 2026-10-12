@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
 import { raiseAbuseSignal } from "@/lib/abuse/signal";
+import { isCloudflareIp } from "@/lib/client-ip";
 
 /**
  * Anti-fraud helpers (feature: fraud toggles). Every control is admin-gated via
@@ -101,6 +102,9 @@ export async function accountsOnIp(
   excludeUserId?: string
 ): Promise<number> {
   if (!usable(ip)) return 0;
+  // A Cloudflare server address (stored before real IPs were read) is shared
+  // by thousands of members — never a reason to call them one person.
+  if (isCloudflareIp(ip)) return 0;
   return prisma.user.count({
     where: {
       OR: [{ signupIp: ip }, { lastIp: ip }],

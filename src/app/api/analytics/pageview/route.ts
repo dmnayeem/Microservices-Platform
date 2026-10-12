@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getSetting } from "@/lib/system-settings";
 import { recordPageEvent, visitorHashFrom } from "@/lib/page-analytics";
 import { kickScheduler } from "@/lib/scheduler/run";
+import { realIp } from "@/lib/client-ip";
 
 // Cheap bot filter — skip obvious crawlers so traffic reflects real visitors.
 const BOT_RE = /bot|crawl|spider|slurp|bing|baidu|yandex|duckduck|facebookexternalhit|embedly|preview|lighthouse|headless|monitor|pingdom|uptime/i;
@@ -35,10 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const session = await auth();
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-      request.headers.get("x-real-ip") ??
-      "anon";
+    const ip = realIp(request.headers) ?? "anon";
     const visitorHash = visitorHashFrom(session?.user?.id ?? null, ip, ua);
 
     await recordPageEvent({

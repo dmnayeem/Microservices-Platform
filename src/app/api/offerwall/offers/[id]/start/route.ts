@@ -13,6 +13,7 @@ import {
   offerDayStart,
 } from "@/lib/offerwall";
 import { profileGateResponse } from "@/lib/profile-gate-server";
+import { realIp } from "@/lib/client-ip";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (chain.lockedOfferIds.has(id))
     return NextResponse.json({ error: "Complete the previous offer to unlock this one.", code: "OFFER_LOCKED" }, { status: 403 });
 
-  const ip = (request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
+  const ip = realIp(request.headers);
 
   // Everything below runs under a lock on the user's row, so two concurrent
   // "Start" taps cannot both pass the one-time / daily-limit checks and both
