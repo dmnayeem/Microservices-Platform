@@ -201,7 +201,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
           <span className="app-on-white [--app-on-white-ink:#000] grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white text-[9px] font-black">
             {initial}
           </span>
-          <span className="truncate text-[11px] font-semibold text-white">
+          <span className="truncate text-xs font-semibold text-white">
             {brand}
           </span>
         </span>
@@ -325,7 +325,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
                       setMenuOpen(false);
                       setDismissed(true);
                     }}
-                    className="app-tap-row w-full px-3 text-left text-xs text-(--app-ink-2) hover:bg-(--app-surface-2)"
+                    className="app-tap-row w-full px-3 text-left text-sm text-(--app-ink) hover:bg-(--app-surface-2)"
                   >
                     Hide this ad
                   </button>
@@ -335,7 +335,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
                       setMenuOpen(false);
                       setShowWhy(true);
                     }}
-                    className="app-tap-row w-full px-3 text-left text-xs text-(--app-ink-2) hover:bg-(--app-surface-2)"
+                    className="app-tap-row w-full px-3 text-left text-sm text-(--app-ink) hover:bg-(--app-surface-2)"
                   >
                     Why this ad?
                   </button>

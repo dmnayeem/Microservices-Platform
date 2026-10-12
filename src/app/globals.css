@@ -304,6 +304,29 @@ html,
 body {
   overscroll-behavior: none;
 }
+
+/* Inside the signed-in app a route change must land at the top instantly, the
+   way a native screen does. Next 16 no longer suspends CSS smooth scrolling
+   during navigation, so `scroll-behavior: smooth` above made every tab switch
+   visibly glide up the old page. Marketing pages keep the smooth anchors. */
+html:has(.app-chrome) {
+  scroll-behavior: auto;
+}
+
+/* No double-tap-to-zoom wait on anything tappable (iOS ignores
+   user-scalable=no, so the viewport alone does not remove it). Pinch zoom and
+   panning are untouched. */
+a,
+button,
+input,
+select,
+textarea,
+label,
+summary,
+[role="button"],
+[role="tab"] {
+  touch-action: manipulation;
+}
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]),
 summary,
@@ -531,8 +554,10 @@ textarea,
    Pure CSS so framer-motion stays out of the shared client bundle. Fade-only
    (no persistent transform) so fixed overlays inside pages aren't re-anchored. */
 @keyframes page-fade-in {
+  /* From 0.4, not 0: starting fully transparent blanked the screen to the page
+     colour for a frame on every navigation, which reads as a flash. */
   from {
-    opacity: 0;
+    opacity: 0.4;
   }
   to {
     opacity: 1;

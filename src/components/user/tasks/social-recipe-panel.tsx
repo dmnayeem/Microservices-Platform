@@ -458,7 +458,7 @@ function ImageStep({
         <span className="shrink-0 w-5 h-5 rounded-full bg-(--app-cta)/15 border border-(--app-accent-edge)/40 text-(--app-accent-ink) text-[10px] font-bold grid place-items-center">
           {step.serial}
         </span>
-        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold truncate min-w-0">
+        <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) truncate min-w-0">
           {step.label}
         </p>
         {badge}

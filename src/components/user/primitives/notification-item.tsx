@@ -95,7 +95,7 @@ export function NotificationItem({
           <p className="text-xs text-(--app-ink-3) mt-0.5 line-clamp-2">{body}</p>
         )}
         <div className="flex items-center justify-between mt-1.5 gap-2">
-          <span className="text-[10px] text-(--app-ink-3)">
+          <span className="text-[11px] text-(--app-ink-3)">
             {formatDistanceToNow(dt, { addSuffix: true })}
           </span>
           {amount && (

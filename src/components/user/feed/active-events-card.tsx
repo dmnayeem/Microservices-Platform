@@ -188,18 +188,18 @@ export function ActiveEventsCard({ className }: { className?: string }) {
               className="app-tile"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="t-card-title text-white truncate min-w-0 flex-1">
+                <p className="t-card-title text-white line-clamp-2 break-words min-w-0 flex-1">
                   {ev.title}
                 </p>
                 <span className="t-meta text-(--app-ink-3) inline-flex items-center gap-1 shrink-0">
-                  <Clock className="w-3 h-3" /> {timeLeft(ev.endAt)}
+                  <Clock className="w-3.5 h-3.5" /> {timeLeft(ev.endAt)}
                 </span>
               </div>
 
               {/* Progress toward the (next tier's) target */}
               <div className="mt-2">
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="text-(--app-ink-3) truncate min-w-0">{meta.label}</span>
+                <div className="flex items-center justify-between gap-2 text-xs mb-1">
+                  <span className="text-(--app-ink-2) truncate min-w-0">{meta.label}</span>
                   <span className="text-white font-bold tabular-nums shrink-0">
                     {isUpload
                       ? ev.claimed

@@ -275,7 +275,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
             <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400">
               <VideoIcon className="w-5 h-5" />
             </div>
-            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+            <span className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
               Video Task
             </span>
           </div>
@@ -368,7 +368,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
               </p>
               <Link
                 href="/video-tasks"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-500/30"
+                className="app-tap-row app-press inline-flex items-center gap-1.5 mt-3 px-4 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-sm font-bold border border-sky-500/30"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to video tasks
@@ -391,7 +391,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
               </p>
               <Link
                 href="/video-tasks"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30"
+                className="app-tap-row app-press inline-flex items-center gap-1.5 mt-3 px-4 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-sm font-bold border border-emerald-500/30"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to video tasks
@@ -412,7 +412,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
               <p className="text-xs text-amber-200/80 mt-1">{state.reason}</p>
               <Link
                 href="/video-tasks"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30"
+                className="app-tap-row app-press inline-flex items-center gap-1.5 mt-3 px-4 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-sm font-bold border border-amber-500/30"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to video tasks

@@ -332,12 +332,18 @@ function ConvertCard({
                 value={amountStr}
                 onChange={(e) => onAmountChange(e.target.value)}
                 placeholder={String(minConvert)}
-                className="app-tap-row w-full pl-3.5 pr-16 bg-(--app-surface-2) border border-(--app-line) rounded-(--app-r-control) text-(--app-ink) text-sm font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
+                aria-label="Points to convert"
+                className="app-tap-row w-full pl-3.5 pr-24 bg-(--app-surface-2) border border-(--app-line) rounded-(--app-r-control) text-(--app-ink) text-sm font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
               />
+              {/* Unit inside the field, so the number is never mistaken for dollars. */}
+              <span className="pointer-events-none absolute right-16 top-1/2 -translate-y-1/2 t-meta font-bold text-(--app-ink-3)">
+                pts
+              </span>
               <button
                 type="button"
                 onClick={() => setAmountStr(String(points))}
-                className="app-press absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-(--app-r-chip) bg-(--app-surface) border border-(--app-line) text-[10px] font-extrabold text-(--app-ink-2) hover:text-(--app-ink)"
+                aria-label="Convert all points"
+                className="app-press absolute right-1 top-1/2 -translate-y-1/2 min-h-9 px-3 rounded-(--app-r-chip) bg-(--app-surface) border border-(--app-line) text-xs font-extrabold text-(--app-ink-2) hover:text-(--app-ink)"
               >
                 MAX
               </button>
@@ -351,21 +357,27 @@ function ConvertCard({
               Convert
             </button>
           </div>
-          <div className="flex items-center justify-between t-meta mt-2">
-            <span className="text-(--app-ink-3)">
-              Balance {points.toLocaleString()} pts · min {minConvert.toLocaleString()}
+          <div className="flex items-center justify-between gap-2 t-meta mt-2">
+            <span className="text-(--app-ink-2) min-w-0">
+              Balance {points.toLocaleString()} pts · min {minConvert.toLocaleString()} pts
             </span>
-            <span className="t-in font-bold tabular-nums">≈ {usd(previewUsd)}</span>
+            <span className="t-in font-bold tabular-nums shrink-0">You get ≈ {usd(previewUsd)}</span>
           </div>
+          {/* Say why Convert is greyed out instead of leaving a dead button. */}
+          {amountStr !== "" && amount < minConvert && (
+            <p role="alert" className="t-meta mt-1 text-(--app-warn)">
+              Enter at least {minConvert.toLocaleString()} pts ({usd(minConvert / (pointsPerUsd || 1))}).
+            </p>
+          )}
         </>
       ) : (
         <div className="mt-3">
           <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
             <div className="h-full bg-(image:--app-rail)" style={{ width: `${pct}%` }} />
           </div>
-          <div className="flex justify-between text-[10px] text-(--app-ink-3) mt-1 tabular-nums">
-            <span>{points.toLocaleString()} pts</span>
-            <span>{threshold.toLocaleString()} pts</span>
+          <div className="flex justify-between t-meta text-(--app-ink-2) mt-1 tabular-nums">
+            <span>You have {points.toLocaleString()} pts</span>
+            <span>Goal {threshold.toLocaleString()} pts</span>
           </div>
         </div>
       )}
@@ -468,7 +480,7 @@ function BalanceTab({
         />
       </div>
 
-      <p className="-mt-1 text-[11px] leading-relaxed text-(--app-ink-3)">
+      <p className="-mt-1 t-meta leading-relaxed text-(--app-ink-3)">
         <span className="font-semibold text-(--app-ink-2)">Total earned</span> counts
         points the moment you earn them, so converting them to cash does not change
         it. <span className="font-semibold text-(--app-ink-2)">Withdrawn</span> is
@@ -492,7 +504,7 @@ function BalanceTab({
         <div className="glass rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-white">Earnings Breakdown</p>
-            <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider">
+            <p className="t-meta text-(--app-ink-3)">
               Last 30 days
             </p>
           </div>
@@ -516,7 +528,7 @@ function BalanceTab({
                   <span className="truncate">{b.label}</span>
                 </div>
                 <span className="text-(--app-ink-3) tabular-nums shrink-0">
-                  {b.pct.toFixed(0)}% · {b.value.toLocaleString()}
+                  {b.pct.toFixed(0)}% · {b.value.toLocaleString()} pts
                 </span>
               </div>
             ))}
@@ -603,7 +615,7 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
         </div>
         <Link
           href="/deposit"
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold"
+          className="app-press app-tap-row shrink-0 inline-flex items-center gap-1.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold"
         >
           <Plus className="w-3.5 h-3.5" /> Add funds
         </Link>
@@ -635,12 +647,12 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
                       {d.method.replace("MANUAL_", "")}
                     </span>
                   </p>
-                  <p className="text-[11px] text-(--app-ink-3) truncate">
+                  <p className="t-meta text-(--app-ink-3) truncate">
                     {new Date(d.createdAt).toLocaleDateString()}
                     {d.txnId ? ` · TXN ${d.txnId}` : ""}
                   </p>
                 </div>
-                <span className={cn("shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold border", meta.tone)}>
+                <span className={cn("shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold border", meta.tone)}>
                   {meta.label}
                 </span>
               </div>
@@ -688,7 +700,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
       {/* Compact table — the admin's levels and rates. Ten identical cards
           took a whole screen to say "3%" ten times. */}
       <div className="overflow-hidden rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface)">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-3 bg-(--app-surface-2) px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-3 bg-(--app-surface-2) px-3 py-2 t-meta font-bold text-(--app-ink-2)">
           <span>Level</span>
           <span className="text-right">Rate</span>
           <span className="text-right">Members</span>
@@ -704,7 +716,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
           >
             <span className="font-bold text-white">
               Level {l.level}
-              {l.level === 1 && <span className="ml-1.5 text-[10px] font-semibold text-(--app-ink-3)">direct</span>}
+              {l.level === 1 && <span className="ml-1.5 t-meta font-semibold text-(--app-ink-3)">direct</span>}
             </span>
             <span className="text-right font-bold tabular-nums text-(--app-accent-ink)">{l.rateLabel}</span>
             <span className="text-right tabular-nums">{l.count.toLocaleString()}</span>
@@ -712,7 +724,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
           </div>
         ))}
       </div>
-      <p className="text-[11px] text-(--app-ink-3)">
+      <p className="t-meta text-(--app-ink-3)">
         Commission is paid into your wallet automatically whenever someone in your
         team earns. See who is in your team on{" "}
         <Link href="/referrals" className="font-semibold text-(--app-accent-ink) hover:underline">
@@ -767,7 +779,7 @@ function WithdrawTab({
               </p>
               <Link
                 href="/packages"
-                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold"
+                className="app-press app-tap-row mt-3 inline-flex items-center gap-1.5 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 See plans
@@ -816,14 +828,14 @@ function WithdrawTab({
           </div>
         </div>
         {feePct > 0 && cashBalance > 0 && (
-          <p className="mt-2 text-[11px] text-(--app-ink-3)">
+          <p className="mt-2 t-meta text-(--app-ink-2)">
             On {usd(cashBalance)} you&apos;d receive ~
             {usd(cashBalance * (1 - feePct / 100))} after the {feePct.toFixed(1)}% fee.
           </p>
         )}
 
         {!hasCash && canConvertPoints && (
-          <p className="mt-3 text-[11px] text-sky-300">
+          <p className="mt-3 t-meta font-semibold text-sky-300">
             Convert your points to cash on the Balance tab to withdraw.
           </p>
         )}
@@ -831,11 +843,12 @@ function WithdrawTab({
         <Link
           href="/withdrawal"
           className={cn(
-            "mt-4 w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all",
+            "app-press mt-4 w-full min-h-12 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all",
             isFreeTier || !hasCash
               ? "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed pointer-events-none"
               : "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white hover:scale-[1.02]"
           )}
+          aria-disabled={isFreeTier || !hasCash}
         >
           <ArrowUpRight className="w-4 h-4" />
           {isFreeTier

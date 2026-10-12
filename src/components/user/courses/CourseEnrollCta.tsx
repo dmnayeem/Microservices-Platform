@@ -232,7 +232,7 @@ export function CourseEnrollCta({
                 </p>
               )}
               {applied && (
-                <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                <span className="ml-auto text-[11px] font-bold uppercase tracking-wider text-emerald-300">
                   -{usd(applied.discount)}
                 </span>
               )}

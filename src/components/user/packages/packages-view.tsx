@@ -55,6 +55,16 @@ function isFreePkg(p: PackageRow): boolean {
   return isFreePlan(p);
 }
 
+const PAY_METHOD_LABEL: Record<string, string> = {
+  CASH: "Cash balance",
+  POINTS: "Points",
+  CARD: "Credit card",
+  BKASH: "bKash",
+  NAGAD: "Nagad",
+  BINANCE: "Binance Pay",
+  BITGET: "Bitget",
+};
+
 const OFF_PLATFORM: Method[] = ["CARD", "BKASH", "NAGAD", "BINANCE", "BITGET"];
 
 /** The server's quote: price, credit for the plan being replaced, the charge. */
@@ -215,7 +225,7 @@ export function PackagesView({
           />
         ))}
       </div>
-      <p className="text-xs text-(--app-ink-3) text-center">
+      <p className="t-meta font-semibold text-(--app-ink-2) text-center">
         Step {step} of 5:{" "}
         {step === 1
           ? "Choose plan"
@@ -285,6 +295,10 @@ export function PackagesView({
 
       {step === 2 && selectedPkg && (
         <div className="space-y-3">
+          {/* Name the plan being bought — after step 1 it was never shown again until Review. */}
+          <p className="text-sm text-(--app-ink-2)">
+            <span className="font-bold text-white">{selectedPkg.name}</span> — how long do you want it?
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {planDurations(selectedPkg).map((d) => {
               const total = planPriceUsd(selectedPkg, d) ?? 0;
@@ -293,8 +307,9 @@ export function PackagesView({
                 <button
                   key={d}
                   onClick={() => setDuration(d)}
+                  aria-pressed={duration === d}
                   className={cn(
-                    "p-3 rounded-xl border text-left transition-colors",
+                    "app-press p-3 rounded-xl border text-left transition-colors",
                     duration === d
                       ? "border-(--app-accent-edge) bg-(--app-cta)/5"
                       : "border-(--app-line) bg-(--app-surface)"
@@ -307,7 +322,7 @@ export function PackagesView({
                     {usd(total)}
                   </p>
                   {discount > 0 && (
-                    <p className="text-[10px] font-bold text-emerald-400">
+                    <p className="t-meta font-bold text-emerald-400">
                       Save {Math.round(discount * 100)}%
                     </p>
                   )}
@@ -348,7 +363,7 @@ export function PackagesView({
             <label
               key={m.value}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
+                "app-press flex min-h-14 items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
                 method === m.value
                   ? "border-(--app-accent-edge) bg-(--app-cta)/5"
                   : "border-(--app-line) bg-(--app-surface)"
@@ -358,14 +373,14 @@ export function PackagesView({
                 type="radio"
                 checked={method === m.value}
                 onChange={() => setMethod(m.value)}
-                className="accent-(--app-cta)"
+                className="h-4.5 w-4.5 shrink-0 accent-(--app-cta)"
               />
               {m.value !== "CASH" && m.value !== "POINTS" && (
                 <BrandIcon brand={m.value} colored className="w-5 h-5 shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white">{m.label}</p>
-                <p className="text-[11px] text-(--app-ink-3)">{m.info}</p>
+                <p className="t-meta text-(--app-ink-2)">{m.info}</p>
               </div>
             </label>
           ))}
@@ -382,6 +397,8 @@ export function PackagesView({
                 value={transactionId}
                 onChange={(e) => setTransactionId(e.target.value)}
                 placeholder="Transaction ID of your payment"
+                aria-label="Transaction ID of your payment"
+                autoComplete="off"
                 maxLength={120}
                 className="w-full rounded-xl border border-(--app-line) bg-(--app-surface) px-3 py-2.5 text-sm text-white placeholder:text-(--app-ink-3)"
               />
@@ -425,7 +442,8 @@ export function PackagesView({
             </div>
             <div className="flex justify-between">
               <span className="text-(--app-ink-3)">Payment Method</span>
-              <span className="font-bold text-white">{method}</span>
+              {/* Was the raw code ("BKASH", "CASH"). */}
+              <span className="font-bold text-white">{PAY_METHOD_LABEL[method] ?? method}</span>
             </div>
             {quote && quote.creditUsd > 0 && !isOffPlatform && (
               <>
@@ -440,13 +458,13 @@ export function PackagesView({
               </>
             )}
             {quote?.switching && (
-              <p className="text-[11px] text-amber-300">
+              <p className="t-meta text-amber-300">
                 Your current plan ends now and the new one starts today. Unused time is only ever
                 taken off this price - it is never paid out or added as extra days.
               </p>
             )}
             {quote?.samePlan && (
-              <p className="text-[11px] text-(--app-ink-3)">
+              <p className="t-meta text-(--app-ink-2)">
                 Added on top of your current plan - it runs until{" "}
                 {new Date(quote.endDate).toLocaleDateString()}.
               </p>
@@ -462,10 +480,26 @@ export function PackagesView({
           </div>
           {(insufficientCash || insufficientPts) && (
             <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-3 flex items-start gap-2">
-              <Lock className="w-4 h-4 text-red-400 mt-0.5" />
-              <p className="text-xs text-red-300">
-                Insufficient {method === "CASH" ? "cash balance" : "points"}.
-              </p>
+              <Lock className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+              {/* Show both numbers and the way out, not just "Insufficient". */}
+              <div role="alert" className="min-w-0 text-sm text-red-300">
+                <p>
+                  Not enough {method === "CASH" ? "cash" : "points"}: you have{" "}
+                  <b className="tabular-nums">
+                    {method === "CASH" ? usd(cashBalance) : `${pointsBalance.toLocaleString()} pts`}
+                  </b>
+                  , this costs{" "}
+                  <b className="tabular-nums">
+                    {method === "CASH" ? usd(price) : `${ptCost.toLocaleString()} pts`}
+                  </b>
+                  .
+                </p>
+                {method === "CASH" && (
+                  <Link href="/deposit" className="mt-1 inline-flex min-h-9 items-center font-bold underline">
+                    Add funds
+                  </Link>
+                )}
+              </div>
             </div>
           )}
           <div className="flex gap-2">
@@ -507,7 +541,7 @@ export function PackagesView({
           </p>
           <button
             onClick={() => router.push("/my-package")}
-            className="px-5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) font-bold"
+            className="app-press app-tap-row px-5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) font-bold"
           >
             View My Package
           </button>

@@ -230,7 +230,7 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
                   <p className="mt-3 flex items-center justify-between text-sm font-bold text-(--app-ink)">
                     {styleLabel(k)}
                     {mine ? (
-                      <span className="text-[10px] font-semibold text-emerald-400">Owned</span>
+                      <span className="text-[11px] font-semibold text-emerald-400">Owned</span>
                     ) : (
                       <span className="text-xs text-(--app-ink-3)">{usd(conf.priceUsd)}/mo</span>
                     )}

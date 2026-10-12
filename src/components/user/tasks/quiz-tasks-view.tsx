@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Brain, Clock, Coins, Trophy, ListChecks } from "lucide-react";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { QuizPlayer } from "./quiz-player";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -32,15 +33,19 @@ const DIFFICULTY_TONE: Record<QuizRow["difficulty"], string> = {
 export function QuizTasksView() {
   const [quizzes, setQuizzes] = useState<QuizRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const r = await fetch("/api/tasks/quiz", { cache: "no-store" });
-      const d = r.ok ? await r.json() : { quizzes: [] };
+      if (r.status >= 500) throw new Error(String(r.status)); // 4xx = gated: empty list
+      const d = await r.json();
+      setFailed(false);
       setQuizzes(d.quizzes ?? []);
     } catch {
+      if (!silent) setFailed(true);
       setQuizzes([]);
     } finally {
       if (!silent) setLoading(false);
@@ -70,7 +75,9 @@ export function QuizTasksView() {
 
       {loading && <ListSkeleton rows={3} />}
 
-      {!loading && quizzes.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && quizzes.length === 0 && (
         <EmptyState
           icon={Brain}
           title="No quizzes available"
@@ -78,7 +85,7 @@ export function QuizTasksView() {
         />
       )}
 
-      {!loading && quizzes.length > 0 && (
+      {!loading && !failed && quizzes.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {quizzes.map((q) => (
             <button
@@ -89,7 +96,8 @@ export function QuizTasksView() {
                 if (await ensureAdsAllowed()) setActiveId(q.id);
               }}
               className={cn(
-                "text-left card card-interactive p-4",
+                // h-full + flex-col: quiz cards in one grid row end level, button at the foot.
+                "text-left card card-interactive p-4 flex h-full flex-col",
                 q.locked && "opacity-60 cursor-not-allowed"
               )}
             >
@@ -98,15 +106,15 @@ export function QuizTasksView() {
                   📚
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white line-clamp-2">
+                  <p className="t-card-title text-white line-clamp-2">
                     {q.title}
                   </p>
-                  <div className="flex flex-wrap gap-1.5 empty:hidden">
+                  <div className="mt-1 flex flex-wrap gap-1.5 empty:hidden">
                     <TaskDeviceChips needs={q as unknown as TaskDeviceNeeds} />
                   </div>
                   <span
                     className={cn(
-                      "inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border",
+                      "app-chip mt-1.5 uppercase",
                       DIFFICULTY_TONE[q.difficulty]
                     )}
                   >
@@ -114,32 +122,36 @@ export function QuizTasksView() {
                   </span>
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
-                <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
-                  <ListChecks className="w-3 h-3" />
+              {/* Was 11px with the reward in the same tiny grid; the reward is why
+                  anyone opens a quiz, so it now leads the footer below. */}
+              <div className="mt-3 grid grid-cols-3 gap-1.5 t-meta">
+                <span className="inline-flex items-center gap-1 text-(--app-ink-2)">
+                  <ListChecks className="w-3.5 h-3.5" />
                   {q.questionCount} Qs
                 </span>
-                <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
-                  <Clock className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 text-(--app-ink-2)">
+                  <Clock className="w-3.5 h-3.5" />
                   {q.timeLimit}m
                 </span>
-                <span className="inline-flex items-center gap-1 text-amber-400 font-bold">
-                  <Coins className="w-3 h-3" />+{q.pointsReward}
-                </span>
-                <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
-                  <Trophy className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 text-(--app-ink-2)">
+                  <Trophy className="w-3.5 h-3.5" />
                   Min {q.minScore}%
                 </span>
               </div>
+              <div className="mt-auto flex items-center justify-between gap-3 pt-3">
+                <span className="t-figure-sm inline-flex items-baseline gap-1 text-white whitespace-nowrap">
+                  <Coins className="w-4 h-4 self-center text-amber-400" />+{q.pointsReward}
+                </span>
               <div
                 className={cn(
-                  "mt-3 w-full py-2 rounded-lg text-xs font-bold text-center",
+                  "app-tap-row inline-flex items-center justify-center px-4 rounded-(--app-r-control) text-sm font-extrabold",
                   q.locked
                     ? "bg-(--app-surface-2) text-(--app-ink-3)"
                     : "bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >
                 {q.locked ? "🔒 Locked" : "Start Quiz →"}
+              </div>
               </div>
             </button>
           ))}

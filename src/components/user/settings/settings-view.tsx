@@ -69,7 +69,7 @@ function Toggle({
   disabled?: boolean;
 }) {
   return (
-    <label className="relative inline-flex items-center cursor-pointer">
+    <label className="relative inline-flex min-h-11 min-w-11 items-center justify-center cursor-pointer">
       <input
         type="checkbox"
         className="sr-only peer"
@@ -77,7 +77,7 @@ function Toggle({
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <div className="w-11 h-6 bg-(--app-surface-2) rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-(--app-cta) peer-disabled:opacity-50"></div>
+      <div className="relative w-11 h-6 bg-(--app-surface-2) rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-(--app-cta) peer-disabled:opacity-50"></div>
     </label>
   );
 }
@@ -308,7 +308,7 @@ export function SettingsView({
   };
 
   const inputCls =
-    "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)";
+    "w-full min-h-11 px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-base sm:text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)";
 
   return (
     <div className="space-y-8">
@@ -395,7 +395,7 @@ export function SettingsView({
                     <button
                       onClick={devicePush === "on" ? () => onPushNotif(true) : enableDevicePush}
                       disabled={enablingPush || savingPref}
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-(--app-cta) px-3 py-1.5 text-sm font-bold text-(--app-on-cta) disabled:opacity-50"
+                      className="app-press app-tap-row inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-(--app-cta) px-3 py-1.5 text-sm font-bold text-(--app-on-cta) disabled:opacity-50"
                     >
                       {enablingPush ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
                       Turn on notifications
@@ -476,7 +476,7 @@ export function SettingsView({
                     <button
                       onClick={changePassword}
                       disabled={pwBusy}
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold disabled:opacity-50"
+                      className="app-press app-tap-row w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold disabled:opacity-50"
                     >
                       {pwBusy && <Loader2 className="w-4 h-4 animate-spin" />}
                       Update password
@@ -615,7 +615,7 @@ export function SettingsView({
                   <select
                     value={language}
                     onChange={(e) => onLanguage(e.target.value)}
-                    className="bg-(--app-surface-2) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
+                    className="app-tap-row bg-(--app-surface-2) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
                   >
                     <option value="en">English</option>
                     <option value="bn">বাংলা</option>
@@ -672,7 +672,7 @@ export function SettingsView({
               <button
                 onClick={deleteAccount}
                 disabled={deleteConfirm !== "DELETE" || deleteBusy}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-50"
+                className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-50"
               >
                 {deleteBusy && <Loader2 className="w-4 h-4 animate-spin" />}
                 Delete

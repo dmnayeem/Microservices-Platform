@@ -169,7 +169,7 @@ export function DailyMissionView() {
               <h2 className="text-lg font-bold text-white truncate">
                 {mission.name}
               </h2>
-              <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-(--app-cta)/15 text-(--app-accent-ink)">
+              <span className="px-1.5 py-0.5 rounded text-[11px] uppercase tracking-wider font-bold bg-(--app-cta)/15 text-(--app-accent-ink)">
                 {mission.packageTier}
               </span>
             </div>
@@ -182,7 +182,7 @@ export function DailyMissionView() {
         {/* Reward + streak */}
         <div className="grid grid-cols-3 gap-2 mt-4">
           <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1">
+            <p className="text-[11px] uppercase tracking-wide text-(--app-ink-2) font-bold inline-flex items-center gap-1">
               <Coins className="w-3 h-3 text-amber-400" />
               Reward
             </p>
@@ -191,7 +191,7 @@ export function DailyMissionView() {
             </p>
           </div>
           <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1">
+            <p className="text-[11px] uppercase tracking-wide text-(--app-ink-2) font-bold inline-flex items-center gap-1">
               <Zap className="w-3 h-3 text-purple-400" />
               XP
             </p>
@@ -200,7 +200,7 @@ export function DailyMissionView() {
             </p>
           </div>
           <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1">
+            <p className="text-[11px] uppercase tracking-wide text-(--app-ink-2) font-bold inline-flex items-center gap-1">
               <Flame className="w-3 h-3 text-orange-400" />
               Streak
             </p>
@@ -270,7 +270,7 @@ export function DailyMissionView() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-(--app-surface-2) text-(--app-ink-2)">
+                  <span className="px-1.5 py-0.5 rounded text-[11px] uppercase tracking-wider font-bold bg-(--app-surface-2) text-(--app-ink-2)">
                     {it.taskType}
                   </span>
                   <p className="text-sm font-semibold text-white">
@@ -311,7 +311,7 @@ export function DailyMissionView() {
               {!it.done && !isLocked && (
                 <Link
                   href={route}
-                  className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold self-center"
+                  className="app-press app-tap-row shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold self-center"
                 >
                   Start <ArrowRight className="w-3 h-3" />
                 </Link>

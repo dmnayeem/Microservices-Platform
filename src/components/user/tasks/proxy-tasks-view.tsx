@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -82,7 +83,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
   };
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
+      <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) mb-1">
         {label}
       </p>
       <button
@@ -103,6 +104,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
 export function ProxyTasksView() {
   const [tasks, setTasks] = useState<ProxyTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [active, setActive] = useState<ProxyTask | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [creds, setCreds] = useState<SessionCredentials | null>(null);
@@ -119,9 +121,12 @@ export function ProxyTasksView() {
     if (!silent) setLoading(true);
     try {
       const r = await fetch("/api/tasks/proxy", { cache: "no-store" });
-      const d = r.ok ? await r.json() : { tasks: [] };
+      if (r.status >= 500) throw new Error(String(r.status)); // 4xx = gated: empty list
+      const d = await r.json();
+      setFailed(false);
       setTasks(d.tasks ?? []);
     } catch {
+      if (!silent) setFailed(true);
       setTasks([]);
     } finally {
       if (!silent) setLoading(false);
@@ -312,7 +317,9 @@ export function ProxyTasksView() {
 
       {loading && <ListSkeleton rows={3} />}
 
-      {!loading && tasks.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && tasks.length === 0 && (
         <EmptyState
           icon={Globe}
           title="No proxy tasks available"
@@ -320,33 +327,33 @@ export function ProxyTasksView() {
         />
       )}
 
-      {!loading && tasks.length > 0 && (
+      {!loading && !failed && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
-            <div key={t.id} className="card p-3">
-              <div className="flex items-start gap-3">
+            <div key={t.id} className="card p-4 flex h-full flex-col">
+              <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
                   <Globe className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">
+                  <p className="t-card-title text-white line-clamp-2">
                     {t.title}
                   </p>
-                  <div className="flex flex-wrap gap-1.5 empty:hidden">
+                  <div className="mt-1 flex flex-wrap gap-1.5 empty:hidden">
                     <TaskDeviceChips needs={t as unknown as TaskDeviceNeeds} />
                   </div>
-                  <p className="text-[11px] text-(--app-ink-3)">
+                  <p className="t-meta mt-1 text-(--app-ink-2)">
                     {t.country} · {t.duration} min session
                   </p>
                 </div>
-                <span className="text-amber-400 font-bold text-sm tabular-nums shrink-0">
+                <span className="shrink-0 rounded-lg bg-amber-500/15 px-2 py-1 text-sm font-black tabular-nums text-amber-300">
                   +{t.pointsReward}
                 </span>
               </div>
               <button
                 onClick={() => !t.locked && startTask(t)}
                 disabled={starting || t.locked}
-                className="mt-3 w-full py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+                className="mt-auto w-full min-h-11 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
               >
                 {t.locked ? (
                   <>🔒 Locked</>
@@ -433,7 +440,7 @@ export function ProxyTasksView() {
 
             {active.instructionVideoUrl && (
               <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1.5">
+                <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) inline-flex items-center gap-1.5">
                   <VideoIcon className="w-3 h-3" />
                   Instruction video
                 </p>
@@ -530,7 +537,7 @@ export function ProxyTasksView() {
 
             {/* Proof submission */}
             <div className="space-y-3 pt-3 border-t border-(--app-line)">
-              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+              <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
                 Submit your proof
               </p>
               <div>

@@ -56,7 +56,7 @@ export function ProfileGate({
             <span className="text-2xl font-extrabold text-white tabular-nums leading-none">
               {percentage}%
             </span>
-            <span className="text-[11px] text-(--app-ink-3) mt-0.5">
+            <span className="text-xs text-(--app-ink-3) mt-0.5">
               {done}/{total} done
             </span>
           </div>
@@ -65,17 +65,17 @@ export function ProfileGate({
         {/* Missing essentials */}
         {progress.missing.length > 0 && (
           <div className="space-y-1.5 text-left mb-5">
-            <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold px-1">
+            <p className="t-eyebrow text-(--app-ink-3) px-1">
               Still needed
             </p>
             {progress.missing.map((it) => (
               <Link
                 key={it.key}
                 href={it.href}
-                className="flex items-center gap-2 p-2.5 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-amber-500/40 transition-colors"
+                className="app-press app-tap-row flex items-center gap-2 px-3 py-2.5 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-amber-500/40 transition-colors"
               >
                 <Circle className="w-3.5 h-3.5 text-(--app-glyph) shrink-0" />
-                <span className="text-sm text-(--app-ink-2) flex-1 min-w-0 truncate">
+                <span className="text-sm text-(--app-ink) flex-1 min-w-0 line-clamp-2">
                   {it.label}
                 </span>
                 <ChevronRight className="w-4 h-4 text-(--app-glyph)" />
@@ -86,7 +86,7 @@ export function ProfileGate({
 
         <Link
           href="/profile?tab=personal"
-          className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold active:scale-[0.97] transition-transform"
+          className="app-press app-tap-row w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold active:scale-[0.97] transition-transform"
         >
           <UserCog className="w-4 h-4" />
           Complete profile

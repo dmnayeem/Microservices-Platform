@@ -427,7 +427,7 @@ export function ListingDetailView({
               {ASSET_TYPE_LABEL[listing.assetType] ?? listing.assetType}
             </span>
             {listing.subType && (
-              <span className="text-[10px] text-(--app-ink-3) font-mono uppercase">
+              <span className="text-[11px] text-(--app-ink-3) font-mono uppercase">
                 {listing.subType}
               </span>
             )}
@@ -605,7 +605,7 @@ export function ListingDetailView({
               >
                 <Heart className="w-4 h-4" />
                 Watch
-                <span className="text-[10px] opacity-70 tabular-nums ml-1">{watchCount}</span>
+                <span className="text-[11px] opacity-70 tabular-nums ml-1">{watchCount}</span>
               </Link>
             )}
             {guest && (
@@ -635,7 +635,7 @@ export function ListingDetailView({
                   )}
                 />
                 {watched ? "Watching" : "Watch"}
-                <span className="text-[10px] opacity-70 tabular-nums ml-1">
+                <span className="text-[11px] opacity-70 tabular-nums ml-1">
                   {watchCount}
                 </span>
               </button>
@@ -670,7 +670,7 @@ export function ListingDetailView({
                 <Flag className="w-4 h-4" />
               </button>
             )}
-            <div className="ml-auto text-right text-[10px] text-(--app-ink-3)">
+            <div className="ml-auto text-right text-[11px] text-(--app-ink-3)">
               <p className="inline-flex items-center gap-1">
                 <Eye className="w-3 h-3" />
                 {listing.views.toLocaleString()} views
@@ -828,7 +828,7 @@ export function ListingDetailView({
           <div className="space-y-4">
             {groupedFields.map((g) => (
               <div key={g.group}>
-                <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) mb-1.5">
+                <p className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3) mb-1.5">
                   {g.group}
                 </p>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
@@ -1008,7 +1008,7 @@ function MetricCard({
     <div className="glass rounded-xl p-3">
       <div className="flex items-center gap-2 mb-1">
         <span className={cn("p-1.5 rounded-md border", tones[tone])}>{icon}</span>
-        <span className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
+        <span className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3)">
           {label}
         </span>
       </div>
@@ -1149,7 +1149,7 @@ function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider",
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-extrabold uppercase tracking-wider",
         tones[tone]
       )}
     >

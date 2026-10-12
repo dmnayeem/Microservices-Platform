@@ -48,7 +48,9 @@ export function SoloRewardNotification({
   return (
     <div
       className={cn(
-        "fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-100",
+        // Above the tab bar's measured height (gesture inset included), not a
+        // flat 5rem that the raised Home button and the inset overlapped.
+        "fixed bottom-[max(calc(1rem+var(--bottom-nav-h,0px)),calc(1rem+env(safe-area-inset-bottom)))] left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-100",
         "animate-in slide-in-from-bottom-4 fade-in"
       )}
     >

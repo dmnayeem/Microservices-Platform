@@ -66,7 +66,7 @@ export function CopyButton({
       type="button"
       onClick={handle}
       aria-label={everCopied ? `Copy ${label} again` : `Copy ${label}`}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${
+      className={`app-press inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
         flash
           ? "bg-emerald-500/20 text-emerald-300"
           : everCopied

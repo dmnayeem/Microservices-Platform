@@ -48,8 +48,8 @@ export function InfoRow({
     <div className="flex items-start gap-2">
       <span className="text-(--app-ink-3) mt-0.5">{icon}</span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-white truncate">{label}</p>
-        <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider font-bold">
+        <p className="text-sm text-white break-words [overflow-wrap:anywhere]">{label}</p>
+        <p className="t-eyebrow text-(--app-ink-3)">
           {sub}
         </p>
       </div>
@@ -68,7 +68,7 @@ export function DataLine({
 }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+      <p className="t-eyebrow text-(--app-ink-3)">
         {label}
       </p>
       <p className="text-sm text-white mt-0.5 inline-flex items-center gap-1.5">
@@ -111,15 +111,15 @@ export function VerifTile({
     >
       <div className={cn("p-1.5 rounded-md bg-black/20", status.color)}>{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold text-white">{label}</p>
-        <p className={cn("text-[11px] font-semibold", status.color)}>
+        <p className="text-sm font-bold text-white">{label}</p>
+        <p className={cn("text-xs font-semibold", status.color)}>
           {status.text}
         </p>
       </div>
       {action && (
         <Link
           href={action.href}
-          className="text-[11px] font-bold text-(--app-accent-ink) hover:text-(--app-accent-ink) px-2 py-1 rounded bg-(--app-cta)/10 border border-(--app-accent-edge)/30 hover:bg-(--app-cta)/20 whitespace-nowrap"
+          className="app-press inline-flex min-h-10 items-center shrink-0 text-sm font-bold text-(--app-accent-ink) hover:text-(--app-accent-ink) px-3 rounded-lg bg-(--app-cta)/10 border border-(--app-accent-edge)/30 hover:bg-(--app-cta)/20 whitespace-nowrap"
         >
           {action.label} →
         </Link>
@@ -176,7 +176,7 @@ export function Field({
       id={anchor ? `pf-${anchor}` : undefined}
       className={anchor ? "scroll-mt-24 rounded-lg transition-shadow" : undefined}
     >
-      <label className="block text-[11px] font-medium text-(--app-ink-3) mb-1">{label}</label>
+      <label className="block text-xs font-semibold text-(--app-ink-2) mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -273,20 +273,20 @@ export function UsernameField({
         </span>
       </div>
       {status === "invalid" ? (
-        <p className="mt-1 text-[11px] text-rose-400">
+        <p className="mt-1 text-xs text-rose-400">
           3-30 characters: letters, numbers, dot, underscore or hyphen.
         </p>
       ) : status === "taken" ? (
-        <p className="mt-1 text-[11px] text-rose-400">
+        <p className="mt-1 text-xs text-rose-400">
           This username is already taken.
         </p>
       ) : clean.trim() ? (
-        <p className="mt-1 text-[11px] text-(--app-ink-3)">
+        <p className="mt-1 text-xs text-(--app-ink-3)">
           {status === "available" ? "Available — " : ""}Profile link:{" "}
           <span className="text-(--app-accent-ink)">/u/{clean.trim()}</span>
         </p>
       ) : (
-        <p className="mt-1 text-[11px] text-(--app-ink-3)">
+        <p className="mt-1 text-xs text-(--app-ink-3)">
           Pick a public @handle — this becomes your profile link (/u/yourname).
         </p>
       )}

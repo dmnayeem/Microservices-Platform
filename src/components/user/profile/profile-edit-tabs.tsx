@@ -308,7 +308,7 @@ export function KycTab({ data }: { data: ProfileResponse }) {
       <div className="flex flex-wrap gap-2">
         <Link
           href="/kyc"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+          className="app-press app-tap-row inline-flex items-center gap-1.5 px-4 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
         >
           <Shield className="w-4 h-4" />
           {verification.kycStatus === "NOT_SUBMITTED" || !verification.kycStatus
@@ -318,7 +318,7 @@ export function KycTab({ data }: { data: ProfileResponse }) {
         {verification.kycStatus === "REJECTED" && (
           <Link
             href="/kyc/appeal"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-sm font-bold border border-amber-500/30"
+            className="app-press app-tap-row inline-flex items-center gap-1.5 px-4 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-sm font-bold border border-amber-500/30"
           >
             Appeal Rejection →
           </Link>
@@ -392,23 +392,25 @@ export function SocialTab({
                       )}
                     </p>
                     {account ? (
-                      <p className="text-[11px] text-(--app-ink-3)">@{account.username}</p>
+                      <p className="text-xs text-(--app-ink-3) truncate">@{account.username}</p>
                     ) : (
-                      <p className="text-[11px] text-(--app-ink-3)">Not connected</p>
+                      <p className="text-xs text-(--app-ink-3)">Not connected</p>
                     )}
                   </div>
                   {account ? (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => onConnect(platform)}
-                        className="p-1.5 text-(--app-ink-3) hover:text-blue-400 hover:bg-(--app-surface-2) rounded"
+                        aria-label="Edit"
+                        className="app-press app-tap inline-flex items-center justify-center text-(--app-ink-3) hover:text-blue-400 hover:bg-(--app-surface-2) rounded-lg"
                         title="Edit"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => onDisconnect(account.id)}
-                        className="p-1.5 text-(--app-ink-3) hover:text-red-400 hover:bg-(--app-surface-2) rounded"
+                        aria-label="Disconnect"
+                        className="app-press app-tap inline-flex items-center justify-center text-(--app-ink-3) hover:text-red-400 hover:bg-(--app-surface-2) rounded-lg"
                         title="Disconnect"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -417,15 +419,15 @@ export function SocialTab({
                   ) : (
                     <button
                       onClick={() => onConnect(platform)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
+                      className="app-press app-tap-row shrink-0 inline-flex items-center gap-1 px-3.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-4 h-4" />
                       Connect
                     </button>
                   )}
                 </div>
                 {account && (
-                  <div className="grid grid-cols-3 gap-1 mt-3 text-center text-[11px]">
+                  <div className="grid grid-cols-3 gap-1.5 mt-3 text-center text-xs">
                     <div className="rounded bg-(--app-page) py-1.5">
                       <p className="text-white font-bold tabular-nums">
                         {account.followers.toLocaleString()}
@@ -497,7 +499,7 @@ export function PrivacyTab({
           if (fields.length === 0) return null;
           return (
             <div key={group}>
-              <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1.5">
+              <p className="t-eyebrow text-(--app-ink-3) mb-1.5">
                 {group}
               </p>
               <div className="space-y-1.5">
@@ -512,7 +514,7 @@ export function PrivacyTab({
                   return (
                     <div
                       key={f.key}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line)"
+                      className="flex flex-col gap-2 p-3 rounded-lg bg-(--app-page) border border-(--app-line) min-[400px]:flex-row min-[400px]:items-center min-[400px]:gap-3"
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white">{f.label}</p>
@@ -523,7 +525,7 @@ export function PrivacyTab({
                         onChange={(e) => setLevel(f, e.target.value)}
                         aria-label={`Who can see ${f.label}`}
                         className={cn(
-                          "bg-(--app-surface-2) border rounded-lg px-3 py-1.5 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge) shrink-0",
+                          "min-h-11 w-full min-[400px]:w-auto bg-(--app-surface-2) border rounded-lg px-3 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge) shrink-0",
                           value === "PRIVATE"
                             ? "border-rose-500/40"
                             : value === "FRIENDS"
@@ -549,7 +551,7 @@ export function PrivacyTab({
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-(--app-line)">
         <a
           href="/api/profile/export"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
+          className="app-press app-tap-row inline-flex items-center gap-1.5 px-3 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
         >
           ⬇️ Download My Data
         </a>
@@ -557,7 +559,7 @@ export function PrivacyTab({
             button only showed a toast pointing somewhere else. */}
         <a
           href="/settings"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold border border-red-500/30"
+          className="app-press app-tap-row inline-flex items-center gap-1.5 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold border border-red-500/30"
         >
           🗑 Delete Account
         </a>
@@ -697,7 +699,7 @@ export function SecurityTab({
       <div className="space-y-3">
         <Link
           href="/update-password"
-          className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
+          className="app-press flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
         >
           <Lock className="w-4 h-4 text-(--app-accent-ink)" />
           <div className="flex-1 min-w-0">
@@ -709,7 +711,7 @@ export function SecurityTab({
 
         <Link
           href="/2fa-setup"
-          className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
+          className="app-press flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
         >
           <Shield className="w-4 h-4 text-emerald-400" />
           <div className="flex-1 min-w-0">
@@ -720,7 +722,7 @@ export function SecurityTab({
           </div>
           <span
             className={cn(
-              "text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded",
+              "shrink-0 text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded",
               verification.twoFactorEnabled ? "bg-emerald-500/15 text-emerald-400" : "bg-(--app-surface-2) text-(--app-ink-3)"
             )}
           >
@@ -730,7 +732,7 @@ export function SecurityTab({
 
         <Link
           href="/payment-methods"
-          className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
+          className="app-press flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
         >
           <CreditCard className="w-4 h-4 text-amber-400" />
           <div className="flex-1 min-w-0">
@@ -742,7 +744,7 @@ export function SecurityTab({
 
         <Link
           href="/notifications"
-          className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
+          className="app-press flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
         >
           <Bell className="w-4 h-4 text-purple-400" />
           <div className="flex-1 min-w-0">

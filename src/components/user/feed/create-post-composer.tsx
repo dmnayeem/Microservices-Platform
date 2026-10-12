@@ -423,7 +423,7 @@ export function CreatePostComposer({
             <button
               key={a.label}
               onClick={a.onClick}
-              className="app-tap-row app-press inline-flex items-center justify-center gap-1.5 rounded-(--app-r-chip) text-xs font-bold text-(--app-ink-2) hover:bg-(--app-surface-2) hover:text-(--app-ink)"
+              className="app-tap-row app-press inline-flex items-center justify-center gap-1.5 rounded-(--app-r-chip) text-sm font-bold text-(--app-ink-2) hover:bg-(--app-surface-2) hover:text-(--app-ink)"
             >
               <a.icon className="w-4 h-4 text-(--app-ink-3)" />
               {a.label}
@@ -449,14 +449,14 @@ export function CreatePostComposer({
           </p>
           {/* Mirrors the "Who can read this" choice below — posts default to
               members only, so this must not claim "publicly". */}
-          <p className="text-[11px] text-(--app-ink-3)">
+          <p className="text-xs text-(--app-ink-3)">
             {audience === "PUBLIC" ? "Posting publicly" : "Posting to members only"}
           </p>
         </div>
         <button
           onClick={reset}
           disabled={busy}
-          className="p-1.5 text-(--app-ink-3) hover:text-red-400 disabled:opacity-50"
+          className="app-press app-tap -mr-2 inline-flex items-center justify-center rounded-lg text-(--app-ink-3) hover:text-red-400 disabled:opacity-50"
           aria-label="Cancel"
         >
           <X className="w-4 h-4" />
@@ -483,13 +483,13 @@ export function CreatePostComposer({
               key={m.key}
               onClick={() => setMode(m.key)}
               className={cn(
-                "flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border",
+                "app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 px-2 rounded-lg text-sm font-semibold transition-colors border",
                 isActive
                   ? "bg-(--app-nav-wash) text-(--app-nav-on) border-(--app-accent-edge)/40"
                   : "bg-(--app-page) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink)"
               )}
             >
-              <m.icon className="w-3.5 h-3.5" />
+              <m.icon className="w-4 h-4" />
               {m.label}
             </button>
           );
@@ -534,19 +534,19 @@ export function CreatePostComposer({
                   title="Bold"
                   onClick={() => wrapSelection("**")}
                 >
-                  <BoldIcon className="w-3.5 h-3.5" />
+                  <BoldIcon className="w-4 h-4" />
                 </SelectionFormatBtn>
                 <SelectionFormatBtn
                   title="Italic"
                   onClick={() => wrapSelection("*")}
                 >
-                  <ItalicIcon className="w-3.5 h-3.5" />
+                  <ItalicIcon className="w-4 h-4" />
                 </SelectionFormatBtn>
                 <SelectionFormatBtn
                   title="Underline"
                   onClick={() => wrapSelection("__")}
                 >
-                  <UnderlineIcon className="w-3.5 h-3.5" />
+                  <UnderlineIcon className="w-4 h-4" />
                 </SelectionFormatBtn>
               </div>
             )}
@@ -589,7 +589,7 @@ export function CreatePostComposer({
                         ? "placeholder:text-white/70"
                         : "placeholder:text-[#0f172a]/60"
                     )
-                  : "text-sm text-(--app-ink) placeholder:text-(--app-ink-3)"
+                  : "text-base text-(--app-ink) placeholder:text-(--app-ink-3)"
               )}
             />
           </div>
@@ -613,9 +613,10 @@ export function CreatePostComposer({
                   />
                   <button
                     onClick={() => removeImage(i)}
-                    className="absolute top-1 right-1 p-1 rounded-full bg-black/70 hover:bg-red-500/80 text-white"
+                    aria-label="Remove photo"
+                    className="app-press absolute top-1 right-1 grid h-8 w-8 place-items-center rounded-full bg-black/70 hover:bg-red-500/80 text-white"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               ))}
@@ -624,7 +625,7 @@ export function CreatePostComposer({
 
           {/* Permission notice — a URL the user isn't allowed to share. */}
           {currentUrl && !linkAllowed && (
-            <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-200">
               <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>
                 {currentUrlIsVideo
@@ -646,7 +647,7 @@ export function CreatePostComposer({
                   type="button"
                   onClick={dismissPreview}
                   aria-label="Remove preview"
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/70 hover:bg-red-500/80 text-white backdrop-blur-sm"
+                  className="app-press absolute top-2 right-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/70 hover:bg-red-500/80 text-white backdrop-blur-sm"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -711,13 +712,14 @@ export function CreatePostComposer({
 
           {/* Colored background swatches (text-only posts) */}
           {images.length === 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setBg("")}
                 title="No background"
+                aria-label="No background"
                 className={cn(
-                  "w-7 h-7 rounded-full border border-(--app-line) bg-(--app-page) inline-flex items-center justify-center text-(--app-ink-3)",
+                  "app-press w-9 h-9 rounded-full border border-(--app-line) bg-(--app-page) inline-flex items-center justify-center text-(--app-ink-3)",
                   !bg && "ring-2 ring-(--app-accent-edge)"
                 )}
               >
@@ -728,9 +730,10 @@ export function CreatePostComposer({
                   key={b.id}
                   type="button"
                   title={b.label}
+                  aria-label={b.label}
                   onClick={() => setBg(b.id)}
                   className={cn(
-                    "w-7 h-7 rounded-full border border-(--app-line)",
+                    "app-press w-9 h-9 rounded-full border border-(--app-line)",
                     b.className,
                     bg === b.id && "ring-2 ring-(--app-ink) ring-offset-2 ring-offset-(--app-surface)"
                   )}
@@ -748,12 +751,12 @@ export function CreatePostComposer({
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
               placeholder="…or paste an image URL"
               disabled={busy}
-              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+              className="flex-1 min-w-0 min-h-11 bg-(--app-page) border border-(--app-line) rounded-lg px-3 text-base sm:text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             />
             <button
               onClick={addImage}
               disabled={busy || !imageInput.trim()}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold rounded-lg disabled:opacity-50"
+              className="app-press app-tap-row shrink-0 inline-flex items-center gap-1 px-4 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold rounded-lg disabled:opacity-50"
             >
               <Plus className="w-3.5 h-3.5" />
               Add
@@ -792,10 +795,10 @@ export function CreatePostComposer({
             className="rounded bg-(--app-surface-2) border-(--app-line) text-cyan-500 focus:ring-cyan-500"
           />
           <Megaphone className="w-3.5 h-3.5 text-cyan-300" />
-          <span className="whitespace-nowrap text-xs font-semibold text-cyan-200">
+          <span className="whitespace-nowrap text-sm font-semibold text-cyan-200">
             Official announcement
           </span>
-          <span className="ml-auto whitespace-nowrap text-[11px] text-cyan-400/70">
+          <span className="ml-auto whitespace-nowrap text-xs text-cyan-300">
             Pinned to top • OFFICIAL badge
           </span>
         </label>
@@ -805,7 +808,7 @@ export function CreatePostComposer({
           consequence is written into the option itself rather than implied by a
           globe icon. Members only is pre-selected. */}
       <fieldset className="rounded-lg border border-(--app-line) bg-(--app-surface)/40 px-3 py-2.5">
-        <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide text-(--app-ink-3)">
+        <legend className="t-eyebrow px-1 text-(--app-ink-3)">
           Who can read this
         </legend>
         <div className="mt-1 space-y-1.5">
@@ -831,7 +834,7 @@ export function CreatePostComposer({
               <label
                 key={key}
                 className={cn(
-                  "flex cursor-pointer items-start gap-2.5 rounded-lg border px-2.5 py-2 transition-colors",
+                  "app-press flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-colors",
                   on
                     ? "border-(--app-accent-edge)/60 bg-(--app-cta)/10"
                     : "border-transparent hover:bg-(--app-surface-2)/50"
@@ -847,20 +850,20 @@ export function CreatePostComposer({
                 />
                 <Icon
                   className={cn(
-                    "mt-0.5 h-3.5 w-3.5 shrink-0",
+                    "mt-0.5 h-4 w-4 shrink-0",
                     on ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"
                   )}
                 />
                 <span className="min-w-0">
                   <span
                     className={cn(
-                      "block text-xs font-semibold",
+                      "block text-sm font-semibold",
                       on ? "text-(--app-accent-ink)" : "text-(--app-ink-2)"
                     )}
                   >
                     {title}
                   </span>
-                  <span className="block text-[11px] leading-snug text-(--app-ink-3)">
+                  <span className="block text-xs leading-snug text-(--app-ink-3)">
                     {detail}
                   </span>
                 </span>
@@ -871,14 +874,14 @@ export function CreatePostComposer({
       </fieldset>
 
       <div className="flex items-center justify-between pt-2 border-t border-(--app-line)">
-        <span className="text-[11px] text-(--app-ink-3) tabular-nums">
+        <span className="text-xs text-(--app-ink-3) tabular-nums">
           {content.length}/2000
         </span>
         <button
           onClick={submit}
           disabled={busy || (mode === "text" && !content.trim())}
           className={cn(
-            "inline-flex items-center gap-1.5 px-4 py-2 text-white text-sm font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:opacity-90",
+            "app-press app-tap-row inline-flex items-center gap-1.5 px-6 text-white text-sm font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:opacity-90",
             canAnnounce && postAsAnnouncement
               ? "bg-linear-to-r from-cyan-500 to-blue-600"
               : "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b)"
@@ -926,7 +929,7 @@ function PollComposer({
         onChange={(e) => onContentChange(e.target.value)}
         placeholder="Poll question…"
         maxLength={200}
-        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+        className="w-full min-h-11 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-base sm:text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
       />
       <div className="space-y-1.5">
         {options.map((opt, i) => (
@@ -940,12 +943,13 @@ function PollComposer({
               }}
               placeholder={`Option ${i + 1}`}
               maxLength={120}
-              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+              className="flex-1 min-w-0 min-h-11 bg-(--app-page) border border-(--app-line) rounded-lg px-3 text-base sm:text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             />
             {options.length > 2 && (
               <button
                 onClick={() => onChange(options.filter((_, j) => j !== i))}
-                className="p-1.5 text-(--app-ink-3) hover:text-red-400"
+                aria-label={`Remove option ${i + 1}`}
+                className="app-press app-tap inline-flex items-center justify-center rounded-lg text-(--app-ink-3) hover:text-red-400"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -955,7 +959,7 @@ function PollComposer({
         {options.length < 6 && (
           <button
             onClick={() => onChange([...options, ""])}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) text-xs font-medium rounded-lg"
+            className="app-press app-tap-row inline-flex items-center gap-1.5 px-4 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold rounded-lg"
           >
             <Plus className="w-3.5 h-3.5" />
             Add option
@@ -963,13 +967,13 @@ function PollComposer({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xs text-(--app-ink-3)">Duration:</span>
+        <span className="text-sm text-(--app-ink-2)">Duration:</span>
         {([24, 48, 72] as const).map((d) => (
           <button
             key={d}
             onClick={() => onDurationChange(d)}
             className={cn(
-              "px-2.5 py-1 rounded-md text-xs font-bold",
+              "app-press min-h-10 min-w-12 px-3 rounded-lg text-sm font-bold",
               duration === d
                 ? "bg-(--app-cta) text-(--app-on-cta)"
                 : "bg-(--app-surface-2) text-(--app-ink-3) hover:text-(--app-ink)"
@@ -1002,17 +1006,17 @@ function DonationComposer({
         placeholder="What's your donation cause?"
         rows={3}
         maxLength={2000}
-        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
+        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-base sm:text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <div className="flex items-center gap-2">
-        <span className="text-xs text-(--app-ink-3)">Goal (pts):</span>
+        <span className="text-sm text-(--app-ink-2)">Goal (pts):</span>
         <input
           type="number"
           min={100}
           step={100}
           value={goal}
           onChange={(e) => onGoalChange(parseInt(e.target.value) || 0)}
-          className="w-32 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
+          className="w-32 min-h-11 bg-(--app-page) border border-(--app-line) rounded-lg px-3 text-base sm:text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
         />
       </div>
     </div>

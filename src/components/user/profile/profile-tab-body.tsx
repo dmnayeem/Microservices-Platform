@@ -124,7 +124,7 @@ export function ProfileTabBody({
             </div>
             <button
               onClick={() => openEdit("personal")}
-              className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold"
+              className="app-press app-tap-row mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
             >
               <Edit3 className="w-3.5 h-3.5" />
               Edit Details
@@ -144,7 +144,7 @@ export function ProfileTabBody({
                     ? "All set!"
                     : `${completion.missing.length} item${completion.missing.length === 1 ? "" : "s"} left`}
                 </p>
-                <p className="text-[11px] text-(--app-accent-ink) mt-0.5">
+                <p className="text-xs text-(--app-accent-ink) mt-0.5">
                   Higher % = better task acceptance
                 </p>
               </div>
@@ -162,10 +162,10 @@ export function ProfileTabBody({
                   <button
                     key={it.key}
                     onClick={() => onJumpCompletion(it.href)}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 text-left transition-colors"
+                    className="app-press app-tap-row w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 text-left transition-colors"
                   >
                     <Circle className="w-3.5 h-3.5 text-(--app-glyph) shrink-0" />
-                    <span className="text-xs text-(--app-ink-2) flex-1 min-w-0 truncate">{it.label}</span>
+                    <span className="text-sm text-(--app-ink) flex-1 min-w-0 line-clamp-2">{it.label}</span>
                     <ChevronRight className="w-3.5 h-3.5 text-(--app-glyph)" />
                   </button>
                 ))}
@@ -215,7 +215,7 @@ export function ProfileTabBody({
             <div className="flex justify-end pt-3 mt-3 border-t border-(--app-line)">
               <button
                 onClick={() => openEdit("personal")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-xs font-bold"
+                className="app-press app-tap-row inline-flex items-center gap-1.5 px-3.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-sm font-bold"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 Edit Personal Info
@@ -258,7 +258,7 @@ export function ProfileTabBody({
             <div className="flex justify-end pt-3 mt-3 border-t border-(--app-line)">
               <button
                 onClick={() => openEdit("address")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-xs font-bold"
+                className="app-press app-tap-row inline-flex items-center gap-1.5 px-3.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-sm font-bold"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 Edit Address
@@ -272,7 +272,7 @@ export function ProfileTabBody({
           {/* Sell & earn — apply for marketplace / advertiser / agency / affiliate access */}
           <Link
             href="/profile/become-creator"
-            className="block rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-transparent p-4 hover:border-(--app-accent-edge)/50 transition-colors"
+            className="app-press block rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-transparent p-4 hover:border-(--app-accent-edge)/50 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">
@@ -330,7 +330,7 @@ export function ProfileTabBody({
                         <p className="text-xs font-bold text-white truncate">
                           @{acc.username}
                         </p>
-                        <p className="text-[10px] text-(--app-ink-3)">
+                        <p className="text-xs text-(--app-ink-3)">
                           {acc.followers.toLocaleString()} {meta.countLabel.toLowerCase()}
                         </p>
                       </div>
@@ -342,7 +342,7 @@ export function ProfileTabBody({
             <div className="flex justify-end pt-3 mt-3 border-t border-(--app-line)">
               <button
                 onClick={() => openEdit("social")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-xs font-bold"
+                className="app-press app-tap-row inline-flex items-center gap-1.5 px-3.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-sm font-bold"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Manage Social Accounts
@@ -377,9 +377,9 @@ export function ProfileTabBody({
                 <div className="grid grid-cols-2 gap-2">
                   <Link
                     href="/courses?filter=enrolled"
-                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-emerald-500/40 transition-colors"
+                    className="app-press rounded-lg border border-(--app-line) bg-(--app-surface) p-2.5 hover:border-emerald-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                    <p className="t-eyebrow text-(--app-ink-3)">
                       Enrolled
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -388,9 +388,9 @@ export function ProfileTabBody({
                   </Link>
                   <Link
                     href="/courses?filter=created"
-                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-emerald-500/40 transition-colors"
+                    className="app-press rounded-lg border border-(--app-line) bg-(--app-surface) p-2.5 hover:border-emerald-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                    <p className="t-eyebrow text-(--app-ink-3)">
                       Created
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -400,10 +400,10 @@ export function ProfileTabBody({
                 </div>
                 <Link
                   href="/courses"
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-emerald-300 hover:text-emerald-200 font-semibold"
+                  className="app-tap-row mt-1 inline-flex items-center gap-1 text-sm text-emerald-300 hover:text-emerald-200 font-semibold"
                 >
                   Browse courses
-                  <ChevronRight className="w-3 h-3" />
+                  <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
 
@@ -418,9 +418,9 @@ export function ProfileTabBody({
                 <div className="grid grid-cols-3 gap-2">
                   <Link
                     href="/marketplace?tab=listings"
-                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-amber-500/40 transition-colors"
+                    className="app-press rounded-lg border border-(--app-line) bg-(--app-surface) p-2.5 hover:border-amber-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                    <p className="t-eyebrow text-(--app-ink-3)">
                       Listings
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -429,9 +429,9 @@ export function ProfileTabBody({
                   </Link>
                   <Link
                     href="/marketplace?tab=sales"
-                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-amber-500/40 transition-colors"
+                    className="app-press rounded-lg border border-(--app-line) bg-(--app-surface) p-2.5 hover:border-amber-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                    <p className="t-eyebrow text-(--app-ink-3)">
                       Sales
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -440,9 +440,9 @@ export function ProfileTabBody({
                   </Link>
                   <Link
                     href="/marketplace?tab=purchases"
-                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-amber-500/40 transition-colors"
+                    className="app-press rounded-lg border border-(--app-line) bg-(--app-surface) p-2.5 hover:border-amber-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                    <p className="t-eyebrow text-(--app-ink-3)">
                       Bought
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -451,7 +451,7 @@ export function ProfileTabBody({
                   </Link>
                 </div>
                 {stats.marketplaceSalesAmount > 0 && (
-                  <p className="text-[11px] text-amber-300 mt-2 inline-flex items-center gap-1">
+                  <p className="text-xs text-amber-300 mt-2 inline-flex items-center gap-1">
                     <Coins className="w-3 h-3" />
                     Earned{" "}
                     <span className="font-bold tabular-nums">
@@ -464,10 +464,10 @@ export function ProfileTabBody({
                 )}
                 <Link
                   href="/marketplace"
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-amber-300 hover:text-amber-200 font-semibold"
+                  className="app-tap-row mt-1 inline-flex items-center gap-1 text-sm text-amber-300 hover:text-amber-200 font-semibold"
                 >
                   Open marketplace
-                  <ChevronRight className="w-3 h-3" />
+                  <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
             </div>
@@ -529,7 +529,7 @@ export function ProfileTabBody({
       <div ref={editAnchorRef} className="scroll-mt-20">
         <button
           onClick={() => setEditOpen(!editOpen)}
-          className="w-full flex items-center justify-between gap-3 p-4 glass glass-hover"
+          className="app-press w-full flex items-center justify-between gap-3 p-4 glass glass-hover"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-(--app-cta)/10 border border-(--app-accent-edge)/30 flex items-center justify-center">
@@ -537,7 +537,7 @@ export function ProfileTabBody({
             </div>
             <div className="text-left min-w-0">
               <p className="text-sm font-bold text-white">Edit Profile &amp; Settings</p>
-              <p className="text-[11px] text-(--app-ink-3)">
+              <p className="text-xs text-(--app-ink-3)">
                 Personal info, address, KYC, privacy, theme, security
               </p>
             </div>
@@ -560,7 +560,7 @@ export function ProfileTabBody({
                 style={{ width: `${completion.percentage}%` }}
               />
             </div>
-            <span className="text-[11px] font-bold text-(--app-ink-2) tabular-nums">
+            <span className="text-xs font-bold text-(--app-ink-2) tabular-nums">
               {completion.percentage}%
             </span>
           </div>
@@ -578,10 +578,10 @@ export function ProfileTabBody({
               <div className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line)">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <p className="text-[11px] font-bold text-(--app-ink-2)">
+                    <p className="text-xs font-bold text-(--app-ink-2)">
                       Profile {completion.percentage}% complete
                     </p>
-                    <p className="text-[11px] text-(--app-ink-3)">
+                    <p className="text-xs text-(--app-ink-3)">
                       {completion.missing.length} left
                     </p>
                   </div>
@@ -598,7 +598,7 @@ export function ProfileTabBody({
                       style={{ width: `${completion.percentage}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-(--app-ink-3) mt-1.5 truncate">
+                  <p className="text-xs text-(--app-ink-3) mt-1.5 line-clamp-2">
                     Next: {completion.missing.slice(0, 3).map((m) => m.label).join(", ")}
                   </p>
                 </div>
@@ -620,7 +620,7 @@ export function ProfileTabBody({
                   key={t.key}
                   onClick={() => setEditTab(t.key)}
                   className={cn(
-                    "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
+                    "app-press app-tap-row shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
                     editTab === t.key
                       ? "bg-(--app-nav-wash) text-(--app-nav-on) border border-(--app-accent-edge)/40"
                       : "text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"

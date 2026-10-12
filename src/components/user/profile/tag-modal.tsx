@@ -38,7 +38,7 @@ export function TagModal({
               key={t.id}
               onClick={() => toggle(t.id)}
               className={cn(
-                "flex items-center gap-2 p-3 rounded-lg border text-left",
+                "app-press app-tap-row flex items-center gap-2 p-3 rounded-lg border text-left",
                 isOn
                   ? "border-(--app-accent-edge) bg-(--app-cta)/10"
                   : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
@@ -52,7 +52,7 @@ export function TagModal({
         })}
       </div>
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-(--app-ink)">
+        <button onClick={onClose} disabled={busy} className="app-press app-tap-row px-4 rounded-lg text-sm font-semibold text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--app-surface-2)">
           Cancel
         </button>
         <button
@@ -62,7 +62,7 @@ export function TagModal({
             setBusy(false);
           }}
           disabled={busy}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg disabled:opacity-50"
+          className="app-press app-tap-row inline-flex items-center gap-2 px-5 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg disabled:opacity-50"
         >
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           Save

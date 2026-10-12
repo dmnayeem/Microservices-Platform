@@ -158,7 +158,7 @@ export function OrderDispute({ purchaseId, dispute, canOpen, windowDays }: Props
           <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />
           {mode === "form" ? "Open a dispute" : "Dispute"}
           {mode === "thread" && status && (
-            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3)">
+            <span className="text-[11px] uppercase tracking-wider text-(--app-ink-3)">
               · {status.replace(/_/g, " ")}
             </span>
           )}
@@ -224,7 +224,7 @@ export function OrderDispute({ purchaseId, dispute, canOpen, windowDays }: Props
                       : "bg-(--app-surface-2) text-(--app-ink) mr-6")
                   }
                 >
-                  <p className="text-[10px] font-bold text-(--app-ink-3) mb-0.5">
+                  <p className="text-[11px] font-bold text-(--app-ink-3) mb-0.5">
                     {m.isMe ? "You" : m.sender.name} ·{" "}
                     {new Date(m.createdAt).toLocaleString()}
                   </p>

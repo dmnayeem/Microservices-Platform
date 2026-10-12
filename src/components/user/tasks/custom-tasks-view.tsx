@@ -6,6 +6,7 @@ import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { taskRunHref } from "@/lib/task-routes";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
@@ -31,6 +32,7 @@ interface ApiTask {
 export function CustomTasksView() {
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -38,9 +40,12 @@ export function CustomTasksView() {
       const r = await fetch("/api/tasks?type=CUSTOM&limit=50", {
         cache: "no-store",
       });
+      if (r.status >= 500) throw new Error(String(r.status)); // 4xx = gated: empty list
       const d = await r.json();
+      setFailed(false);
       setTasks(d.tasks ?? []);
     } catch {
+      if (!silent) setFailed(true);
       if (!silent) setTasks([]);
     } finally {
       if (!silent) setLoading(false);
@@ -67,7 +72,9 @@ export function CustomTasksView() {
 
       {loading && <ListSkeleton rows={4} />}
 
-      {!loading && tasks.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && tasks.length === 0 && (
         <EmptyState
           icon={Sparkles}
           title="No custom tasks available"
@@ -75,7 +82,7 @@ export function CustomTasksView() {
         />
       )}
 
-      {!loading && tasks.length > 0 && (
+      {!loading && !failed && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <TaskCard

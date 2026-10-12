@@ -417,7 +417,7 @@ export function FeedRightRail({
               {widgets.mission.items.map((it, i) => (
                 <li
                   key={`${it.taskType}-${i}`}
-                  className="flex items-center gap-2 text-xs rounded-md px-1 py-1.25 transition-colors hover:bg-(--app-surface-2)"
+                  className="flex items-center gap-2 text-[13px] rounded-md px-1 py-1.5 transition-colors hover:bg-(--app-surface-2)"
                 >
                   {it.done ? (
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-(--app-in)" />
@@ -426,16 +426,16 @@ export function FeedRightRail({
                   )}
                   <span
                     className={cn(
-                      "flex-1 min-w-0 truncate",
+                      "flex-1 min-w-0 line-clamp-2 leading-snug",
                       it.done ? "text-(--app-ink-3) line-through" : "text-(--app-ink-2)"
                     )}
                   >
                     {missionItemLabel(it.taskType, it.description)}
                   </span>
-                  <span className="w-9 text-right text-(--app-ink-3) tabular-nums shrink-0">
+                  <span className="w-10 text-right text-(--app-ink-3) tabular-nums shrink-0">
                     {it.completedToday}/{it.target}
                   </span>
-                  <span className="w-12 inline-flex items-center justify-end gap-0.5 text-(--app-ink-2) font-bold tabular-nums shrink-0">
+                  <span className="w-14 inline-flex items-center justify-end gap-0.5 text-(--app-ink-2) font-bold tabular-nums shrink-0">
                     <Coins className="w-3 h-3 shrink-0" />+{it.points}
                   </span>
                   {/* Start — beside the points, because that is where someone
@@ -455,7 +455,7 @@ export function FeedRightRail({
                     <Link
                       href={TYPE_TO_ROUTE[it.taskType] ?? "/daily-mission"}
                       aria-label={`Start: ${missionItemLabel(it.taskType, it.description)}`}
-                      className="app-press w-14 shrink-0 inline-flex h-7 items-center justify-center rounded-(--app-r-chip) border border-(--app-line) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
+                      className="app-press w-14 shrink-0 inline-flex h-9 items-center justify-center rounded-(--app-r-chip) border border-(--app-line) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
                     >
                       Start
                     </Link>
@@ -517,7 +517,7 @@ export function FeedRightRail({
           title="Top Earners"
           icon={<Trophy className="w-4 h-4 text-amber-400" />}
           action={
-            <Link href="/leaderboard" className="text-xs text-(--app-accent-ink) hover:text-(--app-accent-ink)">
+            <Link href="/leaderboard" className="app-press app-tap-row -my-2 inline-flex items-center px-1 text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)">
               See all
             </Link>
           }
@@ -525,7 +525,7 @@ export function FeedRightRail({
           <ul className="space-y-2.5">
             {bestEarners.map((u, i) => (
               <li key={u.id}>
-                <Link href={profileHref(u)} className="flex items-center gap-2.5 group">
+                <Link href={profileHref(u)} className="app-press app-tap-row -mx-1 flex items-center gap-2.5 rounded-lg px-1 group">
                   <span
                     className={cn(
                       "w-4 text-center text-xs font-bold tabular-nums",
@@ -539,7 +539,7 @@ export function FeedRightRail({
                     <p className="text-sm font-semibold text-(--app-ink) truncate group-hover:text-(--app-accent-ink)">
                       {u.name ?? "Anonymous"}
                     </p>
-                    <p className="text-[11px] text-(--app-ink-3)">Level {u.level}</p>
+                    <p className="text-xs text-(--app-ink-3)">Level {u.level}</p>
                   </div>
                 </Link>
               </li>
@@ -564,7 +564,7 @@ export function FeedRightRail({
                     <span className="truncate min-w-0">{u.name ?? "Anonymous"}</span>
                     {u.isBlueVerified && <VerifiedBadge style={u.verifiedBadgeStyle} size="sm" />}
                   </Link>
-                  <p className="text-[11px] text-(--app-ink-3) truncate">
+                  <p className="text-xs text-(--app-ink-3) truncate">
                     {u.username ? `@${u.username}` : `Level ${u.level}`} ·{" "}
                     {u.followersCount} followers
                   </p>
@@ -578,17 +578,17 @@ export function FeedRightRail({
     trending:
       trendingHashtags.length > 0 ? (
         <Card title="Trending Hashtags" icon={<Hash className="w-4 h-4 text-cyan-400" />}>
-          <ul className="space-y-2">
+          <ul className="space-y-0.5">
             {trendingHashtags.map((h) => (
               <li key={h.tag} className="flex items-center justify-between">
                 <Link
                   href={`/hashtag/${encodeURIComponent(h.tag.replace(/^#/, ""))}`}
-                  className="text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink) hover:underline truncate min-w-0"
+                  className="app-tap-row inline-flex items-center text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink) hover:underline truncate min-w-0"
                 >
                   {h.tag}
                 </Link>
                 {h.count > 0 && (
-                  <span className="text-[11px] text-(--app-ink-3) tabular-nums shrink-0">
+                  <span className="text-xs text-(--app-ink-3) tabular-nums shrink-0">
                     {h.count} posts
                   </span>
                 )}
@@ -616,7 +616,7 @@ export function FeedRightRail({
         <p className="text-xs opacity-90 mt-0.5">
           {promo?.subtitle ?? "Unlock higher rewards and referral levels."}
         </p>
-        <span className="inline-block mt-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-[11px] font-semibold">
+        <span className="inline-flex min-h-8 items-center mt-3 px-3.5 rounded-full bg-white/20 backdrop-blur text-xs font-bold">
           Learn more →
         </span>
       </Link>
@@ -632,12 +632,12 @@ export function FeedRightRail({
       if (!links.length) return null;
       return (
         <Card title={w.title}>
-          <ul className="space-y-1.5">
+          <ul className="space-y-0.5">
             {links.map((l, i) => (
               <li key={i}>
                 <Link
                   href={l.href}
-                  className="block truncate text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
+                  className="app-tap-row flex items-center truncate text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                 >
                   {l.label}
                 </Link>
@@ -662,7 +662,7 @@ export function FeedRightRail({
         {w.subtitle && (
           <p className="t-meta opacity-90 mt-1">{w.subtitle}</p>
         )}
-        <span className="app-tap-row inline-flex items-center mt-3 px-3.5 rounded-full bg-white/20 border border-white/40 text-[11px] font-extrabold">
+        <span className="app-tap-row inline-flex items-center mt-3 px-3.5 rounded-full bg-white/20 border border-white/40 text-xs font-extrabold">
           Learn more →
         </span>
       </Link>
@@ -704,10 +704,10 @@ export function FeedRightRail({
 
       {/* Footer links (always shown) */}
       {showFooter && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 px-1 pt-1 text-[11px] text-(--app-ink-3)">
-          <Link href="/privacy" className="hover:text-(--app-ink-2)">Privacy</Link>
-          <Link href="/terms" className="hover:text-(--app-ink-2)">Terms</Link>
-          <Link href="/refund" className="hover:text-(--app-ink-2)">Refunds</Link>
+        <div className="flex flex-wrap items-center gap-x-4 px-1 pt-1 text-xs text-(--app-ink-3)">
+          <Link href="/privacy" className="inline-flex min-h-9 items-center hover:text-(--app-ink-2)">Privacy</Link>
+          <Link href="/terms" className="inline-flex min-h-9 items-center hover:text-(--app-ink-2)">Terms</Link>
+          <Link href="/refund" className="inline-flex min-h-9 items-center hover:text-(--app-ink-2)">Refunds</Link>
           <span>© {new Date().getFullYear()} RevType</span>
         </div>
       )}

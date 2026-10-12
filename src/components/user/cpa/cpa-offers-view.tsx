@@ -130,7 +130,7 @@ export function CpaOffersView({
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              "app-press inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-semibold transition-colors",
+              "app-press inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-semibold transition-colors",
               tab === t.key ? "app-accent" : "text-(--app-ink-3) hover:text-(--app-ink)"
             )}
           >
@@ -138,7 +138,7 @@ export function CpaOffersView({
             {t.count != null && t.count > 0 && (
               <span
                 className={cn(
-                  "rounded-full px-1.5 text-[10px] tabular-nums",
+                  "rounded-full px-1.5 text-xs font-bold tabular-nums",
                   tab === t.key ? "bg-white/20 text-white" : "bg-(--app-surface-2) text-(--app-ink-3)"
                 )}
               >

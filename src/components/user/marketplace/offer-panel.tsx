@@ -255,13 +255,13 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                   <p className="text-sm font-bold text-white">
                     {o.buyer.name}
                     {o.isOwnOffer && (
-                      <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-(--app-cta)/20 text-(--app-accent-ink) font-bold">
+                      <span className="ml-2 text-[11px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-(--app-cta)/20 text-(--app-accent-ink) font-bold">
                         You
                       </span>
                     )}
                     <span
                       className={cn(
-                        "ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold",
+                        "ml-2 text-[11px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold",
                         o.status === "PENDING" &&
                           "bg-amber-500/15 text-amber-300",
                         o.status === "ACCEPTED" &&

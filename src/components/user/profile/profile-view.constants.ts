@@ -77,4 +77,4 @@ export const PLATFORM_META: Record<
 };
 
 export const inp =
-  "w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500";
+  "w-full min-h-11 px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-base sm:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500";

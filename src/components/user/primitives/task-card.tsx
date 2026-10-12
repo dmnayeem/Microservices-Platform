@@ -82,6 +82,11 @@ export type TaskGate = {
   remainingSlots?: number | null;
   /** The total limit itself, when the row carries it. */
   totalLimit?: number | null;
+  /** Per-member daily cap and what is left of it today (lib/task-list.ts). */
+  dailyLimit?: number | null;
+  remainingToday?: number | null;
+  dailyLimitReached?: boolean | null;
+  totalLimitReached?: boolean | null;
 };
 
 /**
@@ -180,15 +185,19 @@ export function TaskCard({
   const isLocked = status === "LOCKED";
   const isDone = status === "COMPLETED";
   const onCooldown = status === "COOLDOWN";
+  // `actionLabel` is the verb for a task the member can start ("Watch & Earn").
+  // It used to override EVERY state, so a task already submitted or half done
+  // still said "Watch & Earn" — the status label now wins once there is one.
   const label = planLock
     ? `${planLock.name} plan`
     : chainLocked
     ? "Locked"
-    : actionLabel ??
-    (isLocked
-      ? `Lvl ${requiredLevel ?? "?"}`
+    : isLocked
+      ? actionLabel ?? (requiredLevel ? `Lvl ${requiredLevel}` : "Locked")
       : isDone
-      ? "Done"
+      ? gate?.dailyLimitReached && !gate?.totalLimitReached
+        ? "Done today"
+        : "Done"
       : onCooldown
       ? cooldownText ?? "Cooldown"
       : status === "IN_PROGRESS"
@@ -201,7 +210,7 @@ export function TaskCard({
       ? "Revise →"
       : status === "REJECTED"
       ? "Rejected"
-      : "Start →");
+      : actionLabel ?? "Start →";
 
   const navigable =
     status === "AVAILABLE" ||
@@ -213,7 +222,9 @@ export function TaskCard({
 
   return (
     <div
-      className={cn("group app-card app-lift", isLocked && "opacity-60", className)}
+      // flex-col + h-full + mt-auto footer: cards in one grid row end level,
+      // so the reward/button line sits at the same height on every card.
+      className={cn("group app-card app-lift flex h-full flex-col", isLocked && "opacity-60", className)}
     >
       <div className="flex gap-3">
         {(thumbnail || icon) && (
@@ -236,15 +247,17 @@ export function TaskCard({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="t-card-title text-white truncate flex-1 min-w-0">
+            {/* Two lines, not one: a one-line truncate cut "Subscribe to … "
+                at 360px, and the half that was cut was what the task is. */}
+            <h3 className="t-card-title text-white line-clamp-2 wrap-break-word flex-1 min-w-0" title={title}>
               {title}
             </h3>
             {isDone && (
-              <Check className="w-4 h-4 shrink-0 text-(--app-in)" />
+              <Check className="w-5 h-5 shrink-0 text-(--app-in)" aria-label="Done" />
             )}
           </div>
           {description && (
-            <p className="t-meta text-(--app-ink-3) line-clamp-2 mt-1">
+            <p className="t-meta text-(--app-ink-2) line-clamp-2 mt-1">
               {description}
             </p>
           )}
@@ -267,6 +280,13 @@ export function TaskCard({
               </span>
             )}
             <TaskDeviceChips needs={deviceNeeds} />
+            {/* A repeatable task says how many of today's goes are used, so
+                "Done" after the first one never reads as "finished for good". */}
+            {!planLock && (gate?.dailyLimit ?? 0) > 1 && typeof gate?.remainingToday === "number" && (
+              <span className="app-chip app-chip-info tabular-nums">
+                🔁 {gate.dailyLimit! - gate.remainingToday} of {gate.dailyLimit} today
+              </span>
+            )}
           </div>
           {typeof gate?.completedCount === "number" && (
             <div className="mt-2.5">
@@ -286,7 +306,7 @@ export function TaskCard({
           biggest thing on the card after the title — by SIZE. It used to be
           amber 14px next to a purple 12px XP figure and an indigo button:
           three colours, one size, nothing leading. */}
-      <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-(--app-line)">
+      <div className="flex items-center justify-between gap-3 mt-auto pt-3 border-t border-(--app-line)">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           <span className="t-figure-sm inline-flex items-baseline gap-1 text-white whitespace-nowrap">
             <Coins className="w-4 h-4 self-center text-(--app-ink-3)" />+{reward}
@@ -304,7 +324,7 @@ export function TaskCard({
               ? { onClick: lockTap, type: "button" as const }
               : { onClick: onAction, disabled: isLocked || isDone || onCooldown })}
           className={cn(
-            "app-press app-tap-row shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 rounded-(--app-r-control) text-xs font-extrabold",
+            "app-press app-tap-row shrink-0 inline-flex items-center justify-center gap-1.5 px-4 min-w-26 rounded-(--app-r-control) text-sm font-extrabold whitespace-nowrap",
             STATUS_TONE[status]
           )}
         >

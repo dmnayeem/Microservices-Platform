@@ -240,7 +240,7 @@ export function EventsView() {
                               onClick={() => claim(ev, t.threshold)}
                               disabled={!t.reached || busy}
                               className={cn(
-                                "inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-bold",
+                                "app-press inline-flex min-h-10 items-center gap-1 px-3.5 py-1.5 rounded-md text-xs font-bold",
                                 t.reached
                                   ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                                   : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
@@ -277,7 +277,7 @@ export function EventsView() {
                         onClick={() => claim(ev)}
                         disabled={!canClaim || claiming === ev.id}
                         className={cn(
-                          "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold",
+                          "app-press app-tap-row inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold",
                           canClaim
                             ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                             : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"

@@ -164,7 +164,7 @@ export function BidPanel({
         </div>
         {high && (
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
+            <p className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3)">
               Current high bid
             </p>
             <p className="text-xl font-extrabold text-amber-300 tabular-nums">
@@ -195,7 +195,7 @@ export function BidPanel({
               <Crown className="w-3.5 h-3.5 text-amber-300" />
               {high.bidder.name}
               {isHighBidder && (
-                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 font-bold">
+                <span className="text-[11px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 font-bold">
                   You
                 </span>
               )}
@@ -310,7 +310,7 @@ export function BidPanel({
                   </span>
                   <span
                     className={cn(
-                      "text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded",
+                      "text-[11px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded",
                       b.status === "ACTIVE"
                         ? "bg-amber-500/15 text-amber-300"
                         : b.status === "WON"

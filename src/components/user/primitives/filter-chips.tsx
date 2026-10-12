@@ -38,7 +38,7 @@ export function FilterChips<T extends string>({
                 key={opt.value}
                 onClick={() => onChange(opt.value)}
                 className={cn(
-                  "shrink-0 px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                  "app-press min-h-11 shrink-0 px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                   active
                     ? "border-(--app-accent-edge) text-(--app-accent-ink)"
                     : "border-transparent text-(--app-ink-3) hover:text-(--app-ink)"
@@ -58,7 +58,8 @@ export function FilterChips<T extends string>({
               key={opt.value}
               onClick={() => onChange(opt.value)}
               className={cn(
-                "shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
+                // min-h-9 (36px): a chip strip is tapped constantly; ~30px missed often.
+                "app-press min-h-9 shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
                 active
                   ? "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white shadow-md shadow-(--app-cta)/25"
                   : "bg-(--app-surface-2) text-(--app-ink-2) border border-(--app-line)/60 hover:bg-(--app-surface-hover) hover:text-(--app-ink)"

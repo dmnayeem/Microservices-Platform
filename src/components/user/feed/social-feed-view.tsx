@@ -680,11 +680,13 @@ function FeedTab({
 
   return (
     <div className="space-y-4">
+      {/* Below the app header (4rem) and the sticky feed toolbar under it.
+          At `top-2` it stuck behind the header, so the pill was never seen. */}
       {hasNewActivity && (
-        <div className="sticky top-2 z-20 flex justify-center">
+        <div className="pointer-events-none sticky top-[calc(8.25rem+env(safe-area-inset-top))] z-20 flex justify-center">
           <button
             onClick={showNewActivity}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold shadow-lg hover:bg-(--app-cta) transition-colors"
+            className="pointer-events-auto app-press app-tap-row inline-flex items-center gap-1.5 px-5 rounded-full bg-(--app-cta) text-(--app-on-cta) text-sm font-bold shadow-lg hover:bg-(--app-cta) transition-colors"
           >
             <ArrowUp className="w-4 h-4" />
             New posts
@@ -752,7 +754,7 @@ function FeedTab({
             return (
               <Fragment key={post._k ?? post.id}>
                 {post._k && roundStarts.has(post._k) && (
-                  <div className="flex items-center gap-3 py-2 text-[11px] font-semibold text-(--app-ink-3)">
+                  <div className="flex items-center gap-3 py-2 text-xs font-semibold text-(--app-ink-3) text-center">
                     <span className="h-px flex-1 bg-(--app-line)" />
                     You&apos;ve seen everything new — here&apos;s more
                     <span className="h-px flex-1 bg-(--app-line)" />
@@ -781,13 +783,13 @@ function FeedTab({
             <button
               type="button"
               onClick={() => void loadMore()}
-              className="mx-auto block rounded-full border border-(--app-line) bg-(--app-surface) px-4 py-2 text-xs font-bold text-(--app-ink-2) hover:text-(--app-ink)"
+              className="app-press app-tap-row mx-auto flex items-center rounded-full border border-(--app-line) bg-(--app-surface) px-5 text-sm font-bold text-(--app-ink-2) hover:text-(--app-ink)"
             >
               Load more posts
             </button>
           )}
           {!hasMore && (
-            <p className="text-center text-[11px] text-(--app-ink-3) py-4">
+            <p className="text-center text-xs text-(--app-ink-3) py-4">
               You&apos;re all caught up.
             </p>
           )}
