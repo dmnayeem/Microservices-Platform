@@ -41,6 +41,8 @@ import {
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { DateField } from "@/components/ui/date-field";
 import { EmailComposer } from "./EmailComposer";
+import { NameTokenButton, PushPreview } from "@/components/admin/notifications/push-preview";
+import { personalize } from "@/lib/personalize";
 
 const NOTIFICATION_TYPES = [
   { value: "SYSTEM", label: "System", icon: AlertCircle, color: "text-gray-400" },
@@ -592,8 +594,13 @@ export function SendNotificationForm() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-medium text-slate-400">
+                <label className="flex items-center gap-2 text-xs font-medium text-slate-400">
                   Title <span className="text-red-400">*</span>
+                  <NameTokenButton
+                    onInsert={() =>
+                      setFormData({ ...formData, title: `${formData.title}${formData.title && !formData.title.endsWith(" ") ? " " : ""}{name}`.slice(0, 80) })
+                    }
+                  />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
                   {formData.title.length}/50
@@ -613,8 +620,13 @@ export function SendNotificationForm() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-medium text-slate-400">
+                <label className="flex items-center gap-2 text-xs font-medium text-slate-400">
                   Message <span className="text-red-400">*</span>
+                  <NameTokenButton
+                    onInsert={() =>
+                      setFormData({ ...formData, message: `${formData.message}${formData.message && !/\s$/.test(formData.message) ? " " : ""}{name}`.slice(0, 500) })
+                    }
+                  />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
                   {formData.message.length}/200
@@ -626,8 +638,8 @@ export function SendNotificationForm() {
                 onChange={(e) =>
                   setFormData({ ...formData, message: e.target.value })
                 }
-                placeholder="Enter notification message…"
-                rows={3}
+                placeholder={"Enter notification message…\nPress Enter for a new line, e.g.\n⚡ 100 minutes, 30 days — 90 Tk\n⚡ 30 minutes, 1 day — 20 Tk"}
+                rows={4}
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-none"
               />
             </div>
@@ -690,8 +702,8 @@ export function SendNotificationForm() {
               </label>
               <div className="rounded-xl border border-slate-800 bg-[#0b0b12] p-3">
                 <NotificationCard
-                  title={formData.title || "Your title appears here"}
-                  message={formData.message || "And the message, exactly as the user reads it."}
+                  title={personalize(formData.title || "Your title appears here", "Mahedi")}
+                  message={personalize(formData.message || "And the message, exactly as the user reads it.", "Mahedi")}
                   createdAtLabel="just now"
                   data={{
                     style: formData.style,
@@ -706,6 +718,18 @@ export function SendNotificationForm() {
                 The animation is in-app only. Gmail strips CSS animation, so the
                 email uses the same colour as a band, badge and button instead.
               </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Phone push preview
+              </label>
+              <PushPreview
+                title={formData.title}
+                message={formData.message}
+                imageUrl={formData.imageUrl || null}
+                enabled={formData.sendPush}
+              />
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">

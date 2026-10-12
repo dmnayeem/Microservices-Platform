@@ -5,6 +5,7 @@ import { sendNotificationEmail } from "@/lib/email";
 import { NotificationType } from "@/generated/prisma/client";
 import { getSetting } from "@/lib/system-settings";
 import { emailCategoryForNotificationType, type EmailCategoryKey } from "@/lib/email-categories";
+import { firstNameOf, hasNameToken, personalize } from "@/lib/personalize";
 
 /**
  * Platform-wide notification switches (admin → Settings → Notifications).
@@ -94,15 +95,25 @@ export function isWebPushConfigured(): boolean {
  */
 export async function webPushToUsers(
   userIds: string[],
-  msg: { title: string; body: string; url?: string }
+  msg: {
+    title: string;
+    body: string;
+    url?: string;
+    /** Big picture under the text (Android "rich" notification). */
+    image?: string | null;
+  }
 ): Promise<{ devices: number; delivered: number }> {
   const out = { devices: 0, delivered: 0 };
   try {
     if (userIds.length === 0 || !ensureVapid() || !(await pushAllowed())) return out;
     const optedIn = await prisma.user.findMany({
       where: { id: { in: userIds }, pushNotifications: true },
-      select: { id: true },
+      select: { id: true, name: true, username: true },
     });
+    // `{name}` → each member's own first name ("Rafi, only for you").
+    const nameOf = new Map(optedIn.map((u) => [u.id, firstNameOf(u)]));
+    const personal = hasNameToken(msg.title, msg.body);
+    const image = msg.image ? absoluteUrl(msg.image) : undefined;
     if (optedIn.length === 0) return out;
     const subs = await prisma.pushSubscription.findMany({
       where: { userId: { in: optedIn.map((u) => u.id) } },
@@ -110,8 +121,16 @@ export async function webPushToUsers(
     });
     out.devices = subs.length;
     const counts = await unreadCounts(optedIn.map((u) => u.id));
-    const payloadFor = (userId: string) =>
-      JSON.stringify({ title: msg.title, body: msg.body, url: msg.url ?? "/", badgeCount: counts.get(userId) || undefined });
+    const payloadFor = (userId: string) => {
+      const name = nameOf.get(userId) ?? "Friend";
+      return JSON.stringify({
+        title: personal ? personalize(msg.title, name) : msg.title,
+        body: personal ? personalize(msg.body, name) : msg.body,
+        url: msg.url ?? "/",
+        ...(image ? { image } : {}),
+        badgeCount: counts.get(userId) || undefined,
+      });
+    };
     // A few at a time: push services rate-limit a burst from one sender.
     const PARALLEL = 20;
     for (let i = 0; i < subs.length; i += PARALLEL) {
@@ -309,4 +328,15 @@ export async function notifyUser(opts: NotifyOptions) {
   }
 
   return notification;
+}
+
+/**
+ * The push image must be a full URL: the notification is drawn by the phone,
+ * not by a page on our origin. A stored "/api/media/…" path gets the site's
+ * public address in front.
+ */
+function absoluteUrl(u: string): string | undefined {
+  if (/^https:\/\//i.test(u)) return u;
+  const base = (process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || "https://revtype.com").replace(/\/+$/, "");
+  return u.startsWith("/") && base ? `${base}${u}` : undefined;
 }

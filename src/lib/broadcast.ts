@@ -46,6 +46,7 @@ import { unsubscribeUrls } from "@/lib/unsubscribe";
 import { sendPushToUsers, isOneSignalConfigured } from "@/lib/onesignal";
 import { isWebPushConfigured, webPushToUsers } from "@/lib/notify";
 import type { Prisma, NotificationType } from "@/generated/prisma/client";
+import { firstNameOf, hasNameToken, personalize } from "@/lib/personalize";
 
 export type BroadcastChannels = { inApp: boolean; push: boolean; email: boolean };
 export type BroadcastTargetKind = "ALL" | "SEGMENT" | "PACKAGE" | "SPECIFIC";
@@ -448,14 +449,28 @@ export async function deliverBroadcast(
         ...(b.actionLabel ? { actionLabel: b.actionLabel } : {}),
       };
 
+      // `{name}` → each member's own first name, written into their row.
+      const names = hasNameToken(b.title, b.message)
+        ? new Map(
+            (
+              await prisma.user.findMany({
+                where: { id: { in: pending.map((r) => r.userId) } },
+                select: { id: true, name: true, username: true },
+              })
+            ).map((u) => [u.id, firstNameOf(u)])
+          )
+        : null;
       await prisma.notification.createMany({
-        data: pending.map((r) => ({
-          userId: r.userId,
-          type: b.type,
-          title: b.title,
-          message: b.message,
-          data: data as Prisma.InputJsonValue,
-        })),
+        data: pending.map((r) => {
+          const n = names?.get(r.userId) ?? "Friend";
+          return {
+            userId: r.userId,
+            type: b.type,
+            title: names ? personalize(b.title, n) : b.title,
+            message: names ? personalize(b.message, n) : b.message,
+            data: data as Prisma.InputJsonValue,
+          };
+        }),
       });
       // Marked after the write, never before: a crash in between re-sends to
       // that chunk, which is a duplicate notification — annoying. The other
@@ -498,6 +513,7 @@ export async function deliverBroadcast(
           title: b.title,
           body: b.message,
           url: b.actionUrl ?? undefined,
+          image: b.imageUrl,
         });
       } else {
         const r = await sendPushToUsers(
@@ -657,6 +673,17 @@ async function deliverEmails(
       select: { id: true, email: true, userId: true },
     });
     if (slice.length === 0) break;
+    // `{name}` in the subject / text → this recipient's first name.
+    const emailNames = hasNameToken(opts.subject, opts.body, opts.html)
+      ? new Map(
+          (
+            await prisma.user.findMany({
+              where: { id: { in: slice.map((r) => r.userId) } },
+              select: { id: true, name: true, username: true },
+            })
+          ).map((u) => [u.id, firstNameOf(u)])
+        )
+      : null;
 
     await prisma.broadcastRecipient.updateMany({
       where: { id: { in: slice.map((r) => r.id) } },
@@ -665,7 +692,12 @@ async function deliverEmails(
 
     const results = await Promise.allSettled(
       slice.map((r) =>
-        sendNotificationEmail(r.email as string, opts.subject, opts.body, opts.actionUrl ?? undefined, {
+        sendNotificationEmail(
+          r.email as string,
+          emailNames ? personalize(opts.subject, emailNames.get(r.userId) ?? "Friend") : opts.subject,
+          emailNames ? personalize(opts.body, emailNames.get(r.userId) ?? "Friend") : opts.body,
+          opts.actionUrl ?? undefined,
+          {
           transactional: !!opts.important,
           // A broadcast is an admin sending by hand — never blocked by the
           // automatic-email switches (it has its own caps and opt-out).
@@ -674,7 +706,7 @@ async function deliverEmails(
           kicker: opts.kicker ?? undefined,
           imageUrl: opts.imageUrl ?? undefined,
           actionLabel: opts.actionLabel ?? undefined,
-          html: opts.html,
+          html: emailNames && opts.html ? personalize(opts.html, emailNames.get(r.userId) ?? "Friend") : opts.html,
           preheader: opts.preheader,
           // Marketing mail carries a one-click unsubscribe (footer link +
           // List-Unsubscribe headers). A service notice does not: it ignores
