@@ -9,6 +9,7 @@ import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
 import { clampRewardCooldown } from "@/lib/ad-billing";
 import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
 import { checkHtmlAd, optInt } from "@/lib/ad-networks/validate";
+import { sizeFromTag } from "@/lib/ad-sizes";
 
 const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM", "VAST"];
 const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
@@ -128,9 +129,7 @@ export async function POST(request: NextRequest) {
     mobileHeight: body.type === "HTML" && body.mobileHtmlContent ? optInt(body.mobileHeight, 2000) ?? null : null,
     freqCapPerDay: optInt(body.freqCapPerDay, 1000) ?? null,
     freqMinGapMinutes: optInt(body.freqMinGapMinutes, 10_080) ?? null,
-    size: body.size ? String(body.size) : "responsive",
-    width: Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null,
-    height: Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null,
+    ...htmlTagSize(body),
     weight: Number.isFinite(Number(body.weight)) ? Math.max(1, Number(body.weight)) : 10,
     priority: Number.isFinite(Number(body.priority)) ? Math.min(100, Math.max(0, Math.round(Number(body.priority)))) : 0,
     skipAfterSeconds: parseSeconds(body.skipAfterSeconds, 0, 60) ?? null,
@@ -219,4 +218,19 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ ads: created, count: created.length });
+}
+
+/**
+ * The ad's size. An HTML ad left on "responsive" (or no size) takes the size
+ * its network tag declares — networks give one code with its size inside it.
+ */
+function htmlTagSize(body: Record<string, unknown>): { size: string; width: number | null; height: number | null } {
+  const size = body.size ? String(body.size) : "responsive";
+  const width = Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null;
+  const height = Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null;
+  if (body.type === "HTML" && size === "responsive") {
+    const tag = sizeFromTag(typeof body.htmlContent === "string" ? body.htmlContent : null);
+    if (tag) return tag;
+  }
+  return { size, width, height };
 }

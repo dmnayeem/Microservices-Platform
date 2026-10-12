@@ -44,7 +44,7 @@ import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AD_PLACEMENTS, placementLabel, placementSizeKey, placementSpec } from "@/lib/ad-placements";
 import { HTML_AD_NETWORKS } from "@/lib/ad-networks/registry";
-import { AD_SIZES, resolveAdSize } from "@/lib/ad-sizes";
+import { AD_SIZES, resolveAdSize, sizeFromTag } from "@/lib/ad-sizes";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 import {
   HtmlNetworkFields,
@@ -2745,6 +2745,16 @@ function AdModal({
 
   const [width, setWidth] = useState(String(ad?.width ?? ""));
   const [height, setHeight] = useState(String(ad?.height ?? ""));
+  // Pasting a network's code fills the size it declares (one code, one size).
+  const onHtmlChange = (v: string) => {
+    setHtmlContent(v);
+    const tag = sizeFromTag(v);
+    if (tag) {
+      setSize(tag.size);
+      setWidth(String(tag.width));
+      setHeight(String(tag.height));
+    }
+  };
   const [weight, setWeight] = useState(String(ad?.weight ?? 10));
   const [priority, setPriority] = useState(String(ad?.priority ?? 0));
   // Full-screen timing. Empty skip = the space's setting; empty show = until closed.
@@ -2905,7 +2915,7 @@ function AdModal({
             ) : (
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Network snippet (HTML / script)</label>
-                <textarea value={htmlContent} onChange={(e) => setHtmlContent(e.target.value)} rows={4} className={inputCls} placeholder="<script>…</script> from any ad network" />
+                <textarea value={htmlContent} onChange={(e) => onHtmlChange(e.target.value)} rows={4} className={inputCls} placeholder="<script>…</script> from any ad network" />
               </div>
             )}
           </div>
@@ -2936,7 +2946,7 @@ function AdModal({
             <label className="block text-xs text-slate-400 mb-1">
               HTML content (scripts / ad-network tags run in a sandboxed frame)
             </label>
-            <textarea value={htmlContent} onChange={(e) => setHtmlContent(e.target.value)} rows={4} className={inputCls} placeholder="<div>...</div> or <script>…</script>" />
+            <textarea value={htmlContent} onChange={(e) => onHtmlChange(e.target.value)} rows={4} className={inputCls} placeholder="<div>...</div> or <script>…</script>" />
           </div>
         ) : creative === "VIDEO" ? (
           <div>

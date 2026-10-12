@@ -30,6 +30,33 @@ const BY_KEY = new Map(AD_SIZES.map((s) => [s.key, s]));
  * Resolve the effective pixel dimensions for an ad. Returns `null` for the
  * responsive/full-width case (renderer should stretch to container width).
  */
+/**
+ * The size an ad network's tag declares for itself. Networks hand out ONE
+ * code with its size inside it — Adsterra's `atOptions = { 'width' : 300,
+ * 'height' : 250 }`, or an `<iframe width="300" height="250">` / `<ins
+ * data-width>` — so the admin should not have to pick it again. Returns the
+ * preset key when one matches (300×250 → "medium"), else "custom" + w/h.
+ */
+export function sizeFromTag(html: string | null | undefined): { size: string; width: number; height: number } | null {
+  if (!html) return null;
+  const num = (re: RegExp) => {
+    const m = html.match(re);
+    const n = m ? Number(m[1]) : NaN;
+    return Number.isFinite(n) && n >= 10 && n <= 2000 ? Math.round(n) : null;
+  };
+  const w =
+    num(/(?<![-\w])["']?width["']?\s*:\s*["']?(\d{2,4})/i) ??
+    num(/data-width\s*=\s*["']?(\d{2,4})/i) ??
+    num(/<iframe[^>]*\swidth\s*=\s*["']?(\d{2,4})/i);
+  const h =
+    num(/(?<![-\w])["']?height["']?\s*:\s*["']?(\d{2,4})/i) ??
+    num(/data-height\s*=\s*["']?(\d{2,4})/i) ??
+    num(/<iframe[^>]*\sheight\s*=\s*["']?(\d{2,4})/i);
+  if (!w || !h) return null;
+  const preset = AD_SIZES.find((s) => s.w === w && s.h === h);
+  return { size: preset?.key ?? "custom", width: w, height: h };
+}
+
 export function resolveAdSize(
   size?: string | null,
   width?: number | null,

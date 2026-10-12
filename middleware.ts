@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { authConfig, REFERRAL_COOKIE } from "@/lib/auth/config";
 import { publicHost } from "@/lib/public-origin";
+import { adFrameHost, adFrameOrigin } from "@/lib/ad-networks/frame";
 import { isNoindexPath } from "@/lib/seo/indexing-policy";
 
 /**
@@ -53,6 +54,24 @@ export default async function middleware(
   // the callback to the bare domain — the sign-in cookies never matched. 308
   // keeps the method and body, so a postback that hits www still arrives.
   const host = publicHost(request);
+
+  // Network ad code runs on AD_FRAME_ORIGIN (ads.<domain>). That is another
+  // ORIGIN but the same SITE, so the browser attaches the viewer's SameSite=Lax
+  // session cookie to anything an ad script sends here — a "simple" text/plain
+  // POST needs no CORS preflight and would act as the viewer. Nothing the app
+  // serves is meant for that origin, so: the frame host serves only the frame
+  // document, and a request FROM the frame origin is refused outright.
+  const frameHost = adFrameHost();
+  if (frameHost) {
+    if (host === frameHost && !request.nextUrl.pathname.startsWith("/api/ads/frame/")) {
+      return new NextResponse(null, { status: 404 });
+    }
+    const from = request.headers.get("origin");
+    if (from && from === adFrameOrigin()) {
+      return new NextResponse(null, { status: 403 });
+    }
+  }
+
   if (host.startsWith("www.")) {
     const target = new URL(
       request.nextUrl.pathname + request.nextUrl.search,

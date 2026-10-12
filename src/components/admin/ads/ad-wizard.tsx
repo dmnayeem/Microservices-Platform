@@ -20,7 +20,7 @@ import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { AD_PLACEMENTS, placementSpec } from "@/lib/ad-placements";
 import { HTML_AD_NETWORKS } from "@/lib/ad-networks/registry";
 import { checkHtmlAd } from "@/lib/ad-networks/validate";
-import { AD_SIZES } from "@/lib/ad-sizes";
+import { AD_SIZES, sizeFromTag } from "@/lib/ad-sizes";
 import { type AdTargeting } from "@/lib/ad-targeting";
 import { DateField } from "@/components/ui/date-field";
 import {
@@ -483,7 +483,28 @@ export function AdWizard({
                   <label className="block text-xs text-slate-400 mb-1">
                     HTML content (scripts / ad-network tags run in a sandboxed frame)
                   </label>
-                  <textarea value={htmlContent} onChange={(e) => setHtmlContent(e.target.value)} rows={4} className={inputCls} placeholder="<div>...</div> or <script>…</script>" />
+                  <textarea
+                    value={htmlContent}
+                    onChange={(e) => {
+                      setHtmlContent(e.target.value);
+                      // The network's code carries its own size — use it.
+                      const tag = sizeFromTag(e.target.value);
+                      if (tag) {
+                        setSize(tag.size);
+                        setWidth(String(tag.width));
+                        setHeight(String(tag.height));
+                      }
+                    }}
+                    rows={4}
+                    className={inputCls}
+                    placeholder="<div>...</div> or <script>…</script>"
+                  />
+                  {sizeFromTag(htmlContent) && (
+                    <p className="mt-1 text-[11px] text-emerald-300">
+                      Size read from the code: {sizeFromTag(htmlContent)!.width}×{sizeFromTag(htmlContent)!.height}. No mobile
+                      version needed — leave that box empty.
+                    </p>
+                  )}
                   <div className="mt-2">
                     <HtmlNetworkFields
                       value={netFields}

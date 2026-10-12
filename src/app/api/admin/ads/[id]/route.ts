@@ -9,6 +9,7 @@ import { clampRewardCooldown } from "@/lib/ad-billing";
 import { AdReviewError, adminSetStatus, materialChanges } from "@/lib/ad-review";
 import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
 import { checkHtmlAd, optInt } from "@/lib/ad-networks/validate";
+import { sizeFromTag } from "@/lib/ad-sizes";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -78,6 +79,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     data.width = Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null;
   if (body.height !== undefined)
     data.height = Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null;
+  // An HTML ad on "responsive" takes the size its network tag declares.
+  {
+    const type = (data.type as string | undefined) ?? existing.type;
+    const size = (data.size as string | undefined) ?? existing.size;
+    const html = data.htmlContent !== undefined ? (data.htmlContent as string | null) : existing.htmlContent;
+    if (type === "HTML" && (!size || size === "responsive")) {
+      const tag = sizeFromTag(html);
+      if (tag) {
+        data.size = tag.size;
+        data.width = tag.width;
+        data.height = tag.height;
+      }
+    }
+  }
   if (body.weight !== undefined) data.weight = Math.max(1, Number(body.weight) || 10);
   if (body.priority !== undefined) data.priority = Math.min(100, Math.max(0, Math.round(Number(body.priority) || 0)));
   {

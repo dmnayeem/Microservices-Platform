@@ -28,6 +28,8 @@ services:
       # Which build to serve. deploy.sh writes this into .env on every
       # switch, so a plain `docker compose up -d` always picks the live one.
       NEXT_DIST_DIR: ${NEXT_DIST_DIR:-.next}
+      # Origin network ad frames run on (deploy.sh: ads.$APP_DOMAIN by default).
+      AD_FRAME_ORIGIN: ${AD_FRAME_ORIGIN:-}
     command: ["npm", "run", "start"]
     expose: ["3000"]
     security_opt: ["no-new-privileges:true"]
@@ -55,6 +57,7 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       NODE_OPTIONS: "--max-old-space-size=4096"
       NEXT_DIST_DIR: ${BUILD_DIST_DIR:-.next-build}
+      AD_FRAME_ORIGIN: ${AD_FRAME_ORIGIN:-}
     # Lower CPU weight than the live app: full speed when the site is idle,
     # yields when real users are being served.
     cpu_shares: 256

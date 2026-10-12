@@ -79,6 +79,31 @@
 	}
 }
 
+# Third-party ad frames ONLY (AD_FRAME_ORIGIN, src/lib/ad-networks/frame.ts).
+# Network ad code (Adsterra...) needs cookies / localStorage, which a locked
+# srcDoc frame cannot give it, so its ads stayed blank. Here it gets an origin
+# of its own. Exactly one path is served; the app itself is never reachable on
+# this host, and middleware refuses any request this origin sends to the app.
+ads.{$APP_DOMAIN} {
+	# Never in search results. Every response (frame, 404) says noindex; no
+	# robots.txt Disallow on purpose - a blocked crawler never sees the header.
+	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+
+	handle /api/ads/frame/* {
+		reverse_proxy app:3000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Host {host}
+		}
+	}
+	handle {
+		respond 404
+	}
+	request_body {
+		max_size 1MB
+	}
+	header -Server
+}
+
 # Amazon SNS -> SES bounce/complaint webhook ONLY.
 # DNS-only (grey cloud) host: Cloudflare's Bot Fight Mode answers Amazon SNS
 # with a JS challenge, which a server can't solve, and Free plans can't exempt

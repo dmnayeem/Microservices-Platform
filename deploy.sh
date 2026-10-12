@@ -25,6 +25,11 @@ secs() { echo $(( $(date +%s) - $1 )); }
 set -a; source ./.env; set +a
 : "${APP_DOMAIN:?APP_DOMAIN missing from .env}"
 : "${DATABASE_URL:?DATABASE_URL missing from .env}"
+# Network ads run on their own origin (Caddy serves ads.$APP_DOMAIN). A value
+# in .env wins; otherwise it follows the domain. Set it to "off" to fall back
+# to the locked srcDoc frame.
+export AD_FRAME_ORIGIN="${AD_FRAME_ORIGIN:-https://ads.$APP_DOMAIN}"
+if [[ "$AD_FRAME_ORIGIN" == off ]]; then export AD_FRAME_ORIGIN=""; fi
 
 STATE=.deploy-state; touch "$STATE"; set -a; source "$STATE"; set +a
 CURRENT="${CURRENT_DIST:-}"; PREVIOUS="${PREVIOUS_DIST:-}"
