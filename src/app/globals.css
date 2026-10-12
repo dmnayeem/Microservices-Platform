@@ -2678,8 +2678,8 @@ html[data-theme="light"] {
      thumbed, so the floor stays. */
   @media (min-width: 768px) and (pointer: fine) {
     .app-sidebar .app-nav-item {
-      min-height: 2.5rem;
-      padding: 0.625rem 0.75rem;
+      min-height: 2.25rem;
+      padding: 0.4375rem 0.75rem;
     }
   }
   .app-nav-item:hover {

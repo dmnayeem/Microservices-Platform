@@ -162,7 +162,7 @@ export function EarningHub({ user, initialTasks, hiddenPaths }: EarningHubProps)
         <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) mb-2 px-1">
           Quick Access
         </p>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-8 md:grid-cols-[repeat(auto-fit,minmax(4.25rem,1fr))] gap-2">
           {quickAccess.map((item) => (
             <Link
               key={item.name}
@@ -323,7 +323,7 @@ function TasksTab({
       )}
 
       {!loading && tasks.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <TaskCard
               key={t.id}

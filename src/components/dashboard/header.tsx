@@ -319,7 +319,7 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
               the points pill that already goes there, and the theme toggle is
               a preference rather than an action — both now live in the account
               menu, which is where a phone app puts them. */}
-          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5 lg:gap-2">
             {/* The cluster's order, and which optional controls show, is
                 admin-edited (Settings → Navigation → Header). The account
                 menu is not in that list: it is always last. */}
@@ -383,7 +383,7 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
                   streak === 1 ? "day" : "days"
                 }`}
                 title={`${streak}-day streak`}
-                className="app-press app-tap-row hidden md:inline-flex items-center gap-1.5 px-3 rounded-full bg-(--app-warn-soft) border border-(--app-warn-line) text-(--app-warn)"
+                className="app-press app-tap-row hidden md:inline-flex items-center gap-1.5 px-3 rounded-(--app-r-control) bg-(--app-warn-soft) border border-(--app-warn-line) text-(--app-warn)"
               >
                 <Flame className="w-3.5 h-3.5 shrink-0" aria-hidden />
                 <span className="text-sm font-extrabold tabular-nums leading-none">

@@ -140,7 +140,7 @@ function Card({
   return (
     <section className="app-card">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="t-section text-(--app-ink) inline-flex items-center gap-2">
+        <h3 className="t-section xl:text-base text-(--app-ink) inline-flex items-center gap-2">
           {icon}
           {title}
         </h3>
@@ -784,7 +784,7 @@ function RailGroup({
   if (!showHeading) return <div className="space-y-3">{children}</div>;
 
   return (
-    <section>
+    <section className="has-[>div:empty]:hidden">
       {group.collapsible ? (
         <button
           type="button"

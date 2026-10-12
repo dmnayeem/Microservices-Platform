@@ -337,7 +337,7 @@ export default async function DashboardPage() {
       {/* Quick actions — compact chips (no cramped 2-up on phones) */}
       <div>
         <p className="t-eyebrow text-(--app-ink-3) mb-2.5 px-1">Quick Access</p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 lg:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2 lg:gap-3">
           {[
             ...QUICK_ACTIONS,
             ...(isAdvertiser
@@ -349,12 +349,12 @@ export default async function DashboardPage() {
             <Link
               key={qa.label}
               href={qa.href}
-              className="group app-card app-press app-lift flex flex-col items-center justify-center gap-2 p-3"
+              className="group app-card app-press app-lift flex flex-col items-center justify-center gap-2 p-3 lg:flex-row lg:justify-start lg:gap-3 lg:p-3.5"
             >
               <div className="app-icon">
                 <qa.icon className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-(--app-ink) text-center leading-tight">
+              <span className="text-[11px] lg:text-sm font-bold text-(--app-ink-2) group-hover:text-(--app-ink) text-center lg:text-left leading-tight">
                 {qa.label}
               </span>
             </Link>
@@ -365,15 +365,15 @@ export default async function DashboardPage() {
       {/* Explore the platform — surfaces every earning + spending surface */}
       <div>
         <p className="t-eyebrow text-(--app-ink-3) mb-2.5 px-1">Explore</p>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 lg:gap-3">
           {EXPLORE.filter((e) => shows(e.href)).map((e) => (
             <Link
               key={e.label}
               href={e.href}
-              className="group app-card app-press app-lift app-tap-row flex items-center gap-2 p-2.5"
+              className="group app-card app-press app-lift app-tap-row flex items-center gap-2 p-2.5 lg:gap-2.5 lg:p-3"
             >
               <e.icon className="w-4 h-4 shrink-0 text-(--app-ink-3)" />
-              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-(--app-ink) truncate min-w-0">
+              <span className="text-[11px] lg:text-[13px] font-bold text-(--app-ink-2) group-hover:text-(--app-ink) truncate min-w-0">
                 {e.label}
               </span>
             </Link>
@@ -386,6 +386,9 @@ export default async function DashboardPage() {
         <DashboardAd userId={session.user.id} />
       </Suspense>
 
+      {/* Desktop (xl): Recent Activity and Available Tasks side by side —
+          stacked, each was a 1,100px-wide card holding a short list. */}
+      <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
       {/* Recent activity (real last-5 transactions) */}
       <section className="app-card">
         <div className="flex items-center justify-between gap-2 mb-3">
@@ -450,7 +453,7 @@ export default async function DashboardPage() {
             description="Check back soon for new earning opportunities!"
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
             {availableTasks.map((t) => (
               <Link
                 key={t.id}
@@ -483,6 +486,7 @@ export default async function DashboardPage() {
           </div>
         )}
       </section>
+      </div>
     </div>
   );
 }
