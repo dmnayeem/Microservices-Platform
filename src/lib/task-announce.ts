@@ -28,6 +28,8 @@ type AnnounceTask = {
   title: string;
   description: string;
   pointsReward: number;
+  /** Shown as the push's big picture and the in-app card image. */
+  thumbnailUrl?: string | null;
   status: string;
   hidden: boolean;
   startsAt: Date | null;
@@ -98,10 +100,14 @@ export async function announceTask(
     const blurb = plain(task.description).slice(0, 140);
     const reward = `Earn ${task.pointsReward.toLocaleString()} points`;
 
+    // Addressed to each member by name, with the task's picture under it —
+    // the rich notification shape (lib/personalize + push `image`).
     const b = await createBroadcast({
       createdById: actorId,
-      title: `New task: ${task.title}`.slice(0, 120),
-      message: blurb ? `${reward} — ${blurb}` : `${reward}. Open it now.`,
+      title: `🔔 {name}, a new task for you: ${task.title}`.slice(0, 120),
+      message: blurb ? `⚡ ${reward}
+${blurb}` : `⚡ ${reward}. Open it now.`,
+      imageUrl: task.thumbnailUrl ?? null,
       type: "TASK",
       emailSubject: `New task: ${task.title}`.slice(0, 150),
       actionUrl: `/tasks/${task.id}`,
