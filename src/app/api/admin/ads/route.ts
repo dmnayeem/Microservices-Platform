@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
     brandName: body.brandName ? String(body.brandName) : null,
     brandLogo: body.brandLogo ? String(body.brandLogo) : null,
     ctaLabel: body.ctaLabel ? String(body.ctaLabel) : null,
+    description: body.description ? String(body.description).trim().slice(0, 500) || null : null,
     promotedPostId: body.promotedPostId ? String(body.promotedPostId) : null,
     targeting:
       (normalizeTargeting((body.targeting ?? {}) as AdTargeting) as

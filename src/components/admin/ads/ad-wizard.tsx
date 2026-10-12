@@ -122,6 +122,7 @@ export function AdWizard({
   const [format, setFormat] = useState("BANNER");
   const [brandName, setBrandName] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
+  const [description, setDescription] = useState("");
   const [brandLogo, setBrandLogo] = useState("");
   const [headline, setHeadline] = useState("");
 
@@ -235,6 +236,7 @@ export function AdWizard({
         brandName,
         brandLogo,
         ctaLabel,
+        description,
         targeting,
       };
       const res = await fetch("/api/admin/ads", {
@@ -645,26 +647,37 @@ export function AdWizard({
                 )}
               </div>
 
-              {format === "NATIVE" && (
+              {(format === "NATIVE" || creative === "IMAGE" || creative === "VIDEO") && (
                 <div className="rounded-lg border border-slate-800 p-3 space-y-2.5">
-                  <p className="text-xs font-bold text-slate-400">Native creative</p>
+                  <p className="text-xs font-bold text-slate-400">
+                    {format === "NATIVE" ? "Native creative" : "Text on the ad (all optional)"}
+                  </p>
+                  {format !== "NATIVE" && (
+                    <p className="text-[11px] text-slate-500 -mt-1.5">
+                      Leave everything empty for an image-only ad — the whole image is the click. Fill only what you want shown.
+                    </p>
+                  )}
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Title (optional)</label>
+                    <textarea value={headline} onChange={(e) => setHeadline(e.target.value)} rows={2} className={inputCls} placeholder="What are you promoting?" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Description (optional)</label>
+                    <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={500} className={inputCls} placeholder="One or two lines under the title" />
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Brand name</label>
+                      <label className="block text-xs text-slate-400 mb-1">Brand name (optional)</label>
                       <input value={brandName} onChange={(e) => setBrandName(e.target.value)} className={inputCls} placeholder="e.g. NordVPN" />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">CTA label</label>
-                      <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} className={inputCls} placeholder="Learn More" />
+                      <label className="block text-xs text-slate-400 mb-1">Button text (optional)</label>
+                      <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} className={inputCls} placeholder="e.g. Learn More — empty = no button" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Brand logo</label>
+                    <label className="block text-xs text-slate-400 mb-1">Icon / brand logo (optional)</label>
                     <ImageUploadField value={brandLogo} onChange={setBrandLogo} previewSize="square" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Headline / ad copy</label>
-                    <textarea value={headline} onChange={(e) => setHeadline(e.target.value)} rows={3} className={inputCls} placeholder="What are you promoting?" />
                   </div>
                 </div>
               )}

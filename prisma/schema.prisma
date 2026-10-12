@@ -970,6 +970,9 @@ model Ad {
   brandName         String? // shown as author name
   brandLogo         String? // author avatar URL
   ctaLabel          String? // CTA button label (e.g. "Learn More")
+  /// Optional line of text under the title. Like the title, icon and button,
+  /// shown only when the admin wrote one — an image-only ad is just the image.
+  description       String?              @db.Text
   // Promote-a-real-post: when set, the native ad renders this post + its author
   promotedPostId    String?
   promotedPost      Post?                @relation("PostAds", fields: [promotedPostId], references: [id], onDelete: SetNull)
