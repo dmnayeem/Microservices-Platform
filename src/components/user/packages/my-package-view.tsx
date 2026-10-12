@@ -194,7 +194,7 @@ export function MyPackageView({
             <Crown className="w-7 h-7" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-(--app-ink-2)">
+            <p className="t-meta uppercase tracking-wider font-bold text-(--app-ink-2)">
               Current Plan
             </p>
             <p className="text-3xl font-extrabold text-white">
@@ -229,7 +229,7 @@ export function MyPackageView({
               key={t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                "inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
+                "app-press inline-flex min-h-11 items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
                 isActive
                   ? "text-white border-(--app-accent-edge)"
                   : "text-(--app-ink-3) border-transparent hover:text-(--app-ink)"
@@ -238,7 +238,7 @@ export function MyPackageView({
               <t.icon className="w-4 h-4" />
               {t.label}
               {t.key === "history" && subscriptions.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-(--app-surface-2) text-(--app-ink-2) tabular-nums">
+                <span className="px-1.5 py-0.5 rounded-full text-[11px] bg-(--app-surface-2) text-(--app-ink-2) tabular-nums">
                   {subscriptions.length}
                 </span>
               )}
@@ -262,7 +262,7 @@ export function MyPackageView({
           <button
             onClick={cancelPending}
             disabled={busy}
-            className="shrink-0 px-3 py-1.5 rounded-lg bg-(--app-surface-2) text-xs font-bold text-(--app-ink-2) hover:text-red-400 disabled:opacity-50"
+            className="app-press app-tap-row shrink-0 px-3 rounded-lg bg-(--app-surface-2) text-xs font-bold text-(--app-ink-2) hover:text-red-400 disabled:opacity-50"
           >
             Withdraw request
           </button>
@@ -463,7 +463,7 @@ function OverviewTab({
           <button
             onClick={onCancelClick}
             disabled={busy}
-            className="w-full py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-red-500/15 hover:text-red-400 text-(--app-ink-3) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+            className="app-press w-full min-h-11 py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-red-500/15 hover:text-red-400 text-(--app-ink-2) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
           >
             <XCircle className="w-4 h-4" />
             Cancel auto-renew
@@ -473,14 +473,14 @@ function OverviewTab({
           <button
             onClick={onTurnOn}
             disabled={busy}
-            className="w-full py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-emerald-500/15 hover:text-emerald-400 text-(--app-ink-3) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+            className="app-press w-full min-h-11 py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-emerald-500/15 hover:text-emerald-400 text-(--app-ink-2) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
           >
             <RefreshCw className="w-4 h-4" />
             Turn on auto-renew
           </button>
         )}
         {hasActivePaidSubscription && !isFree && (
-          <p className="text-[11px] text-center text-(--app-ink-3)">
+          <p className="t-meta text-center text-(--app-ink-2)">
             {autoRenew
               ? "Auto-renew is on: at expiry the plan renews from your cash balance (never points). If there is not enough cash, it simply ends."
               : "Auto-renew is off: the plan ends on its expiry date."}
@@ -532,7 +532,7 @@ function OverviewTab({
                   {t}
                 </span>
                 {isCurrent && (
-                  <span className="ml-auto px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider bg-(--app-cta) text-(--app-on-cta) font-bold">
+                  <span className="ml-auto px-1.5 py-0.5 rounded text-[11px] uppercase tracking-wide bg-(--app-cta) text-(--app-on-cta) font-bold">
                     Current
                   </span>
                 )}
@@ -590,17 +590,17 @@ function HistoryTab({
                   {s.packageTier}
                 </p>
                 {isCurrent && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider bg-emerald-500/20 text-emerald-400 font-bold">
+                  <span className="px-1.5 py-0.5 rounded text-[11px] uppercase tracking-wide bg-emerald-500/20 text-emerald-400 font-bold">
                     Active
                   </span>
                 )}
                 {s.autoRenew && (
-                  <span className="text-[10px] text-(--app-accent-ink)">
+                  <span className="t-meta text-(--app-accent-ink)">
                     · auto-renew
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-(--app-ink-3)">
+              <p className="t-meta text-(--app-ink-2)">
                 {format(new Date(s.startDate), "PP")} →{" "}
                 {format(new Date(s.endDate), "PP")}
                 {s.paymentMethod && ` · ${s.paymentMethod}`}
@@ -641,7 +641,7 @@ function PowerCell({
     <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3">
       <div className="flex items-center gap-1.5">
         <Icon className={cn("w-3.5 h-3.5", tones[tone])} />
-        <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
+        <p className="t-meta font-bold text-(--app-ink-2)">
           {label}
         </p>
       </div>

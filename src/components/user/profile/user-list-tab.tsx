@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
-import { Loader2, Users, Coins, UserCheck, UserPlus } from "lucide-react";
+import { Loader2, Users, UserCheck, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { profileHref } from "@/lib/user-href";
 import { Avatar } from "@/components/user/primitives/avatar";
@@ -68,9 +68,17 @@ export function UserListTab({
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-(--app-ink-3) text-sm inline-flex items-center justify-center gap-2 w-full">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        Loading…
+      // Rows in the list's own shape, so the page does not jump when it lands.
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" aria-busy="true">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 p-3 glass">
+            <div className="h-11 w-11 shrink-0 rounded-full bg-(--app-surface-2) animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3.5 w-2/5 rounded bg-(--app-surface-2) animate-pulse" />
+              <div className="h-3 w-1/4 rounded bg-(--app-surface-2) animate-pulse" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -78,7 +86,7 @@ export function UserListTab({
     return (
       <div className="rounded-xl border border-dashed border-(--app-line) p-10 text-center">
         <Users className="w-10 h-10 text-(--app-ink-3) mx-auto mb-2" />
-        <p className="text-sm text-(--app-ink-3) font-semibold">No users yet</p>
+        <p className="text-sm text-(--app-ink-2) font-semibold">No one here yet</p>
       </div>
     );
   }
@@ -96,8 +104,8 @@ export function UserListTab({
             </Link>
             <div className="flex-1 min-w-0">
               <Link href={profileHref(u)} className="block">
-                <p className="text-sm font-bold text-white truncate inline-flex items-center gap-1">
-                  {u.name ?? u.username ?? "User"}
+                <p className="text-sm font-bold text-white flex min-w-0 items-center gap-1">
+                  <span className="truncate">{u.name ?? u.username ?? "User"}</span>
                   {u.isBlueVerified && (
                     <VerifiedBadge
                       style={u.verifiedBadgeStyle}
@@ -106,9 +114,10 @@ export function UserListTab({
                   )}
                 </p>
               </Link>
-              {u.username && <p className="text-[11px] text-(--app-ink-3)">@{u.username}</p>}
-              <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
-                <Coins className="w-3 h-3 text-amber-400" />
+              {u.username && <p className="text-xs text-(--app-ink-3) truncate">@{u.username}</p>}
+              <p className="text-xs text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
+                {/* People, not a coin: a coin here read as money earned. */}
+                <Users className="w-3.5 h-3.5" />
                 {u.followersCount.toLocaleString()} followers
               </p>
             </div>
@@ -117,7 +126,7 @@ export function UserListTab({
                 onClick={() => toggle(u)}
                 disabled={busyId === u.id}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center gap-1",
+                  "app-press app-tap-row shrink-0 min-w-24 justify-center px-3 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5",
                   u.isFollowing
                     ? "bg-(--app-surface-2) text-(--app-ink) border border-(--app-line)"
                     : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"

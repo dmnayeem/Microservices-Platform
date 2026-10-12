@@ -58,7 +58,7 @@ export function PackageBadge({
     PACKAGE_TIER_STYLES[tier?.toUpperCase()] ?? PACKAGE_TIER_STYLES.FREE;
   const sizing =
     size === "sm"
-      ? "px-2 py-0.5 text-[10px]"
+      ? "px-2 py-0.5 text-[11px]"
       : "px-3 py-1.5 text-xs";
 
   const inner = (
@@ -68,7 +68,7 @@ export function PackageBadge({
         {style.label}
       </span>
       {size !== "sm" && (
-        <span className={cn("text-[10px] font-semibold opacity-80", style.text)}>
+        <span className={cn("text-[11px] font-semibold opacity-90", style.text)}>
           Member
         </span>
       )}
@@ -144,7 +144,7 @@ export function LevelBadge({
       <span className="text-xs font-extrabold text-(--app-accent-ink) uppercase tracking-wider">
         Lv {level}
       </span>
-      <span className="text-[10px] font-semibold text-(--app-accent-ink)/80 tabular-nums">
+      <span className="text-[11px] font-semibold text-(--app-accent-ink) tabular-nums">
         {xpPercentage}%
       </span>
     </div>
@@ -170,7 +170,7 @@ export function RankBadge({ rank }: { rank: number }) {
       <span className="text-xs font-extrabold tabular-nums">
         #{rank.toLocaleString()}
       </span>
-      <span className="text-[10px] font-semibold opacity-80">Rank</span>
+      <span className="text-[11px] font-semibold opacity-90">Rank</span>
     </div>
   );
 }

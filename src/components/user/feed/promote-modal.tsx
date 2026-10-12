@@ -77,20 +77,20 @@ export function PromoteModal({
               <Sparkles className="w-4 h-4 text-amber-400" />
               Promote Post
             </p>
-            <p className="text-[11px] text-(--app-ink-3) mt-0.5">
+            <p className="text-xs text-(--app-ink-3) mt-0.5">
               Promoted posts get a PROMOTED badge and are interleaved through the feed.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-(--app-ink-3) hover:text-(--app-ink)"
+            className="app-press app-tap -mr-2 -mt-2 inline-flex shrink-0 items-center justify-center rounded-lg text-(--app-ink-3) hover:text-(--app-ink)"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-(--app-line) bg-(--app-surface) px-3 py-2">
+        <label className="app-tap-row flex items-center gap-2 cursor-pointer rounded-lg border border-(--app-line) bg-(--app-surface) px-3 py-2">
           <input
             type="checkbox"
             checked={enabled}
@@ -105,7 +105,7 @@ export function PromoteModal({
         {enabled && (
           <>
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1.5">
+              <p className="t-eyebrow text-(--app-ink-3) mb-1.5">
                 Duration
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -115,7 +115,7 @@ export function PromoteModal({
                     onClick={() => setDuration(d)}
                     type="button"
                     className={cn(
-                      "px-2 py-1.5 rounded-md text-xs font-bold border",
+                      "app-press min-h-10 px-2 rounded-md text-sm font-bold border",
                       duration === d
                         ? "bg-amber-500 border-amber-500 text-(--app-on-bright)"
                         : "bg-(--app-surface) border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink)"
@@ -128,7 +128,7 @@ export function PromoteModal({
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold block mb-1.5">
+              <label className="t-eyebrow text-(--app-ink-3) block mb-1.5">
                 Sponsor / Note (optional)
               </label>
               <input
@@ -136,9 +136,9 @@ export function PromoteModal({
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={120}
                 placeholder='e.g. "NordVPN", "Coinbase"'
-                className="w-full bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500"
+                className="w-full min-h-11 bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-2 text-base sm:text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500"
               />
-              <p className="text-[10px] text-(--app-ink-3) mt-1">
+              <p className="text-xs text-(--app-ink-3) mt-1">
                 Shown as a tooltip on the PROMOTED badge.
               </p>
             </div>
@@ -150,7 +150,7 @@ export function PromoteModal({
             onClick={onClose}
             disabled={busy}
             type="button"
-            className="px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+            className="app-press app-tap-row px-4 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>
@@ -158,7 +158,7 @@ export function PromoteModal({
             onClick={submit}
             disabled={busy}
             type="button"
-            className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-(--app-on-bright) text-sm font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
+            className="app-press app-tap-row px-4 rounded-lg bg-amber-500 hover:bg-amber-400 text-(--app-on-bright) text-sm font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />

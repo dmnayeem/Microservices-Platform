@@ -150,7 +150,7 @@ export function EarningHub({ user, initialTasks, hiddenPaths }: EarningHubProps)
         </div>
         <button
           onClick={() => setSearchOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-(--app-surface) border border-(--app-line) hover:border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink) text-sm transition-colors"
+          className="app-tap-row app-press inline-flex items-center gap-2 px-3 rounded-lg bg-(--app-surface) border border-(--app-line) hover:border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink) text-sm transition-colors"
         >
           <Search className="w-4 h-4" />
           Search…
@@ -159,10 +159,10 @@ export function EarningHub({ user, initialTasks, hiddenPaths }: EarningHubProps)
 
       {/* Quick Access 8-grid */}
       <section>
-        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 px-1">
+        <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) mb-2 px-1">
           Quick Access
         </p>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-8 md:grid-cols-[repeat(auto-fit,minmax(4.25rem,1fr))] gap-2">
           {quickAccess.map((item) => (
             <Link
               key={item.name}
@@ -178,7 +178,7 @@ export function EarningHub({ user, initialTasks, hiddenPaths }: EarningHubProps)
               </div>
               {/* One line in the 4-column phone grid: the short name ("Mission",
                   "CPA") is what fits a ~60px cell; the full name is the title. */}
-              <span className="max-w-full truncate whitespace-nowrap text-[11px] font-medium text-(--app-ink-2) group-hover:text-(--app-ink) text-center leading-tight">
+              <span className="max-w-full truncate whitespace-nowrap text-xs font-semibold text-(--app-ink-2) group-hover:text-(--app-ink) text-center leading-tight">
                 {item.short ?? item.name}
               </span>
             </Link>
@@ -199,7 +199,7 @@ export function EarningHub({ user, initialTasks, hiddenPaths }: EarningHubProps)
               key={t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors border",
+                "app-tap-row app-press shrink-0 inline-flex items-center gap-1.5 px-3.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors border",
                 isActive
                   ? "bg-(--app-nav-wash) text-(--app-nav-on) border-(--app-accent-edge)/40"
                   : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
@@ -244,6 +244,8 @@ interface ApiTask {
   thumbnailUrl?: string | null;
   duration?: number | null;
   minLevel?: number;
+  /** AVAILABLE | IN_PROGRESS | SUBMITTED | REVISION | REJECTED | COMPLETED */
+  userStatus?: string;
 }
 
 const TASK_FILTERS = [
@@ -321,7 +323,7 @@ function TasksTab({
       )}
 
       {!loading && tasks.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <TaskCard
               key={t.id}
@@ -339,7 +341,8 @@ function TasksTab({
               durationMin={t.duration ?? undefined}
               thumbnail={t.thumbnailUrl ?? undefined}
               href={taskRunHref(t.type, t.id)}
-              actionLabel="Start"
+              status={(t.userStatus ?? "AVAILABLE") as never}
+              actionLabel="Start →"
             />
           ))}
         </div>
@@ -433,15 +436,15 @@ export function LearnTab({ hiddenPaths }: { hiddenPaths?: string[] } = {}) {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-white truncate">
+                  <h3 className="t-card-title text-white line-clamp-2">
                     {c.title}
                   </h3>
                   {c.creator?.name && (
-                    <p className="text-[11px] text-(--app-ink-3) mt-0.5">
+                    <p className="t-meta text-(--app-ink-2) mt-0.5">
                       By {c.creator.name}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-2 text-[11px] text-(--app-ink-3)">
+                  <div className="flex items-center gap-2 mt-2 t-meta text-(--app-ink-2)">
                     {c.difficulty && (
                       <span className="px-1.5 py-0.5 rounded bg-(--app-surface-2) uppercase">
                         {c.difficulty}
@@ -534,7 +537,7 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
             </div>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
+            <p className="t-label-sm uppercase tracking-wider text-white/80">
               Next
             </p>
             <p className="text-2xl font-extrabold text-white tabular-nums">
@@ -548,14 +551,14 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
             style={{ width: `${progress.percentage}%` }}
           />
         </div>
-        <p className="text-[11px] text-white/80 mt-1.5">
+        <p className="t-meta font-semibold text-white/90 mt-1.5">
           {progress.percentage}% to Level {level + 1}
         </p>
       </div>
 
       {/* Level Map */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 px-1">
+        <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) mb-2 px-1">
           Full Level Map (1–100)
         </p>
         <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
@@ -605,13 +608,13 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
                       </span>
                     )}
                   </p>
-                  <p className="text-[10px] text-(--app-ink-3)">
+                  <p className="t-meta text-(--app-ink-3)">
                     {xpForLevel.toLocaleString()} XP needed
                   </p>
                 </div>
                 {isLocked && <Lock className="w-3.5 h-3.5 text-(--app-ink-3) shrink-0" />}
                 {isPast && (
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase">
+                  <span className="t-label-sm text-emerald-400 uppercase">
                     Done
                   </span>
                 )}
@@ -695,7 +698,7 @@ export function PromoteTab({ hiddenPaths }: { hiddenPaths?: string[] } = {}) {
               {!isPathHidden("/referrals", hiddenPaths) && (
               <Link
                 href="/referrals"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold"
+                className="app-tap-row app-press inline-flex items-center gap-1 px-4 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-sm font-semibold"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 Share my link
@@ -704,7 +707,7 @@ export function PromoteTab({ hiddenPaths }: { hiddenPaths?: string[] } = {}) {
               {!isPathHidden("/social-posts", hiddenPaths) && (
               <Link
                 href="/social-posts"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10"
+                className="app-tap-row app-press inline-flex items-center gap-1 px-4 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-semibold border border-white/10"
               >
                 Boost a post
               </Link>
@@ -738,7 +741,7 @@ export function PromoteTab({ hiddenPaths }: { hiddenPaths?: string[] } = {}) {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-white line-clamp-2">
                         {m.title}
                       </p>
                       {m.description && (
@@ -762,7 +765,7 @@ export function PromoteTab({ hiddenPaths }: { hiddenPaths?: string[] } = {}) {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-(--app-ink-3) mt-1 tabular-nums">
+                  <p className="t-meta font-semibold text-(--app-ink-2) mt-1 tabular-nums">
                     {m.progress} / {m.goal}
                   </p>
                 </div>
@@ -859,7 +862,7 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
                   <p className="text-sm font-bold text-white truncate">
                     {e.name ?? "Anon"}
                   </p>
-                  <p className="text-[10px] text-(--app-ink-3) mt-0.5">
+                  <p className="t-meta text-(--app-ink-3) mt-0.5">
                     Lvl {e.level}
                   </p>
                   <p className="text-base font-extrabold text-amber-400 tabular-nums mt-1">
@@ -894,12 +897,12 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
                   <p className="text-sm font-semibold text-white truncate">
                     {e.name ?? "Anon"}
                     {e.userId === user.id && (
-                      <span className="ml-1 text-[10px] uppercase text-(--app-accent-ink) font-bold">
+                      <span className="ml-1 t-label-sm uppercase text-(--app-accent-ink)">
                         You
                       </span>
                     )}
                   </p>
-                  <p className="text-[10px] text-(--app-ink-3)">Lvl {e.level}</p>
+                  <p className="t-meta text-(--app-ink-3)">Lvl {e.level}</p>
                 </div>
                 <span className="text-sm font-bold text-amber-400 tabular-nums">
                   {e.value.toLocaleString()}
@@ -1027,12 +1030,12 @@ export function OfferwallTab() {
                       <Globe className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">
+                      <p className="text-sm font-bold text-white line-clamp-2">
                         {p.name}
                       </p>
                       <span
                         className={cn(
-                          "inline-block px-1.5 py-0.5 text-[10px] uppercase rounded font-bold mt-0.5",
+                          "app-chip uppercase mt-1",
                           p.status === "ACTIVE"
                             ? "bg-emerald-500/15 text-emerald-400"
                             : "bg-(--app-surface-2) text-(--app-ink-3)"
@@ -1046,7 +1049,7 @@ export function OfferwallTab() {
                         </p>
                       )}
                       {typeof p.avgReward === "number" && (
-                        <p className="text-[11px] text-amber-400 font-bold mt-1">
+                        <p className="t-meta text-amber-400 font-bold mt-1">
                           Avg ~{p.avgReward} pts
                         </p>
                       )}
@@ -1092,11 +1095,11 @@ function SummaryCard({
         tones[tone]
       )}
     >
-      <p className="text-[10px] uppercase tracking-wider font-bold opacity-80">
+      <p className="t-label-sm uppercase tracking-wider opacity-90">
         {label}
       </p>
       <p className={cn(STAT_VALUE_CLASS, "mt-0.5 text-current")}>{pts(value)}</p>
-      <p className="text-[10px] opacity-70">pts</p>
+      <p className="t-meta opacity-80">pts</p>
     </div>
   );
 }

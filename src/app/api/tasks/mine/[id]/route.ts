@@ -289,6 +289,9 @@ export async function PATCH(
     d.quiz !== undefined ||
     d.article !== undefined ||
     d.appInstall !== undefined ||
+    // The custom form is what workers fill in — editing it on a live task
+    // must go back to review like every other payload above.
+    d.custom !== undefined ||
     touchedAudience;
 
   // Phishing / malware links — the same screen as creating the task.

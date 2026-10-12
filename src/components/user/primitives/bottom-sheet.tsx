@@ -29,7 +29,9 @@ export function BottomSheet({
         <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" />
         <Drawer.Content
           className={cn(
-            "fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-3xl flex flex-col rounded-t-2xl bg-(--app-surface) border-t border-(--app-line) outline-none",
+            // Bottom padding = the gesture bar, so the last row / footer is not
+            // drawn under the phone's home indicator.
+            "fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-3xl flex flex-col rounded-t-2xl bg-(--app-surface) border-t border-(--app-line) outline-none pb-[env(safe-area-inset-bottom)]",
             className
           )}
         >
@@ -48,7 +50,9 @@ export function BottomSheet({
               )}
             </div>
           )}
-          <div className="px-5 py-4 overflow-y-auto max-h-[70vh]">
+          {/* overscroll-contain: reaching the end of the list must not start
+              scrolling the page underneath. */}
+          <div className="px-5 py-4 overflow-y-auto overscroll-contain max-h-[70dvh]">
             {children}
           </div>
           {footer && (

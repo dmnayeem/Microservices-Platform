@@ -18,6 +18,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { getReferralBonusMission } from "@/lib/daily-mission-progress";
 import { getUserDayContext } from "@/lib/user-day";
 import { getReferralBonusConfig, qualifiedReferralCount } from "@/lib/referral-bonus";
+import { zoneShiftBlock } from "@/lib/zone-shift-guard";
 
 const DEFAULT_DAILY_PER_REFERRAL = 5; // points per L1 referral, used if Package.referralBonus is 0
 
@@ -161,6 +162,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const zoneWait = await zoneShiftBlock(userId, "daily_referral_");
+  if (zoneWait) return zoneWait;
   const { dayKey: today } = await getUserDayContext(userId);
 
   const existing = await prisma.dailyReferralClaim.findUnique({

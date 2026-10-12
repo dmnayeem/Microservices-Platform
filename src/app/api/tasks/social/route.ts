@@ -154,6 +154,8 @@ export async function GET(request: NextRequest) {
         ...mapSocialTaskRow(t),
         requireApp: t.requireApp,
         requirePush: t.requirePush,
+        completedCount: t.completedCount,
+        totalLimit: t.totalLimit,
         planLock:
           t.requiredAccessLevel > accessLevel
             ? (() => {

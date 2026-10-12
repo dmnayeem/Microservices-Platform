@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { evaluateLogin } from "@/lib/auth/services";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { enforceRateLimit, rateLimit } from "@/lib/rate-limit";
 import { signAppealToken } from "@/lib/fraud-risk";
 
 const schema = z.object({
@@ -16,8 +16,12 @@ const schema = z.object({
 // authorize errors from the client). Returns only a coarse reason code, never
 // any user data. `INVALID` covers both wrong-password and unknown-email.
 export async function POST(request: NextRequest) {
-  // Throttle brute-force of passwords/OTP against this credential oracle.
-  const limited = enforceRateLimit(request, "login-check", 10, 60_000);
+  // Throttle brute-force of passwords/OTP against this credential oracle —
+  // per ACCOUNT, not per IP. Mobile data in Bangladesh puts hundreds of
+  // people behind one carrier IP (CGNAT): "10 per IP per minute" locked
+  // every one of them out once ten tried to sign in. The per-IP cap stays,
+  // high, as a flood ceiling.
+  const limited = enforceRateLimit(request, "login-check", 300, 60_000);
   if (limited) return limited;
   try {
     const body = await request.json().catch(() => ({}));
@@ -27,6 +31,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password, otp } = parsed.data;
+    const perAccount = rateLimit(`login-check:e:${email.trim().toLowerCase()}`, 10, 60_000);
+    if (!perAccount.ok) {
+      return NextResponse.json(
+        { error: `Too many attempts for this account. Try again in ${perAccount.retryAfterSec}s.` },
+        { status: 429, headers: { "Retry-After": String(perAccount.retryAfterSec) } }
+      );
+    }
     const result = await evaluateLogin(email, password, otp);
 
     return NextResponse.json({

@@ -908,7 +908,9 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   appearance: {
     theme: "dark",
     animations: true,
-    themeToggle: true,
+    // Off (owner, 2026-10-13): the landing page is dark only. With the toggle
+    // off, a light choice a visitor stored earlier is not applied either.
+    themeToggle: false,
   },
 };
 

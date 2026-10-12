@@ -139,7 +139,7 @@ export function HelpCenter() {
           <div className="px-4 py-2.5 border-b border-(--app-line) flex items-center gap-2">
             <span className="text-lg">{sec.icon}</span>
             <p className="text-sm font-bold text-white">{sec.title}</p>
-            <span className="ml-auto text-[10px] text-(--app-ink-3) tabular-nums">
+            <span className="ml-auto text-[11px] text-(--app-ink-3) tabular-nums">
               {sec.articles.length}
             </span>
           </div>

@@ -348,11 +348,29 @@ export function TasksHubView({
             description="New earning opportunities appear here as soon as they're added."
           />
         ) : (
-          <div className="space-y-6">
+          // Desktop (xl): the mission card becomes a sticky right column beside
+          // the task grid. Full width it was a 1,100px-wide card holding five
+          // short rows and an orange button stretched edge to edge. Below xl
+          // this is the same single column as before (card, then sections).
+          <div className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-6 xl:space-y-0">
             {/* Today's Daily Mission first — progress, what is left, what it
                 pays, and a Start button. Without a mission it is the old
                 "Start here" pick. */}
+            <div className="xl:sticky xl:top-20 xl:col-start-2 xl:row-start-1">
             <DailyMissionCard
+              plan={{
+                items: ready.map((r) => ({
+                  key: r.cat.key,
+                  label: r.cat.label,
+                  href: r.cat.href,
+                  left: r.left,
+                  doneToday: r.row.completedToday,
+                  points: r.points,
+                })),
+                completedToday: today.completedToday,
+                pointsEarned: today.pointsEarned,
+                xpEarned: today.xpEarned,
+              }}
               hrefForType={(type) =>
                 visibleCategories.find((c) => c.taskType === type || (type.startsWith("SOCIAL") && c.taskType === "SOCIAL"))?.href ?? null
               }
@@ -386,7 +404,9 @@ export function TasksHubView({
                 </>
               }
             />
+            </div>
 
+            <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
             {ready.length > 0 && (
               <section>
                 <h2 className="t-section text-white">Tasks for you</h2>
@@ -425,7 +445,7 @@ export function TasksHubView({
             {more.length > 0 && (
               <section>
                 <h2 className="t-section text-white">More ways to earn</h2>
-                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
                   {more.map((cat) => (
                     <Link key={cat.key} href={cat.href} className="app-card app-press app-lift flex flex-col gap-2 !p-3">
                       <span className={cn("grid h-10 w-10 place-items-center rounded-xl", TONE[cat.color])}>
@@ -444,7 +464,7 @@ export function TasksHubView({
                 <h2 className="t-meta font-bold uppercase tracking-wider text-(--app-ink-3)">
                   No tasks right now — check back soon
                 </h2>
-                <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
                   {empty.map((cat) => (
                     <Link
                       key={cat.key}
@@ -463,6 +483,7 @@ export function TasksHubView({
                 </div>
               </section>
             )}
+            </div>
           </div>
         ))}
 

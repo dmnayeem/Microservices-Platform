@@ -801,7 +801,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     <div className="max-w-2xl mx-auto space-y-4 pb-[calc(7rem+var(--bottom-nav-h,3.5rem)+var(--anchor-ad-h,0px))] md:pb-[calc(7rem+var(--anchor-ad-h,0px))]">
       <Link
         href="/social-tasks"
-        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-(--app-ink)"
+        className="app-tap-row inline-flex items-center gap-1 text-sm text-(--app-ink-2) hover:text-(--app-ink)"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to social tasks
       </Link>
@@ -818,21 +818,22 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             <BrandIcon brand={platform.key} fallback={platform.emoji} className="w-6 h-6" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+            <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
               {platform.label} · Social Task
             </p>
             <h1 className="text-lg sm:text-xl font-bold text-white mt-0.5">
               {task.title}
             </h1>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-(--app-cta)/15 text-(--app-accent-ink)">
+              <span className="app-chip app-accent-soft">
                 {total} action{total > 1 ? "s" : ""}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400">
+              {/* The reward was an 11px pill the same size as "2 actions". */}
+              <span className="rounded-lg bg-amber-500/15 px-2.5 py-1 text-sm font-black tabular-nums text-amber-300">
                 +{task.pointsReward.toLocaleString()} pts
               </span>
               {task.difficulty && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-(--app-surface-2) text-(--app-ink-2) capitalize">
+                <span className="app-chip text-(--app-ink-2) capitalize">
                   {task.difficulty.toLowerCase()}
                 </span>
               )}
@@ -1239,7 +1240,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                 reviewer something to compare the live post against. */}
             {(item.aiMode === "diy" || item.aiMode === "both") && (
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                <label className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
                   What you posted (optional)
                 </label>
                 <textarea
@@ -1282,7 +1283,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
             {/* Proof inputs */}
             <div className="space-y-3 pt-1 border-t border-(--app-line)">
-              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+              <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
                 Submit your proof
               </p>
 

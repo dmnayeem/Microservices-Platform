@@ -45,7 +45,7 @@ export function TaskSection({
         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${t.icon}`}>{icon}</span>
         <div className="min-w-0">
           <h2 className="text-sm font-bold text-(--app-ink)">{title}</h2>
-          {hint && <p className="text-[11px] text-(--app-ink-3)">{hint}</p>}
+          {hint && <p className="t-meta text-(--app-ink-2)">{hint}</p>}
         </div>
       </div>
       {children}

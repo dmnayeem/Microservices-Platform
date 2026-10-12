@@ -234,7 +234,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
                     <p className="text-sm font-semibold text-white truncate">
                       {row.name ?? "User"}
                       {isMe && (
-                        <span className="ml-1.5 text-[10px] font-bold text-(--app-accent-ink)">
+                        <span className="ml-1.5 text-[11px] font-bold text-(--app-accent-ink)">
                           You
                         </span>
                       )}

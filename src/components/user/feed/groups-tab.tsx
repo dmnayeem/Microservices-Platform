@@ -79,7 +79,7 @@ export function GroupsTab() {
               key={s}
               onClick={() => setScope(s)}
               className={cn(
-                "flex-1 py-1.5 text-xs font-semibold rounded transition-colors",
+                "app-press min-h-10 flex-1 px-2 text-sm font-semibold rounded-md transition-colors",
                 scope === s ? "bg-(--app-cta) text-(--app-on-cta)" : "text-(--app-ink-3)"
               )}
             >
@@ -91,7 +91,7 @@ export function GroupsTab() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold rounded-lg"
+          className="app-press app-tap-row shrink-0 inline-flex items-center gap-1.5 px-4 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg"
         >
           <Plus className="w-4 h-4" />
           New
@@ -130,33 +130,33 @@ export function GroupsTab() {
                 className="rounded-xl shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
+                <div className="flex min-w-0 items-center gap-1.5">
                   <p className="text-sm font-bold text-white truncate">
                     {g.name}
                   </p>
                   {g.type === "PRIVATE" && (
-                    <span className="text-[10px] uppercase tracking-wider px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 font-bold">
+                    <span className="shrink-0 text-[11px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-bold">
                       Private
                     </span>
                   )}
                   {g.isOwner && (
-                    <span className="text-[10px] uppercase tracking-wider px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold">
+                    <span className="shrink-0 text-[11px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold">
                       Owner
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-(--app-ink-3)">
+                <p className="text-xs text-(--app-ink-3)">
                   {g.memberCount.toLocaleString()} member{g.memberCount === 1 ? "" : "s"}
                 </p>
                 {g.description && (
-                  <p className="text-xs text-(--app-ink-3) mt-1 line-clamp-2">
+                  <p className="text-sm text-(--app-ink-2) mt-1 line-clamp-2">
                     {g.description}
                   </p>
                 )}
-                <div className="mt-2.5 flex items-center gap-2">
+                <div className="mt-1.5 flex items-center gap-2">
                   <Link
                     href={`/groups/${g.id}`}
-                    className="text-xs text-(--app-accent-ink) hover:text-(--app-accent-ink) font-semibold"
+                    className="app-press app-tap-row inline-flex items-center text-sm text-(--app-accent-ink) hover:text-(--app-accent-ink) font-semibold"
                   >
                     Open →
                   </Link>
@@ -164,7 +164,7 @@ export function GroupsTab() {
                     <button
                       onClick={() => join(g)}
                       disabled={busyId === g.id}
-                      className="ml-auto px-3 py-1 rounded bg-(--app-cta)/10 text-(--app-accent-ink) hover:bg-(--app-cta)/20 text-xs font-bold disabled:opacity-50"
+                      className="app-press app-tap-row ml-auto inline-flex items-center px-4 rounded-lg bg-(--app-cta)/10 text-(--app-accent-ink) hover:bg-(--app-cta)/20 text-sm font-bold disabled:opacity-50"
                     >
                       {busyId === g.id
                         ? "…"
@@ -174,7 +174,7 @@ export function GroupsTab() {
                     </button>
                   )}
                   {g.hasPendingRequest && (
-                    <span className="ml-auto text-[11px] text-amber-400 font-semibold">
+                    <span className="ml-auto text-xs text-amber-400 font-semibold">
                       Pending
                     </span>
                   )}

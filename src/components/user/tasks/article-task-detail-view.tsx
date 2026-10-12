@@ -326,7 +326,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       {/* Back link — compact on mobile */}
       <Link
         href="/article-tasks"
-        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-(--app-ink-3) hover:text-(--app-ink) transition-colors"
+        className="app-tap-row inline-flex items-center gap-1.5 text-sm text-(--app-ink-2) hover:text-(--app-ink) transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         Back to article tasks
@@ -350,7 +350,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
             <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/10 text-blue-400">
               <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+            <span className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
               Article Task
             </span>
           </div>
@@ -526,7 +526,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
               </p>
               <Link
                 href="/article-tasks"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-500/30"
+                className="app-tap-row app-press inline-flex items-center gap-1.5 mt-3 px-4 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-sm font-bold border border-sky-500/30"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to article tasks
@@ -601,7 +601,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
               </p>
               <Link
                 href="/article-tasks"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30"
+                className="app-tap-row app-press inline-flex items-center gap-1.5 mt-3 px-4 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-sm font-bold border border-amber-500/30"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to article tasks

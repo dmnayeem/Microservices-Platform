@@ -199,7 +199,7 @@ export function ReferralsView({
             <div key={s.label} className="min-w-0 rounded-(--app-r-control) bg-white/10 px-2.5 py-2">
               <s.icon className="h-4 w-4 text-white/80" />
               <p className="mt-1 truncate text-base font-extrabold tabular-nums">{s.value}</p>
-              <p className="truncate text-[10px] text-white/75">{s.label}</p>
+              <p className="truncate text-[11px] text-white/85">{s.label}</p>
             </div>
           ))}
         </div>
@@ -209,7 +209,7 @@ export function ReferralsView({
               onClick={claimDaily}
               disabled={claimingDaily || !dailyClaim.canClaim || dailyClaim.claimed}
               className={cn(
-                "app-press inline-flex items-center gap-1.5 rounded-(--app-r-control) px-4 py-2 text-sm font-bold",
+                "app-press app-tap-row inline-flex items-center gap-1.5 rounded-(--app-r-control) px-4 py-2 text-sm font-bold",
                 dailyClaim.claimed
                   ? "bg-white/15 text-white cursor-default"
                   : dailyClaim.canClaim
@@ -227,7 +227,7 @@ export function ReferralsView({
           )}
           <Link
             href="/wallet?tab=referral"
-            className="app-press inline-flex items-center gap-1.5 rounded-(--app-r-control) border border-white/30 px-4 py-2 text-sm font-bold text-white hover:bg-white/10"
+            className="app-press app-tap-row inline-flex items-center gap-1.5 rounded-(--app-r-control) border border-white/30 px-4 py-2 text-sm font-bold text-white hover:bg-white/10"
           >
             <Wallet className="w-4 h-4" />
             View in Wallet
@@ -403,7 +403,7 @@ export function ReferralsView({
           {rateSummary && <p className="t-meta mt-0.5 text-(--app-ink-3)">You earn {rateSummary}</p>}
         </div>
         <div className="overflow-hidden rounded-(--app-r-control) border border-(--app-line)">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 bg-(--app-surface-2) px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 bg-(--app-surface-2) px-3 py-2 t-meta font-bold text-(--app-ink-2)">
             <span>Level</span>
             <span className="text-right">Rate</span>
             <span className="text-right">Members</span>
@@ -419,7 +419,7 @@ export function ReferralsView({
             >
               <span className="font-bold text-white">
                 Level {l.level}
-                {l.level === 1 && <span className="ml-1.5 text-[10px] font-semibold text-(--app-ink-3)">direct</span>}
+                {l.level === 1 && <span className="ml-1.5 t-meta font-semibold text-(--app-ink-3)">direct</span>}
               </span>
               <span className="text-right font-bold tabular-nums text-(--app-accent-ink)">{l.rateLabel}</span>
               <span className="text-right tabular-nums">{l.count.toLocaleString()}</span>
@@ -496,7 +496,7 @@ export function ReferralsView({
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-bold tabular-nums text-(--app-accent-ink)">{usd(m.earnings)}</p>
-                    <p className="text-[10px] text-(--app-ink-3)">earned you</p>
+                    <p className="text-[11px] text-(--app-ink-2)">earned you</p>
                   </div>
                 </li>
               ))}
@@ -581,7 +581,7 @@ function QrPanel({ url }: { url: string }) {
       <button
         onClick={download}
         disabled={!dataUrl}
-        className="app-press inline-flex items-center gap-1.5 rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) px-3 py-1.5 text-xs font-bold text-(--app-ink) disabled:opacity-50"
+        className="app-press app-tap-row inline-flex items-center gap-1.5 rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) px-3 py-1.5 text-xs font-bold text-(--app-ink) disabled:opacity-50"
       >
         <Download className="w-3.5 h-3.5" />
         Download QR

@@ -68,7 +68,7 @@ export function SocialStatsGroup({
 }) {
   return (
     <section>
-      <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 px-1">
+      <h2 className="t-eyebrow text-(--app-ink-3) mb-2 px-1">
         Profile
       </h2>
       <div className="grid grid-cols-3 gap-3">
@@ -120,13 +120,13 @@ export function LifetimeStatsGroup({ stats }: { stats: LifetimeStats }) {
   return (
     <section>
       <div className="flex items-baseline justify-between mb-2 px-1">
-        <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+        <h2 className="t-eyebrow text-(--app-ink-3)">
           Lifetime Stats
         </h2>
         {canToggle && (
           <button
             onClick={() => setUnit((p) => (p === "points" ? "usd" : "points"))}
-            className="text-[10px] uppercase tracking-wider text-(--app-accent-ink) hover:text-(--app-accent-ink) font-bold"
+            className="app-press app-tap-row -my-3 inline-flex items-center px-2 rounded-lg text-xs font-bold text-(--app-accent-ink) hover:text-(--app-accent-ink) hover:bg-(--app-surface-2)"
           >
             Show in {unit === "points" ? "USD" : "points"}
           </button>

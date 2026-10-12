@@ -48,6 +48,15 @@ export async function POST(
 
     const isCash = v.data.currency === "cash";
     const price = isCash ? pkg.priceCash : pkg.pricePoints;
+    // A package priced in only one currency has 0 in the other. Without this
+    // check the CAS below (`balance >= 0`) always passed, so picking the
+    // unpriced currency featured the item for free.
+    if (!(price > 0)) {
+      return NextResponse.json(
+        { error: `This package can't be paid with ${isCash ? "cash" : "points"}.` },
+        { status: 400 }
+      );
+    }
     const now = Date.now();
     const base =
       course.featuredUntil && course.featuredUntil.getTime() > now

@@ -335,7 +335,7 @@ function FeaturedLotteryCard({
             <p className="text-2xl sm:text-3xl font-extrabold text-white tabular-nums">
               {String(unit.value).padStart(2, "0")}
             </p>
-            <p className="text-[10px] uppercase tracking-wider text-purple-200/80 font-bold">
+            <p className="text-[11px] uppercase tracking-wide text-purple-200 font-bold">
               {unit.label}
             </p>
           </div>
@@ -358,7 +358,7 @@ function FeaturedLotteryCard({
             ? "Free entry"
             : lottery.entryMode === "EARNED"
               ? `1 ticket per ${lottery.tasksPerTicket ?? 1} completed task${(lottery.tasksPerTicket ?? 1) === 1 ? "" : "s"}`
-              : `${lottery.ticketPrice} pts/ticket`}
+              : `${lottery.ticketPrice.toLocaleString()} pts/ticket`}
         </span>
       </div>
 
@@ -388,10 +388,10 @@ function FeaturedLotteryCard({
                 <>
                   <p className="text-sm font-bold">{b.label}</p>
                   <p className="text-base font-extrabold mt-0.5 tabular-nums">
-                    {lottery.entryMode && lottery.entryMode !== "PAID" ? "Free" : `${finalCost} pts`}
+                    {lottery.entryMode && lottery.entryMode !== "PAID" ? "Free" : `${finalCost.toLocaleString()} pts`}
                   </p>
                   {discount < 1 && (!lottery.entryMode || lottery.entryMode === "PAID") && (
-                    <p className="text-[10px] text-amber-300 font-bold">
+                    <p className="text-[11px] text-amber-300 font-bold">
                       -{((1 - discount) * 100).toFixed(0)}% off
                     </p>
                   )}
@@ -463,7 +463,7 @@ function LotteryRow({
         onClick={() => onBuy(lottery.id, 1)}
         disabled={!isActive || busyId === `${lottery.id}-1`}
         className={cn(
-          "px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap",
+          "app-press app-tap-row px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap",
           isActive
             ? "bg-purple-500 hover:bg-purple-600 text-white"
             : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
@@ -472,7 +472,7 @@ function LotteryRow({
         {busyId === `${lottery.id}-1` ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : isActive ? (
-          lottery.entryMode && lottery.entryMode !== "PAID" ? "Get ticket" : `${lottery.ticketPrice} pts`
+          lottery.entryMode && lottery.entryMode !== "PAID" ? "Get ticket" : `${lottery.ticketPrice.toLocaleString()} pts`
         ) : (
           lottery.status
         )}

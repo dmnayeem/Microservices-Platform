@@ -170,7 +170,7 @@ export function PhotoModal({
           onDrop={onDrop}
           onClick={() => fileInputRef.current?.click()}
           className={cn(
-            "relative rounded-xl border-2 border-dashed p-5 cursor-pointer text-center transition-colors",
+            "app-press relative rounded-xl border-2 border-dashed p-5 cursor-pointer text-center transition-colors",
             dragOver
               ? "border-(--app-accent-edge) bg-(--app-cta)/5"
               : "border-(--app-line) hover:border-(--app-accent-edge)/50 hover:bg-(--app-page)"
@@ -190,7 +190,7 @@ export function PhotoModal({
           <p className="text-sm text-white font-semibold">
             {file ? file.name : "Click or drag image here"}
           </p>
-          <p className="text-[11px] text-(--app-ink-3) mt-1">
+          <p className="text-xs text-(--app-ink-3) mt-1">
             JPG, PNG, WebP, GIF · Up to 8 MB
           </p>
         </div>
@@ -199,7 +199,7 @@ export function PhotoModal({
           <button
             onClick={uploadFile}
             disabled={busy}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg disabled:opacity-50"
+            className="app-press app-tap-row w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -213,7 +213,7 @@ export function PhotoModal({
         {/* OR divider */}
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-(--app-surface-2)" />
-          <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+          <span className="t-eyebrow text-(--app-ink-3)">
             or paste URL
           </span>
           <div className="flex-1 h-px bg-(--app-surface-2)" />
@@ -231,12 +231,12 @@ export function PhotoModal({
               }
             }}
             placeholder="https://..."
-            className={cn(inp, "font-mono text-xs flex-1")}
+            className={cn(inp, "font-mono flex-1 min-w-0")}
           />
           <button
             onClick={saveUrl}
             disabled={busy || !urlInput.trim()}
-            className="px-4 py-2 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold rounded-lg disabled:opacity-50 whitespace-nowrap"
+            className="app-press app-tap-row shrink-0 px-4 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold rounded-lg disabled:opacity-50 whitespace-nowrap"
           >
             Use URL
           </button>
@@ -246,7 +246,7 @@ export function PhotoModal({
           <button
             onClick={removePhoto}
             disabled={busy}
-            className="w-full text-xs text-red-400 hover:text-red-300 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+            className="app-press app-tap-row w-full text-sm font-semibold text-red-400 hover:text-red-300 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 rounded-lg"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Remove current photo

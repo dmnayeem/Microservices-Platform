@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Clock, ChevronLeft, ChevronRight, AlertTriangle, RotateCw } from "lucide-react";
 import { TransactionRow } from "@/components/user/primitives/transaction-row";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { History } from "lucide-react";
@@ -73,9 +73,12 @@ export function TransactionHistory({
   const [pendingEarnings, setPendingEarnings] = useState(0);
   const [bySource, setBySource] = useState<Record<string, { points: number; amount: number }>>({});
   const [loading, setLoading] = useState(true);
+  // A failed fetch used to read "No transactions" — which looks like money vanished.
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
+    setFailed(false);
     const { from, to } = rangeToParams(range, day);
     const qs = new URLSearchParams({ page: String(page), limit: "20" });
     if (from) qs.set("from", from);
@@ -83,14 +86,20 @@ export function TransactionHistory({
     if (source !== "all") qs.set("source", source);
     else if (kind !== "all") qs.set("kind", kind);
     fetch(`/api/transactions?${qs.toString()}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((d) => {
         setItems(d.transactions ?? []);
         setTotalPages(d.pagination?.totalPages ?? 1);
         setPendingEarnings(d.summary?.pendingEarnings ?? 0);
         setBySource(d.summary?.bySource ?? {});
       })
-      .catch(() => setItems([]))
+      .catch(() => {
+        setItems([]);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [range, day, source, kind, page]);
 
@@ -139,7 +148,8 @@ export function TransactionHistory({
         <select
           value={range}
           onChange={(e) => changeRange(e.target.value as RangePreset)}
-          className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
+          aria-label="Date range"
+          className="app-tap-row px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
         >
           {(Object.keys(RANGE_LABELS) as RangePreset[]).map((r) => (
             <option key={r} value={r}>
@@ -152,7 +162,7 @@ export function TransactionHistory({
             type="date"
             value={day}
             onChange={(v) => changeDay(v)}
-            className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
+            className="app-tap-row px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
           />
         )}
       </div>
@@ -178,7 +188,7 @@ export function TransactionHistory({
                 setPage(1);
               }}
               className={cn(
-                "px-3 py-1.5 text-xs font-semibold transition-colors",
+                "app-press min-h-10 px-3.5 py-2 text-sm font-semibold transition-colors",
                 kind === k
                   ? "bg-(--app-cta)/15 text-(--app-accent-ink)"
                   : "text-(--app-ink-3) hover:text-(--app-ink)"
@@ -195,11 +205,12 @@ export function TransactionHistory({
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Transaction source filter">
         <button
           onClick={() => changeSource("all")}
+          aria-pressed={source === "all"}
           className={cn(
-            "px-3 py-1 rounded-full text-xs font-semibold shrink-0 border transition-colors",
+            "app-press min-h-9 px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 border transition-colors",
             source === "all"
               ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
-              : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink)"
+              : "bg-(--app-surface) text-(--app-ink-2) border-(--app-line) hover:text-(--app-ink)"
           )}
         >
           All
@@ -208,11 +219,12 @@ export function TransactionHistory({
           <button
             key={s}
             onClick={() => changeSource(s)}
+            aria-pressed={source === s}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shrink-0 border transition-colors",
+              "app-press inline-flex min-h-9 items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 border transition-colors",
               source === s
                 ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
-                : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink)"
+                : "bg-(--app-surface) text-(--app-ink-2) border-(--app-line) hover:text-(--app-ink)"
             )}
           >
             <span className={cn("w-2 h-2 rounded-full", SOURCE_META[s].swatch)} />
@@ -257,6 +269,19 @@ export function TransactionHistory({
         <div className="grid place-items-center py-10">
           <Loader2 className="w-6 h-6 animate-spin text-(--app-accent-ink)" />
         </div>
+      ) : failed ? (
+        <div role="alert" className="app-card flex flex-col items-center gap-2 py-6 text-center">
+          <AlertTriangle className="w-6 h-6 text-(--app-warn)" />
+          <p className="text-sm font-semibold text-white">Couldn&apos;t load your transactions</p>
+          <p className="t-meta text-(--app-ink-3)">Your balance is safe — this is only the list. Check your connection.</p>
+          <button
+            type="button"
+            onClick={load}
+            className="app-press app-tap-row mt-1 inline-flex items-center gap-1.5 px-4 rounded-lg bg-(--app-surface-2) border border-(--app-line) text-sm font-semibold text-(--app-ink)"
+          >
+            <RotateCw className="w-4 h-4" /> Try again
+          </button>
+        </div>
       ) : items.length === 0 ? (
         <EmptyState icon={History} title="No transactions" description="Nothing matches these filters." />
       ) : (
@@ -286,17 +311,17 @@ export function TransactionHistory({
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-(--app-ink) disabled:opacity-40"
+            className="app-press app-tap-row inline-flex items-center gap-1 px-4 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm font-semibold text-(--app-ink) disabled:opacity-40"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> Prev
           </button>
-          <span className="text-xs text-(--app-ink-3) tabular-nums">
+          <span className="t-meta text-(--app-ink-2) tabular-nums">
             Page {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-(--app-ink) disabled:opacity-40"
+            className="app-press app-tap-row inline-flex items-center gap-1 px-4 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm font-semibold text-(--app-ink) disabled:opacity-40"
           >
             Next <ChevronRight className="w-3.5 h-3.5" />
           </button>

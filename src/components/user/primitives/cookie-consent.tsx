@@ -143,7 +143,9 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
 
   return (
     <>
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-2rem)]">
+      {/* Clears the phone tab bar (its measured height already includes the
+          gesture inset) and, where there is no bar, the gesture inset itself. */}
+      <div className="fixed bottom-[max(calc(1rem+var(--bottom-nav-h,0px)),calc(1rem+env(safe-area-inset-bottom)))] left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-2rem)]">
         <div className="rounded-2xl border border-(--app-line) bg-(--app-surface)/95 backdrop-blur-xl p-4 shadow-2xl">
           <div className="flex items-start gap-3">
             <div className="text-2xl shrink-0">🍪</div>

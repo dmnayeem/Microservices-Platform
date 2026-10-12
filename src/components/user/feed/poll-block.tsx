@@ -49,8 +49,8 @@ export function PollBlock({
 
   return (
     <div className="px-4 py-3 border-t border-(--app-line) space-y-2">
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
-        <span>Poll</span>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs font-semibold text-(--app-ink-3)">
+        <span className="t-eyebrow">Poll</span>
         <span>
           {total} vote{total === 1 ? "" : "s"}
           {ended ? " · ended" : post.pollEndsAt ? ` · ends ${formatDistanceToNow(new Date(post.pollEndsAt), { addSuffix: true })}` : ""}
@@ -66,7 +66,7 @@ export function PollBlock({
               onClick={() => vote(o.id)}
               disabled={ended || busyId === o.id}
               className={cn(
-                "relative w-full text-left p-2.5 rounded-lg overflow-hidden border transition-colors disabled:cursor-default",
+                "app-press relative w-full min-h-11 text-left px-3 py-2.5 rounded-lg overflow-hidden border transition-colors disabled:cursor-default",
                 isMine
                   ? "border-(--app-accent-edge) bg-(--app-cta)/5"
                   : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
@@ -80,8 +80,8 @@ export function PollBlock({
                 style={{ width: `${pct}%` }}
               />
               <div className="relative flex items-center justify-between gap-3">
-                <span className="text-sm text-white truncate min-w-0">{o.label}</span>
-                <span className="text-xs tabular-nums text-(--app-ink-2) shrink-0">
+                <span className="text-sm text-white min-w-0 break-words">{o.label}</span>
+                <span className="text-sm font-semibold tabular-nums text-(--app-ink-2) shrink-0">
                   {pct.toFixed(0)}% · {o.voteCount}
                 </span>
               </div>

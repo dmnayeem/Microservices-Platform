@@ -184,7 +184,7 @@ export function WithdrawalView({
               </p>
               <Link
                 href="/packages"
-                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) text-xs font-bold"
+                className="app-press app-tap-row mt-2 inline-flex items-center gap-1.5 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) text-xs font-bold"
               >
                 Upgrade Now
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -208,7 +208,7 @@ export function WithdrawalView({
               style={{ width: `${Math.min(100, min > 0 ? (cashBalance / min) * 100 : 100)}%` }}
             />
           </div>
-          <p className="mt-1.5 text-[11px] text-(--app-ink-3) tabular-nums">
+          <p className="mt-1.5 t-meta text-(--app-ink-2) tabular-nums">
             {usd(cashBalance)} of {usd(min)}
           </p>
         </div>
@@ -275,49 +275,51 @@ export function WithdrawalView({
           )}
           <div className="glass rounded-xl p-4 space-y-3">
             <div>
-              <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
-                Amount (USD)
+              <label htmlFor="withdraw-amount" className="block text-sm font-semibold text-(--app-ink-2) mb-1.5">
+                Amount to withdraw (USD cash)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-(--app-ink-3)">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-bold text-(--app-ink-2)">
                   $
                 </span>
                 <input
+                  id="withdraw-amount"
                   type="text"
                   inputMode="decimal"
                   value={amountStr}
                   onChange={(e) => onAmountChange(e.target.value)}
                   placeholder={String(min)}
-                  className="w-full pl-7 pr-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-base font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
+                  className="app-tap-row w-full pl-7 pr-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-base font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
                 />
               </div>
-              <div className="flex items-center justify-between text-[11px] mt-1.5">
-                <span className="text-(--app-ink-3)">
-                  Min: ${min.toLocaleString()} · Max: ${max.toLocaleString()}
+              <div className="flex items-center justify-between gap-2 t-meta mt-1">
+                <span className="text-(--app-ink-2) tabular-nums">
+                  Min {usd(min)} · Max {usd(max)}
                 </span>
                 <button
+                  type="button"
                   onClick={() =>
                     setAmountStr(String(Math.floor(Math.min(cashBalance, max) * 100) / 100))
                   }
-                  className="text-(--app-accent-ink) font-semibold hover:text-(--app-accent-ink)"
+                  className="app-press app-tap -mr-2 px-3 rounded-(--app-r-chip) text-(--app-accent-ink) font-bold hover:bg-(--app-nav-wash)"
                 >
-                  Max
+                  Use max
                 </button>
               </div>
             </div>
 
-            <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3 text-xs space-y-1">
-              <div className="flex justify-between text-(--app-ink-3)">
+            <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3 text-sm space-y-1.5">
+              <div className="flex justify-between text-(--app-ink-2)">
                 <span>Withdraw amount</span>
                 <span className="tabular-nums">{usd(amount)}</span>
               </div>
-              <div className="flex justify-between text-(--app-ink-3)">
+              <div className="flex justify-between text-(--app-ink-2)">
                 <span>Fee ({feePct.toFixed(1)}%)</span>
                 <span className="tabular-nums text-red-400">
                   −{usd(fee)}
                 </span>
               </div>
-              <div className="flex justify-between font-bold text-white pt-1 border-t border-(--app-line)">
+              <div className="flex justify-between text-base font-bold text-white pt-1.5 border-t border-(--app-line)">
                 <span>You receive</span>
                 <span className="tabular-nums text-emerald-400">
                   {usd(youReceive)}
@@ -325,7 +327,7 @@ export function WithdrawalView({
               </div>
             </div>
 
-            <p className="text-[11px] text-(--app-ink-3) flex items-center gap-1.5">
+            <p className="t-meta text-(--app-ink-3) flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-(--app-ink-3) shrink-0" />
               Funds arrive within{" "}
               <span className="text-(--app-ink-2) font-medium">{payoutMessage}</span>{" "}
@@ -338,23 +340,34 @@ export function WithdrawalView({
               <p className="text-sm font-semibold text-white">Payment Method</p>
               <Link
                 href="/payment-methods"
-                className="inline-flex items-center gap-1 text-xs text-(--app-accent-ink)"
+                className="app-press app-tap-row -mr-2 inline-flex items-center gap-1 px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-4 h-4" />
                 Add
               </Link>
             </div>
             {methods.length === 0 ? (
-              <p className="text-xs text-(--app-ink-3)">
-                Add a payment method first.
-              </p>
+              /* Without a method the submit button stays disabled — say so, and
+                 give a real button to fix it. */
+              <div className="rounded-lg border border-dashed border-(--app-line) p-3 text-center">
+                <p className="text-sm text-(--app-ink-2)">
+                  Add a payment method (bKash, Nagad, Binance…) to receive your money.
+                </p>
+                <Link
+                  href="/payment-methods"
+                  className="app-press app-tap-row mt-2 inline-flex items-center gap-1.5 px-4 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add payment method
+                </Link>
+              </div>
             ) : (
               <div className="space-y-1.5">
                 {methods.map((m) => (
                   <label
                     key={m.id}
                     className={cn(
-                      "flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors",
+                      "app-press flex min-h-12 items-center gap-2.5 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors",
                       methodId === m.id
                         ? "border-(--app-accent-edge) bg-(--app-cta)/5"
                         : "border-(--app-line) hover:border-(--app-line)"
@@ -365,13 +378,13 @@ export function WithdrawalView({
                       name="pm"
                       checked={methodId === m.id}
                       onChange={() => setMethodId(m.id)}
-                      className="accent-(--app-cta)"
+                      className="h-4.5 w-4.5 shrink-0 accent-(--app-cta)"
                     />
                     <BrandIcon brand={m.type} fallback="💳" colored className="w-4 h-4" />
-                    <span className="flex-1 text-sm text-white">{m.label}</span>
+                    <span className="flex-1 min-w-0 truncate text-sm font-medium text-white">{m.label}</span>
                     {m.isDefault && (
-                      <span className="text-[10px] font-bold text-emerald-400">
-                        DEFAULT
+                      <span className="app-chip app-chip-in shrink-0">
+                        Default
                       </span>
                     )}
                   </label>
@@ -383,12 +396,12 @@ export function WithdrawalView({
           {amount > 0 && (tooLow || tooHigh || overBalance) && (
             <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-3 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-red-300">
+              <p role="alert" className="text-sm text-red-300">
                 {overBalance
                   ? "Amount exceeds your available cash balance."
                   : tooLow
-                    ? `Minimum withdrawal is $${min.toLocaleString()}.`
-                    : `Maximum withdrawal is $${max.toLocaleString()}.`}
+                    ? `Minimum withdrawal is ${usd(min)}.`
+                    : `Maximum withdrawal is ${usd(max)}.`}
               </p>
             </div>
           )}
@@ -396,7 +409,7 @@ export function WithdrawalView({
           {needKyc && !kycPending ? (
             <Link
               href="/kyc"
-              className="w-full py-3 rounded-xl bg-(--app-cta) hover:opacity-90 text-(--app-on-cta) font-bold text-sm inline-flex items-center justify-center gap-2"
+              className="app-press w-full min-h-12 py-3 rounded-xl bg-(--app-cta) hover:opacity-90 text-(--app-on-cta) font-bold text-sm inline-flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-4 h-4" />
               Verify identity
@@ -405,7 +418,7 @@ export function WithdrawalView({
           ) : needSub ? (
             <Link
               href="/packages"
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) font-bold text-sm inline-flex items-center justify-center gap-2"
+              className="app-press w-full min-h-12 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) font-bold text-sm inline-flex items-center justify-center gap-2"
             >
               <Crown className="w-4 h-4" />
               Get subscription
@@ -415,7 +428,7 @@ export function WithdrawalView({
             <button
               disabled={!valid || busy}
               onClick={submit}
-              className="w-full py-3 rounded-xl bg-linear-to-r from-emerald-500 to-teal-500 hover:opacity-90 text-white font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="app-press w-full min-h-12 py-3 rounded-xl bg-linear-to-r from-emerald-500 to-teal-500 hover:opacity-90 text-white font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

@@ -636,7 +636,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                       setMenuOpen(false);
                       void toggleSave();
                     }}
-                    className="app-nav-item app-press w-full text-left text-xs"
+                    className="app-nav-item app-press w-full text-left text-sm"
                   >
                     <Bookmark
                       className={cn("w-4 h-4 shrink-0", post.isSaved && "fill-current")}
@@ -649,7 +649,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                         setMenuOpen(false);
                         setReportOpen(true);
                       }}
-                      className="app-nav-item app-press w-full text-left text-xs"
+                      className="app-nav-item app-press w-full text-left text-sm"
                     >
                       <Flag className="w-4 h-4 shrink-0" />
                       Report post
@@ -661,7 +661,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                       <button
                         onClick={toggleAnnounce}
                         disabled={busy}
-                        className="app-nav-item app-press w-full text-left text-xs disabled:opacity-50"
+                        className="app-nav-item app-press w-full text-left text-sm disabled:opacity-50"
                       >
                         <Megaphone className="w-4 h-4 shrink-0" />
                         {post.isAnnouncement
@@ -674,7 +674,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                           setPromoteOpen(true);
                         }}
                         disabled={busy}
-                        className="app-nav-item app-press w-full text-left text-xs disabled:opacity-50"
+                        className="app-nav-item app-press w-full text-left text-sm disabled:opacity-50"
                       >
                         <Sparkles className="w-4 h-4 shrink-0" />
                         {promotionActive ? "Edit Promotion" : "Promote Post"}
@@ -683,9 +683,9 @@ export const FeedPostCard = memo(function FeedPostCard({
                       <button
                         onClick={forceDelete}
                         disabled={busy}
-                        className="app-nav-item app-press w-full text-left text-xs text-(--app-out) hover:text-(--app-out) disabled:opacity-50"
+                        className="app-nav-item app-press w-full text-left text-sm text-(--app-out) hover:text-(--app-out) disabled:opacity-50"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4 shrink-0" />
                         Force Delete
                       </button>
                     </>
@@ -1045,7 +1045,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             <p className="text-base font-bold text-white inline-flex items-center gap-1.5">
               <Megaphone className="w-4 h-4 text-amber-400" /> Boost this post
             </p>
-            <p className="text-xs text-(--app-ink-3) mt-1">
+            <p className="text-sm text-(--app-ink-2) mt-1">
               Boosted posts recirculate near the top of the feed for the chosen
               period. Pick how long:
             </p>
@@ -1082,16 +1082,16 @@ export const FeedPostCard = memo(function FeedPostCard({
                       setBusy(false);
                     }
                   }}
-                  className="py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-amber-500 hover:text-white text-sm font-semibold text-(--app-ink) disabled:opacity-50 flex flex-col items-center gap-0.5"
+                  className="app-press min-h-16 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-amber-500 hover:text-white text-sm font-semibold text-(--app-ink) disabled:opacity-50 flex flex-col items-center justify-center gap-0.5"
                 >
                   <span>{label}</span>
-                  <span className="text-[11px] font-bold text-amber-400">{pts} pts</span>
+                  <span className="text-xs font-bold text-amber-400">{pts} pts</span>
                 </button>
               ))}
             </div>
             <button
               onClick={() => !busy && setBoostOpen(false)}
-              className="mt-3 w-full py-2 rounded-lg text-xs text-(--app-ink-3) hover:text-(--app-ink)"
+              className="app-press app-tap-row mt-3 w-full rounded-lg text-sm font-semibold text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
             >
               Cancel
             </button>

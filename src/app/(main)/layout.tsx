@@ -20,6 +20,7 @@ import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
 import { CelebrationHost } from "@/components/user/primitives/celebration-host";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
+import { ThemeColorSync } from "@/components/providers/theme-color-sync";
 import { PwaSeenBeacon } from "@/components/pwa/pwa-seen-beacon";
 import { PwaLaunchHome } from "@/components/pwa/pwa-launch-home";
 import { getPwaRewardConfig } from "@/lib/pwa-install";
@@ -85,7 +86,7 @@ export default async function MainLayout({
   //    — every request but the rare one — pays nothing extra for the check.
   //  - getAppNavConfig: the admin-edited tab bar / header / sidebar menus
   //    (Settings -> Navigation). Cached setting reads, in the same batch.
-  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav, pwaReward] = await Promise.all([
+  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav, pwaReward, vpnCfg] = await Promise.all([
     getEffectiveFeatures(session.user.id),
     getHiddenPaths(session.user.id),
     prisma.user
@@ -114,6 +115,9 @@ export default async function MainLayout({
     getAppNavConfig().catch(() => DEFAULT_APP_NAV),
     // App-install reward (cached settings) — only for the install prompt's line.
     getPwaRewardConfig().catch(() => null),
+    // VPN page locks (cached settings) — in the batch rather than one more
+    // serial await on every page once the settings memo expires.
+    getVpnSettings().catch(() => null),
   ]);
 
   // Server-side page-visibility guard: a hidden page never renders on a hard
@@ -128,7 +132,6 @@ export default async function MainLayout({
 
   // VPN-locked pages (Fraud Control → VPN). Detection runs only on a locked
   // page, so every other page costs nothing extra.
-  const vpnCfg = await getVpnSettings().catch(() => null);
   const vpnLockedPaths = vpnCfg?.lockedPaths ?? [];
   if (pathname && pathname !== "/vpn-blocked" && vpnCfg && pathVpnLocked(pathname, vpnLockedPaths)) {
     const ip = realIp(hdrs);
@@ -262,6 +265,8 @@ export default async function MainLayout({
       {/* Device id + fingerprint for the multi-account rules; reports this
           device (IP, country, browser) once per session. */}
       <DeviceBeacon report />
+      {/* Status bar follows the app's own theme, not the phone's. */}
+      <ThemeColorSync />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";
@@ -125,6 +126,7 @@ const TASK_TYPE_ROUTE: Record<string, string> = {
 export function BoardTasksView() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [detail, setDetail] = useState<BoardDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -136,9 +138,12 @@ export function BoardTasksView() {
     if (!silent) setLoading(true);
     try {
       const r = await fetch("/api/tasks/boards", { cache: "no-store" });
-      const d = r.ok ? await r.json() : { boards: [] };
+      if (r.status >= 500) throw new Error(String(r.status)); // 4xx = gated: empty list
+      const d = await r.json();
+      setFailed(false);
       setBoards(d.boards ?? []);
     } catch {
+      if (!silent) setFailed(true);
       setBoards([]);
     } finally {
       if (!silent) setLoading(false);
@@ -254,7 +259,7 @@ export function BoardTasksView() {
                       {detail.board.category && (
                         <span
                           className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold border",
+                            "px-2 py-0.5 rounded-full text-xs uppercase tracking-wider font-bold border",
                             CATEGORY_COLORS[detail.board.category] ??
                               CATEGORY_COLORS.Other
                           )}
@@ -263,7 +268,7 @@ export function BoardTasksView() {
                         </span>
                       )}
                       {isLocked && detail.board.lockedBy && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-amber-500/40 text-amber-300 bg-amber-500/10">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border border-amber-500/40 text-amber-300 bg-amber-500/10">
                           <Lock className="w-3 h-3" />
                           Unlock by &quot;{detail.board.lockedBy.title}&quot;
                         </span>
@@ -271,7 +276,7 @@ export function BoardTasksView() {
                       {detailCountdown && (
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border",
                             detailCountdown.expired
                               ? "border-(--app-line) text-(--app-ink-3) bg-(--app-page)"
                               : detailCountdown.urgent
@@ -297,7 +302,7 @@ export function BoardTasksView() {
                   <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5 flex items-center gap-2">
                     <Coins className="w-4 h-4 text-amber-400" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                      <p className="text-xs uppercase tracking-wider text-(--app-ink-3) font-bold">
                         Board Reward
                       </p>
                       <p className="text-sm font-bold text-white tabular-nums">
@@ -308,7 +313,7 @@ export function BoardTasksView() {
                   <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-(--app-accent-ink)" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+                      <p className="text-xs uppercase tracking-wider text-(--app-ink-3) font-bold">
                         XP
                       </p>
                       <p className="text-sm font-bold text-white tabular-nums">
@@ -390,26 +395,26 @@ export function BoardTasksView() {
                         <p className="text-sm font-semibold text-white truncate">
                           {t.title}
                         </p>
-                        <p className="text-[11px] text-(--app-ink-3)">
+                        <p className="text-xs text-(--app-ink-3)">
                           {t.type.toLowerCase()}
                           {t.duration ? ` · ${t.duration} min` : ""}
                         </p>
-                        <span className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 border border-orange-500/30 text-orange-300">
+                        <span className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/10 border border-orange-500/30 text-orange-300">
                           <Gift className="w-3 h-3" />
                           Bundled reward
                         </span>
                       </div>
 
                       {t.userStatus === "DONE" ? (
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 shrink-0">
+                        <span className="text-xs uppercase tracking-wider font-bold text-emerald-400 shrink-0">
                           Done
                         </span>
                       ) : t.userStatus === "PENDING" ? (
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 shrink-0">
+                        <span className="text-xs uppercase tracking-wider font-bold text-amber-400 shrink-0">
                           Review
                         </span>
                       ) : isLocked ? (
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) shrink-0">
+                        <span className="text-xs uppercase tracking-wider font-bold text-(--app-ink-3) shrink-0">
                           Locked
                         </span>
                       ) : (
@@ -520,7 +525,7 @@ export function BoardTasksView() {
                       <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 flex items-center gap-2">
                         <Coins className="w-5 h-5 text-amber-400 shrink-0" />
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-amber-400/80 font-bold">
+                          <p className="text-xs uppercase tracking-wider text-amber-400/80 font-bold">
                             Points
                           </p>
                           <p className="text-base font-bold text-white tabular-nums">
@@ -531,7 +536,7 @@ export function BoardTasksView() {
                       <div className="rounded-lg bg-(--app-cta)/10 border border-(--app-accent-edge)/30 p-3 flex items-center gap-2">
                         <Zap className="w-5 h-5 text-(--app-accent-ink) shrink-0" />
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-(--app-accent-ink)/80 font-bold">
+                          <p className="text-xs uppercase tracking-wider text-(--app-accent-ink)/80 font-bold">
                             XP
                           </p>
                           <p className="text-base font-bold text-white tabular-nums">
@@ -540,7 +545,7 @@ export function BoardTasksView() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-[11px] text-(--app-ink-3)">
+                    <p className="text-xs text-(--app-ink-3)">
                       This action cannot be undone — the board will be marked
                       as claimed.
                     </p>
@@ -600,7 +605,7 @@ export function BoardTasksView() {
         </p>
       </div>
 
-      {!loading && availableCategories.length > 0 && (
+      {!loading && !failed && availableCategories.length > 0 && (
         <ScrollFadeRow className="-mx-1" innerClassName="flex items-center gap-2 px-1" ariaLabel="Category filter">
           <button
             onClick={() => setCategoryFilter(null)}
@@ -634,7 +639,9 @@ export function BoardTasksView() {
 
       {loading && <ListSkeleton rows={3} />}
 
-      {!loading && filteredBoards.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && filteredBoards.length === 0 && (
         <EmptyState
           icon={Pin}
           title={
@@ -650,7 +657,7 @@ export function BoardTasksView() {
         />
       )}
 
-      {!loading && filteredBoards.length > 0 && (
+      {!loading && !failed && filteredBoards.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredBoards.map((b) => {
             const countdown = b.expiresAt
@@ -697,18 +704,18 @@ export function BoardTasksView() {
                   </div>
                 )}
                 {isLocked && (
-                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-(--app-page)/80 text-amber-300 border border-amber-500/40">
+                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs uppercase tracking-wider font-bold bg-(--app-page)/80 text-amber-300 border border-amber-500/40">
                     <Lock className="w-3 h-3" />
                     Locked
                   </span>
                 )}
                 {!isLocked && isExpired && (
-                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-(--app-page)/80 text-(--app-ink-2) border border-(--app-line)">
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs uppercase tracking-wider font-bold bg-(--app-page)/80 text-(--app-ink-2) border border-(--app-line)">
                     Expired
                   </span>
                 )}
                 {b.claimed && !isLocked && !isExpired && (
-                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
+                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs uppercase tracking-wider font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
                     <CheckCircle2 className="w-3 h-3" />
                     Claimed
                   </span>
@@ -716,7 +723,7 @@ export function BoardTasksView() {
                 {b.category && !isExpired && (
                   <span
                     className={cn(
-                      "absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold border",
+                      "absolute top-2 left-2 px-2 py-0.5 rounded-full text-xs uppercase tracking-wider font-bold border",
                       CATEGORY_COLORS[b.category] ?? CATEGORY_COLORS.Other
                     )}
                   >
@@ -724,7 +731,7 @@ export function BoardTasksView() {
                   </span>
                 )}
                 <div className="p-3">
-                  <p className="text-sm font-bold text-white line-clamp-1">
+                  <p className="t-card-title text-white line-clamp-2">
                     {b.name}
                   </p>
                   {b.description && (
@@ -732,7 +739,7 @@ export function BoardTasksView() {
                       {b.description}
                     </p>
                   )}
-                  <div className="grid grid-cols-3 gap-1.5 mt-3 text-[11px]">
+                  <div className="grid grid-cols-3 gap-1.5 mt-3 text-xs">
                     <div className="flex flex-col items-center p-1.5 rounded bg-(--app-surface-2)">
                       <Pin className="w-3 h-3 text-orange-400 mb-0.5" />
                       <span className="font-bold text-white tabular-nums">
@@ -756,7 +763,7 @@ export function BoardTasksView() {
                     </div>
                   </div>
                   {isLocked && b.lockedBy && (
-                    <p className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-300">
+                    <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-300">
                       <Lock className="w-3 h-3" />
                       Unlock by claiming &quot;{b.lockedBy.title}&quot;
                     </p>
@@ -764,7 +771,7 @@ export function BoardTasksView() {
                   {!isLocked && countdown && (
                     <p
                       className={cn(
-                        "mt-2 inline-flex items-center gap-1 text-[10px] font-semibold",
+                        "mt-2 inline-flex items-center gap-1 text-xs font-semibold",
                         countdown.expired
                           ? "text-(--app-ink-3)"
                           : countdown.urgent

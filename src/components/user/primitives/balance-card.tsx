@@ -153,7 +153,7 @@ export function BalanceCard({
               <Link
                 href={adTopUpHref}
                 aria-label="Top up ad credit"
-                className="app-press inline-flex h-7 shrink-0 items-center gap-0.5 rounded-full bg-white/20 border border-white/40 px-2.5 text-[11px] font-extrabold text-white hover:bg-white/30"
+                className="app-press inline-flex h-8 shrink-0 items-center gap-0.5 rounded-full bg-white/20 border border-white/40 px-3 text-xs font-extrabold text-white hover:bg-white/30"
               >
                 <Plus className="w-3 h-3" /> Top up
               </Link>

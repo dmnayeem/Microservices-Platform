@@ -179,7 +179,7 @@ export function MobileEarnBlock({
                     </span>
                   )}
                   <Icon className="w-5 h-5 shrink-0 text-(--app-ink-3)" />
-                  <span className="w-full truncate text-xs leading-tight">
+                  <span className="w-full line-clamp-2 break-words text-[13px] leading-tight">
                     {q.label}
                   </span>
                 </Link>

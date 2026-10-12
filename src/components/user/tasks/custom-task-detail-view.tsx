@@ -295,7 +295,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
             <div className="p-2 rounded-lg bg-(--app-cta)/10 text-(--app-accent-ink)">
               <Sparkles className="w-5 h-5" />
             </div>
-            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+            <span className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
               Custom Task
             </span>
           </div>

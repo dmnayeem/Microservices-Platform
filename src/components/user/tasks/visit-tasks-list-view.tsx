@@ -5,6 +5,7 @@ import { Globe } from "lucide-react";
 import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user/primitives/task-card";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
@@ -15,11 +16,14 @@ interface VisitTask {
   pointsReward: number;
   xpReward?: number;
   thumbnailUrl: string | null;
+  /** AVAILABLE | IN_PROGRESS | SUBMITTED | REVISION | REJECTED | COMPLETED */
+  userStatus?: string;
 }
 
 export function VisitTasksListView() {
   const [tasks, setTasks] = useState<VisitTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -27,9 +31,12 @@ export function VisitTasksListView() {
       const res = await fetch("/api/tasks?type=VISIT&limit=50", {
         cache: "no-store",
       });
+      if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
       const d = await res.json();
+      setFailed(false);
       setTasks(d.tasks ?? []);
     } catch {
+      if (!silent) setFailed(true);
       // ignore
     } finally {
       if (!silent) setLoading(false);
@@ -60,7 +67,9 @@ export function VisitTasksListView() {
 
       {loading && <ListSkeleton rows={4} />}
 
-      {!loading && tasks.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && tasks.length === 0 && (
         <EmptyState
           icon={Globe}
           title="No visit tasks yet"
@@ -68,7 +77,7 @@ export function VisitTasksListView() {
         />
       )}
 
-      {!loading && tasks.length > 0 && (
+      {!loading && !failed && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <TaskCard
@@ -81,6 +90,7 @@ export function VisitTasksListView() {
               reward={t.pointsReward}
               xpReward={t.xpReward}
               thumbnail={t.thumbnailUrl ?? undefined}
+              status={(t.userStatus ?? "AVAILABLE") as never}
               actionLabel="Visit & Earn"
               href={`/visit-tasks/${t.id}`}
             />

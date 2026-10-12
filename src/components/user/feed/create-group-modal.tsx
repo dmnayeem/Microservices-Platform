@@ -55,18 +55,18 @@ export function CreateGroupModal({
         <h3 className="text-base font-bold text-white mb-3">Create Group</h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+            <label className="block text-sm font-medium text-(--app-ink-2) mb-1.5">
               Name
             </label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Crypto Earners"
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full min-h-11 px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-base sm:text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+            <label className="block text-sm font-medium text-(--app-ink-2) mb-1.5">
               Description (optional)
             </label>
             <textarea
@@ -74,11 +74,11 @@ export function CreateGroupModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this group about?"
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full min-h-11 px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-base sm:text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+            <label className="block text-sm font-medium text-(--app-ink-2) mb-1.5">
               Visibility
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -87,10 +87,10 @@ export function CreateGroupModal({
                   key={t}
                   onClick={() => setType(t)}
                   className={cn(
-                    "py-2 rounded-lg text-xs font-bold border transition-colors",
+                    "app-press min-h-11 px-2 py-2 rounded-lg text-sm font-bold border transition-colors",
                     type === t
                       ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
-                      : "bg-(--app-surface-2) text-(--app-ink-3) border-(--app-line) hover:border-(--app-line)"
+                      : "bg-(--app-surface-2) text-(--app-ink-2) border-(--app-line) hover:border-(--app-line)"
                   )}
                 >
                   {t === "PUBLIC" ? "Public · anyone joins" : "Private · approve members"}
@@ -103,14 +103,14 @@ export function CreateGroupModal({
           <button
             onClick={onClose}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+            className="app-press app-tap-row flex-1 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={submit}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
+            className="app-press app-tap-row flex-1 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create"}
           </button>

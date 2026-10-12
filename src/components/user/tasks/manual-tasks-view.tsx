@@ -7,6 +7,7 @@ import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -60,6 +61,7 @@ export function ManualTasksView() {
   const [tasks, setTasks] = useState<ManualTask[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [submitting, setSubmitting] = useState<ManualTask | null>(null);
   const [proofUrl, setProofUrl] = useState("");
   const [screenshotUrl, setScreenshotUrl] = useState("");
@@ -71,17 +73,22 @@ export function ManualTasksView() {
     try {
       if (tab === "available") {
         const res = await fetch("/api/tasks?type=MANUAL", { cache: "no-store" });
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setTasks(d.tasks ?? []);
       } else {
         const res = await fetch(
           `/api/submissions?status=${TAB_TO_STATUS[tab].join(",")}&type=MANUAL`,
           { cache: "no-store" }
         );
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setSubmissions(d.submissions ?? []);
       }
     } catch {
+      if (!silent) setFailed(true);
       // ignore
     } finally {
       if (!silent) setLoading(false);
@@ -160,7 +167,9 @@ export function ManualTasksView() {
 
       {loading && <ListSkeleton rows={4} />}
 
-      {!loading && tab === "available" && tasks.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && tab === "available" && tasks.length === 0 && (
         <EmptyState
           icon={ClipboardList}
           title="No manual tasks available"
@@ -168,7 +177,7 @@ export function ManualTasksView() {
         />
       )}
 
-      {!loading && tab === "available" && tasks.length > 0 && (
+      {!loading && !failed && tab === "available" && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <TaskCard
@@ -183,7 +192,7 @@ export function ManualTasksView() {
               durationMin={t.duration ?? undefined}
               thumbnail={t.thumbnailUrl ?? undefined}
               status={t.locked ? "LOCKED" : ((t.userStatus ?? "AVAILABLE") as never)}
-              actionLabel={t.locked ? "🔒 Locked" : "Submit Proof"}
+              actionLabel={t.locked ? "Locked" : "Submit Proof"}
               onAction={
                 t.locked
                   ? undefined
@@ -196,7 +205,7 @@ export function ManualTasksView() {
         </div>
       )}
 
-      {!loading && tab !== "available" && submissions.length === 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length === 0 && (
         <EmptyState
           icon={ClipboardList}
           title={`No ${tab} submissions`}
@@ -208,7 +217,7 @@ export function ManualTasksView() {
         />
       )}
 
-      {!loading && tab !== "available" && submissions.length > 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length > 0 && (
         <div className="space-y-2">
           {submissions.map((s) => (
             <TaskSubmissionRow
@@ -294,7 +303,7 @@ export function ManualTasksView() {
 
           {submitting?.description && (
             <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3">
-              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
+              <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) mb-1">
                 About this task
               </p>
               <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
@@ -310,7 +319,7 @@ export function ManualTasksView() {
 
           {submitting?.instructionVideoUrl && (
             <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1.5">
+              <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2) inline-flex items-center gap-1.5">
                 <VideoIcon className="w-3 h-3" />
                 Instruction video
               </p>

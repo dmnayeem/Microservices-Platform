@@ -39,7 +39,7 @@ function Card({
         )}
         <div className="p-3">
           {preview.siteName && (
-            <p className="text-[11px] uppercase tracking-wide text-(--app-ink-3) truncate flex items-center gap-1">
+            <p className="t-eyebrow text-(--app-ink-3) truncate flex items-center gap-1">
               <Link2 className="w-3 h-3 shrink-0" />
               {preview.siteName}
             </p>
@@ -50,7 +50,7 @@ function Card({
             </p>
           )}
           {preview.description && (
-            <p className="mt-1 text-xs text-(--app-ink-3) line-clamp-2">
+            <p className="mt-1 text-[13px] leading-snug text-(--app-ink-2) line-clamp-2">
               {preview.description}
             </p>
           )}
@@ -61,7 +61,7 @@ function Card({
           type="button"
           onClick={onRemove}
           aria-label="Remove link preview"
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-red-500/80 text-white backdrop-blur-sm"
+          className="app-press absolute top-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-black/70 hover:bg-red-500/80 text-white backdrop-blur-sm"
         >
           <X className="w-3.5 h-3.5" />
         </button>

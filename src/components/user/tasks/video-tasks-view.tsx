@@ -8,6 +8,7 @@ import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { TaskSubmissionRow } from "@/components/user/primitives/task-submission-row";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import {
@@ -74,23 +75,29 @@ export function VideoTasksView() {
   const [tasks, setTasks] = useState<VideoTask[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       if (tab === "available") {
         const res = await fetch("/api/tasks?type=VIDEO", { cache: "no-store" });
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setTasks(d.tasks ?? []);
       } else {
         const res = await fetch(
           `/api/submissions?status=${TAB_TO_STATUS[tab].join(",")}&type=VIDEO`,
           { cache: "no-store" }
         );
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setSubmissions(d.submissions ?? []);
       }
     } catch {
+      if (!silent) setFailed(true);
       // ignore
     } finally {
       if (!silent) setLoading(false);
@@ -145,7 +152,9 @@ export function VideoTasksView() {
 
       {loading && <ListSkeleton rows={4} />}
 
-      {!loading && tab === "available" && tasks.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && tab === "available" && tasks.length === 0 && (
         <EmptyState
           icon={VideoIcon}
           title="No video tasks available"
@@ -156,7 +165,7 @@ export function VideoTasksView() {
       {/* Grouped by network. A YouTube watch, a Facebook watch and a clip we
           host ourselves each ask something different of the user, and in one
           flat grid they were indistinguishable until the player opened. */}
-      {!loading && tab === "available" && tasks.length > 0 && (
+      {!loading && !failed && tab === "available" && tasks.length > 0 && (
         <div className="space-y-6">
           {groups.map(([network, list]) => (
             <div key={network}>
@@ -164,7 +173,7 @@ export function VideoTasksView() {
                 <h2 className="text-sm font-bold text-white">
                   {VIDEO_NETWORK_LABEL[network]}
                 </h2>
-                <span className="text-[11px] text-(--app-ink-3)">
+                <span className="t-meta text-(--app-ink-2)">
                   {list.length} task{list.length > 1 ? "s" : ""}
                 </span>
               </div>
@@ -204,7 +213,7 @@ export function VideoTasksView() {
         </div>
       )}
 
-      {!loading && tab !== "available" && submissions.length === 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length === 0 && (
         <EmptyState
           icon={VideoIcon}
           title={`No ${tab} submissions`}
@@ -216,7 +225,7 @@ export function VideoTasksView() {
         />
       )}
 
-      {!loading && tab !== "available" && submissions.length > 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length > 0 && (
         <div className="space-y-2">
           {submissions.map((s) => (
             <TaskSubmissionRow

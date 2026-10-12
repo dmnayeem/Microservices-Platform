@@ -7,6 +7,7 @@ import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { TaskSubmissionRow } from "@/components/user/primitives/task-submission-row";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
@@ -52,23 +53,29 @@ export function ArticleTasksView() {
   const [tasks, setTasks] = useState<ArticleTask[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       if (tab === "available") {
         const res = await fetch("/api/tasks?type=ARTICLE", { cache: "no-store" });
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setTasks(d.tasks ?? []);
       } else {
         const res = await fetch(
           `/api/submissions?status=${TAB_TO_STATUS[tab].join(",")}&type=ARTICLE`,
           { cache: "no-store" }
         );
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setSubmissions(d.submissions ?? []);
       }
     } catch {
+      if (!silent) setFailed(true);
       // ignore
     } finally {
       if (!silent) setLoading(false);
@@ -110,7 +117,9 @@ export function ArticleTasksView() {
 
       {loading && <ListSkeleton rows={4} />}
 
-      {!loading && tab === "available" && tasks.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && tab === "available" && tasks.length === 0 && (
         <EmptyState
           icon={FileText}
           title="No article tasks available"
@@ -118,7 +127,7 @@ export function ArticleTasksView() {
         />
       )}
 
-      {!loading && tab === "available" && tasks.length > 0 && (
+      {!loading && !failed && tab === "available" && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <TaskCard
@@ -142,7 +151,7 @@ export function ArticleTasksView() {
         </div>
       )}
 
-      {!loading && tab !== "available" && submissions.length === 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length === 0 && (
         <EmptyState
           icon={FileText}
           title={`No ${tab} submissions`}
@@ -154,7 +163,7 @@ export function ArticleTasksView() {
         />
       )}
 
-      {!loading && tab !== "available" && submissions.length > 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length > 0 && (
         <div className="space-y-2">
           {submissions.map((s) => (
             <TaskSubmissionRow

@@ -42,11 +42,11 @@ const useStore = create<{ counts: NavCounts; set: (c: NavCounts) => void }>((set
   set: (counts) => set({ counts }),
 }));
 
-function load(force = false): Promise<void> {
+function load(force = false, minGapMs = 5_000): Promise<void> {
   // Two consumers mounting together, or a quick back-and-forth between pages,
   // collapse into one request.
   if (inflight) return inflight;
-  if (!force && Date.now() - lastAt < 5_000) return Promise.resolve();
+  if (!force && Date.now() - lastAt < minGapMs) return Promise.resolve();
   inflight = fetch("/api/nav-counts", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : null))
     .then((d: Partial<NavCounts> | null) => {
@@ -77,7 +77,11 @@ export function useNavCounts(): NavCounts {
   useEffect(() => {
     void load();
   }, [pathname]);
-  useAutoRefresh(() => void load(true), { intervalMs: 60_000 });
+  // Not forced: every consumer (header, sidebar, tab bar, feed rail) runs its
+  // own 60s timer, started at different mount times, and a forced load from
+  // each was one /api/nav-counts (~15 queries) per consumer per minute. Any
+  // load in the last 30s already answers the poll.
+  useAutoRefresh(() => void load(false, 30_000), { intervalMs: 60_000 });
   return useStore((s) => s.counts);
 }
 

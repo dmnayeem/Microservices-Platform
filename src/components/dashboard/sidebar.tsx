@@ -264,7 +264,8 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           way a separately-rendered `<span>` could). Icons are 18px and inherit
           the row's colour — they were 16px and, in the mode sections, three
           different hues. */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+      {/* overscroll-contain: the end of the menu must not scroll the page behind the drawer. */}
+      <nav className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 space-y-5 md:space-y-4 [scrollbar-width:thin]">
         {noResults && (
           <p className="px-3 py-6 t-body text-(--app-ink-3) text-center">
             Nothing matches “{filter}”.

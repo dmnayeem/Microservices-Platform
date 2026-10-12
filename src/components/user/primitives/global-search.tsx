@@ -109,7 +109,8 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
   return (
     <div className="fixed inset-0 z-90 bg-(--app-page) flex flex-col">
-      <div className="sticky top-0 bg-(--app-surface)/95 backdrop-blur-lg border-b border-(--app-line) px-4 py-3">
+      {/* Full-screen over a translucent status bar: the bar starts below it. */}
+      <div className="sticky top-0 bg-(--app-surface)/95 backdrop-blur-lg border-b border-(--app-line) px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />

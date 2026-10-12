@@ -58,7 +58,7 @@ export function BecomeTutorCard() {
           </div>
           <Link
             href="/tutor/dashboard"
-            className="inline-flex items-center gap-1 text-xs font-bold text-teal-300 hover:text-teal-200"
+            className="app-tap-row inline-flex items-center gap-1 text-sm font-bold text-teal-300 hover:text-teal-200"
           >
             Open tutor hub <ArrowRight className="w-3.5 h-3.5" />
           </Link>
@@ -112,7 +112,7 @@ export function BecomeTutorCard() {
             )}
             <Link
               href="/profile/become-tutor"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-rose-300 hover:text-rose-200"
+              className="app-tap-row mt-1 inline-flex items-center gap-1 text-sm font-bold text-rose-300 hover:text-rose-200"
             >
               Re-apply <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -162,7 +162,7 @@ export function BecomeTutorCard() {
         </div>
         <Link
           href="/profile/become-tutor"
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold whitespace-nowrap"
+          className="app-press app-tap-row shrink-0 inline-flex items-center gap-1 px-3.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold whitespace-nowrap"
         >
           Apply <ArrowRight className="w-3.5 h-3.5" />
         </Link>

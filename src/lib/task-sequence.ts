@@ -70,9 +70,14 @@ export async function getTaskChainState(userId: string): Promise<TaskChainState>
   // The chain MUST be ordered over exactly the set the list renders. It used to
   // apply only `countries` of the seven audience dimensions and skipped
   // `hidden`, so lock positions could land on tasks the user never sees.
+  // `now` floored to the minute: it is part of the cached read's key below, and
+  // the exact time made every call a new Accelerate key (the cache never hit).
+  const chainNow = new Date();
+  chainNow.setSeconds(0, 0);
   const chainWhere = visibleTaskWhere(ctx.viewer, {
     accessLevel: ctx.accessLevel,
     allowedTypes: ctx.allowedTypes,
+    now: chainNow,
   });
 
   // The full ordered eligible set — id-only + the two fields needed to decide

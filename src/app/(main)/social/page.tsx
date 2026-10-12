@@ -30,7 +30,10 @@ export default async function SocialPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  // Floored to the minute: it sits in the cached banner read's predicate, and an
+  // exact timestamp made every render a distinct Accelerate cache key (never hit).
   const now = new Date();
+  now.setSeconds(0, 0);
   const userId = session.user.id;
 
   // Every read on this page is a sidebar/discovery widget — none of it is
@@ -131,6 +134,7 @@ export default async function SocialPage() {
             isBlueVerified: true,
             verifiedBadgeStyle: true,
             followersCount: true,
+            displayFollowersBoost: true,
           },
           cacheStrategy: { ttl: 60, swr: 120 },
         }),
@@ -188,9 +192,15 @@ export default async function SocialPage() {
   const followingIds = followingRows.map((f) => f.followingId);
   // Exclude the viewer and anyone they already follow, then take 5.
   const excluded = new Set([userId, ...followingIds]);
+  // The follower number is the one their profile shows (real + the admin's
+  // display boost). The rail showed the raw count — 5 here, 100+ on the profile.
   const suggestedToFollow = whoToFollowRows
     .filter((u) => !excluded.has(u.id))
-    .slice(0, 5);
+    .slice(0, 5)
+    .map(({ displayFollowersBoost, ...u }) => ({
+      ...u,
+      followersCount: Math.max(0, u.followersCount + (displayFollowersBoost ?? 0)),
+    }));
 
   const canBoost = effectiveFeatures.enabled.has("boost");
   const canShareLinks = effectiveFeatures.enabled.has("shareLinks");

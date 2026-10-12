@@ -120,16 +120,16 @@ export function WithdrawalTracker({
             </span>
             <span
               className={cn(
-                "mt-1.5 text-[11px] font-bold leading-tight sm:text-xs",
+                "mt-1.5 text-xs font-bold leading-tight",
                 st.state === "todo" ? "text-(--app-ink-3)" : "text-(--app-ink)",
                 st.state === "failed" && "text-red-300"
               )}
             >
               {st.title}
             </span>
-            {st.at && <span className="mt-0.5 text-[10px] text-(--app-ink-3)">{st.at}</span>}
+            {st.at && <span className="mt-0.5 text-[11px] text-(--app-ink-2)">{st.at}</span>}
             {!compact && st.state === "current" && (
-              <span className="mt-1 hidden max-w-[11rem] text-[10px] leading-snug text-sky-300 sm:block">{st.detail}</span>
+              <span className="mt-1 hidden max-w-[11rem] text-[11px] leading-snug text-sky-300 sm:block">{st.detail}</span>
             )}
           </li>
         ))}
@@ -142,7 +142,7 @@ export function WithdrawalTracker({
           </span>{" "}
           {payoutMessage ? <>Payouts usually take {payoutMessage}. </> : null}
           The amount is held safely until it is paid; if it can&apos;t be paid, it returns to your wallet in full.
-          <span className="ml-1 font-mono text-[10px] text-(--app-ink-3)">Ref #{w.id.slice(-8).toUpperCase()}</span>
+          <span className="ml-1 font-mono text-[11px] text-(--app-ink-2)">Ref #{w.id.slice(-8).toUpperCase()}</span>
         </div>
       )}
       {failed && (

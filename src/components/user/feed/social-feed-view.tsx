@@ -146,7 +146,7 @@ export function SocialFeedView({
     // genuinely spare.
     <div className="mx-auto w-full max-w-5xl xl:max-w-6xl flex justify-center gap-6">
       {/* Center feed column (FB/Twitter-width) */}
-      <div className="w-full max-w-[36rem] 2xl:max-w-[40rem] min-w-0 space-y-4">
+      <div className="w-full max-w-[36rem] min-[1400px]:max-w-[38.5rem] 2xl:max-w-[40rem] min-w-0 space-y-4">
         {/* ONE toolbar for everything that steers the feed.
             It replaces a tab strip at the top of the column and a sort toggle
             floating on its own line further down — two rows, in two places, each
@@ -287,7 +287,7 @@ export function SocialFeedView({
           The aside is deliberately left to stretch to the row height: `sticky`
           needs a taller ancestor to travel inside, so adding `self-start` here
           would shrink it to its content and stop the stickiness working. */}
-      <aside className="hidden xl:block w-80 2xl:w-[23.75rem] shrink-0">
+      <aside className="hidden xl:block w-80 min-[1400px]:w-[21.5rem] 2xl:w-[23.75rem] shrink-0">
         {/* The rail scrolls on its own.
             `sticky` alone pinned this column 80px below the header and then let
             it move with the page — so once the widgets were taller than the
@@ -680,11 +680,13 @@ function FeedTab({
 
   return (
     <div className="space-y-4">
+      {/* Below the app header (4rem) and the sticky feed toolbar under it.
+          At `top-2` it stuck behind the header, so the pill was never seen. */}
       {hasNewActivity && (
-        <div className="sticky top-2 z-20 flex justify-center">
+        <div className="pointer-events-none sticky top-[calc(8.25rem+env(safe-area-inset-top))] z-20 flex justify-center">
           <button
             onClick={showNewActivity}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold shadow-lg hover:bg-(--app-cta) transition-colors"
+            className="pointer-events-auto app-press app-tap-row inline-flex items-center gap-1.5 px-5 rounded-full bg-(--app-cta) text-(--app-on-cta) text-sm font-bold shadow-lg hover:bg-(--app-cta) transition-colors"
           >
             <ArrowUp className="w-4 h-4" />
             New posts
@@ -752,7 +754,7 @@ function FeedTab({
             return (
               <Fragment key={post._k ?? post.id}>
                 {post._k && roundStarts.has(post._k) && (
-                  <div className="flex items-center gap-3 py-2 text-[11px] font-semibold text-(--app-ink-3)">
+                  <div className="flex items-center gap-3 py-2 text-xs font-semibold text-(--app-ink-3) text-center">
                     <span className="h-px flex-1 bg-(--app-line)" />
                     You&apos;ve seen everything new — here&apos;s more
                     <span className="h-px flex-1 bg-(--app-line)" />
@@ -781,13 +783,13 @@ function FeedTab({
             <button
               type="button"
               onClick={() => void loadMore()}
-              className="mx-auto block rounded-full border border-(--app-line) bg-(--app-surface) px-4 py-2 text-xs font-bold text-(--app-ink-2) hover:text-(--app-ink)"
+              className="app-press app-tap-row mx-auto flex items-center rounded-full border border-(--app-line) bg-(--app-surface) px-5 text-sm font-bold text-(--app-ink-2) hover:text-(--app-ink)"
             >
               Load more posts
             </button>
           )}
           {!hasMore && (
-            <p className="text-center text-[11px] text-(--app-ink-3) py-4">
+            <p className="text-center text-xs text-(--app-ink-3) py-4">
               You&apos;re all caught up.
             </p>
           )}

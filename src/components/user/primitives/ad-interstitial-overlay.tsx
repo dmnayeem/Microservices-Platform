@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, X } from "lucide-react";
 import type { AdPlacementName } from "@/lib/ad-placements";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
+import { VastAdPlayer } from "@/components/user/primitives/vast-ad-player";
 import { adClickHref } from "@/lib/ad-measure-client";
 import { AdSlotShell, adNetworkLabel } from "@/components/user/primitives/ad-slot-shell";
 
@@ -25,6 +26,8 @@ interface Ad {
   networkId?: string;
   /** HTML ads on the separate ad origin (see sandboxed-ad-frame). */
   frameUrl?: string;
+  /** VAST ads: the tag the browser loads (vast-ad-player.tsx). */
+  vastUrl?: string;
 }
 
 /**
@@ -198,10 +201,25 @@ export function AdInterstitialOverlay({
             </a>
           )}
         </div>
-      ) : ad.html && empty ? (
+      ) : (ad.html || ad.vastUrl) && empty ? (
         <div className="max-w-md w-full rounded-2xl border border-white/10 bg-(--app-surface) p-6 text-center">
           <p className="text-base font-bold text-white">Your reward is almost ready</p>
           <p className="mt-1 text-sm text-(--app-ink-3)">Thanks for waiting — it unlocks in a moment.</p>
+        </div>
+      ) : ad.type === "VAST" && ad.vastUrl ? (
+        // VAST may be booked into a full-screen space (typeFitsPlacement), and
+        // without this branch it fell through to the image card below — an
+        // empty box with a "Learn More" button for the whole countdown.
+        <div className="max-w-md w-full">
+          <VastAdPlayer
+            key={ad.id}
+            tagUrl={ad.vastUrl}
+            height={280}
+            onDone={(reason) => {
+              if (reason === "empty") setEmpty(true);
+              else setLeft(0);
+            }}
+          />
         </div>
       ) : ad.html ? (
         <div className="max-w-md w-full">

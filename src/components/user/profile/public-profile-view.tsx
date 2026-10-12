@@ -9,7 +9,7 @@ import {
   MapPin,
   UserPlus,
   UserCheck,
-  Coins,
+  Users,
   Crown,
   Lock,
   Briefcase,
@@ -292,7 +292,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             {viewer.isMe ? (
               <Link
                 href="/profile"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold"
+                className="app-press app-tap-row inline-flex items-center gap-1.5 px-4 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
               >
                 Edit Profile
               </Link>
@@ -301,22 +301,22 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                 onClick={toggleFollow}
                 disabled={followBusy}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50",
+                  "app-press app-tap-row inline-flex items-center gap-1.5 px-5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50",
                   viewer.isFollowing
                     ? "bg-(--app-surface-2) text-(--app-ink) border border-(--app-line) hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30"
                     : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >
                 {followBusy ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : viewer.isFollowing ? (
                   <>
-                    <UserCheck className="w-3.5 h-3.5" />
+                    <UserCheck className="w-4 h-4" />
                     Following
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-3.5 h-3.5" />
+                    <UserPlus className="w-4 h-4" />
                     Follow
                   </>
                 )}
@@ -334,7 +334,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                 />
               </span>
             )}
-            <span className="ml-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+            <span className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 text-[11px] font-bold uppercase tracking-wider">
               <Crown className="w-3 h-3" />
               {user.packageTier}
             </span>
@@ -343,7 +343,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             <p className="text-(--app-ink-3) text-sm">@{user.username}</p>
           )}
           {viewer.isFollowedBy && !viewer.isMe && (
-            <span className="inline-block mt-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink-2) font-bold">
+            <span className="inline-block mt-2 text-[11px] uppercase tracking-wider px-2 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink-2) font-bold">
               Follows you
             </span>
           )}
@@ -371,7 +371,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
               {user.tags.map((t) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-(--app-cta)/10 text-(--app-accent-ink) text-[11px] font-medium border border-(--app-accent-edge)/30"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-(--app-cta)/10 text-(--app-accent-ink) text-xs font-medium border border-(--app-accent-edge)/30"
                 >
                   {TAG_LABEL[t] ?? t}
                 </span>
@@ -383,7 +383,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
 
       {/* Stats — Social group + Lifetime panel, both privacy-gated */}
       {statsHidden ? (
-        <div className="glass p-4 text-center text-xs text-(--app-ink-3) inline-flex items-center justify-center gap-2 w-full">
+        <div className="glass p-4 text-center text-sm text-(--app-ink-2) inline-flex items-center justify-center gap-2 w-full">
           <Lock className="w-4 h-4" />
           This user&apos;s stats are private.
         </div>
@@ -439,28 +439,28 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                   <div className="flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <p className="text-[11px] uppercase tracking-wider text-emerald-300/80 font-bold">
+                    <p className="t-eyebrow text-emerald-300">
                       Courses
                     </p>
                   </div>
                   <p className="text-xl font-extrabold text-white tabular-nums mt-1">
                     {user.creations.coursesCreated}
                   </p>
-                  <p className="text-[11px] text-(--app-ink-3)">published</p>
+                  <p className="text-xs text-(--app-ink-3)">published</p>
                 </div>
               )}
               {user.creations.marketplaceListings > 0 && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
                   <div className="flex items-center gap-2">
                     <ShoppingBag className="w-4 h-4 text-amber-400 shrink-0" />
-                    <p className="text-[11px] uppercase tracking-wider text-amber-300/80 font-bold">
+                    <p className="t-eyebrow text-amber-300">
                       Marketplace
                     </p>
                   </div>
                   <p className="text-xl font-extrabold text-white tabular-nums mt-1">
                     {user.creations.marketplaceListings}
                   </p>
-                  <p className="text-[11px] text-(--app-ink-3)">listings</p>
+                  <p className="text-xs text-(--app-ink-3)">listings</p>
                 </div>
               )}
             </div>
@@ -468,7 +468,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
 
           {user.socialAccounts.length > 0 && (
             <div className="mt-4 pt-4 border-t border-(--app-line)">
-              <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2.5">
+              <p className="t-eyebrow text-(--app-ink-3) mb-2.5">
                 Connected accounts
               </p>
               <div className="flex flex-wrap gap-2">
@@ -495,14 +495,14 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                       href={a.url}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
+                      className="app-press inline-flex min-h-10 items-center gap-1.5 px-3 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
                     >
                       {chip}
                     </a>
                   ) : (
                     <span
                       key={a.id}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-(--app-page) border border-(--app-line)"
+                      className="inline-flex min-h-10 items-center gap-1.5 px-3 rounded-lg bg-(--app-page) border border-(--app-line)"
                     >
                       {chip}
                     </span>
@@ -526,7 +526,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              "shrink-0 px-4 py-2 text-sm font-medium transition-colors",
+              "app-press app-tap-row shrink-0 px-4 text-sm font-semibold transition-colors",
               tab === t.key
                 ? "text-white border-b-2 border-(--app-accent-edge)"
                 : "text-(--app-ink-3) hover:text-(--app-ink)"
@@ -642,7 +642,7 @@ export function PostsTab({
               key={p.id}
               type="button"
               onClick={() => setOpen(p)}
-              className="group relative aspect-square overflow-hidden rounded-xl border border-(--app-line) bg-(--app-page) text-left transition-colors hover:border-(--app-accent-edge)/40 focus:outline-none focus-visible:border-(--app-accent-edge)"
+              className="app-press group relative aspect-square overflow-hidden rounded-xl border border-(--app-line) bg-(--app-page) text-left transition-colors hover:border-(--app-accent-edge)/40 focus:outline-none focus-visible:border-(--app-accent-edge)"
             >
               {image ? (
                 <SmartImage
@@ -672,13 +672,13 @@ export function PostsTab({
 
               {/* More than one photo — the same marker every gallery uses. */}
               {p.images.length > 1 && (
-                <span className="absolute top-2 right-2 on-media rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                <span className="absolute top-2 right-2 on-media rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-white">
                   +{p.images.length - 1}
                 </span>
               )}
               {p.isPinned && (
-                <span className="absolute top-2 left-2 inline-flex items-center gap-1 on-media rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                  <Pin className="w-2.5 h-2.5" />
+                <span className="absolute top-2 left-2 inline-flex items-center gap-1 on-media rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-bold text-amber-300">
+                  <Pin className="w-3 h-3" />
                   Pinned
                 </span>
               )}
@@ -687,22 +687,22 @@ export function PostsTab({
                   than plain text over whatever colour the image happens to be
                   at the bottom edge. */}
               <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 via-black/45 to-transparent px-2.5 pb-2 pt-6">
-                <div className="flex items-center gap-3 text-[11px] font-semibold text-white">
+                <div className="flex items-center gap-3 text-xs font-semibold text-white">
                   <span className="inline-flex items-center gap-1">
                     <Heart
                       className={cn(
-                        "w-3 h-3",
+                        "w-3.5 h-3.5",
                         p.isLiked ? "fill-rose-400 text-rose-400" : "text-white"
                       )}
                     />
                     {p.likesCount}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <MessageCircle className="w-3 h-3" />
+                    <MessageCircle className="w-3.5 h-3.5" />
                     {p.commentsCount}
                   </span>
-                  <span className="ml-auto inline-flex items-center gap-1 text-white/70">
-                    <Eye className="w-3 h-3" />
+                  <span className="ml-auto inline-flex items-center gap-1 text-white/80">
+                    <Eye className="w-3.5 h-3.5" />
                     {p.viewsCount}
                   </span>
                 </div>
@@ -736,9 +736,9 @@ export function PostsTab({
                 type="button"
                 onClick={() => setOpen(null)}
                 aria-label="Close"
-                className="p-1 rounded-lg text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
+                className="app-press app-tap -mr-2 -mt-2 inline-flex items-center justify-center rounded-lg text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -861,12 +861,25 @@ function UserListTab({
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-(--app-ink-3) text-sm">Loading…</div>;
+    // Rows in the list's own shape, so the page does not jump when it lands.
+    return (
+      <div className="space-y-2" aria-busy="true">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 p-3 glass">
+            <div className="h-11 w-11 shrink-0 rounded-full bg-(--app-surface-2) animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3.5 w-2/5 rounded bg-(--app-surface-2) animate-pulse" />
+              <div className="h-3 w-1/4 rounded bg-(--app-surface-2) animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-(--app-line) p-8 text-center text-sm text-(--app-ink-3)">
-        No users yet.
+      <div className="rounded-xl border border-dashed border-(--app-line) p-8 text-center text-sm text-(--app-ink-2)">
+        No one here yet.
       </div>
     );
   }
@@ -880,22 +893,23 @@ function UserListTab({
             className="flex items-center gap-3 p-3 glass glass-hover"
           >
             <Link href={profileHref(u)}>
-              <Avatar src={u.avatar} size={40} fallbackText={initial} />
+              <Avatar src={u.avatar} size={44} fallbackText={initial} />
             </Link>
             <div className="flex-1 min-w-0">
               <Link href={profileHref(u)} className="block">
-                <p className="text-sm font-bold text-white truncate inline-flex items-center gap-1">
-                  {u.name ?? u.username ?? "User"}
+                <p className="text-sm font-bold text-white flex min-w-0 items-center gap-1">
+                  <span className="truncate">{u.name ?? u.username ?? "User"}</span>
                   {u.isBlueVerified && (
                     <VerifiedBadge style={u.verifiedBadgeStyle} size="sm" />
                   )}
                 </p>
               </Link>
               {u.username && (
-                <p className="text-[11px] text-(--app-ink-3)">@{u.username}</p>
+                <p className="text-xs text-(--app-ink-3) truncate">@{u.username}</p>
               )}
-              <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
-                <Coins className="w-3 h-3 text-amber-400" />
+              <p className="text-xs text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
+                {/* People, not a coin: a coin here read as money earned. */}
+                <Users className="w-3.5 h-3.5" />
                 {u.followersCount.toLocaleString()} followers
               </p>
             </div>
@@ -904,7 +918,7 @@ function UserListTab({
                 onClick={() => toggle(u)}
                 disabled={busyId === u.id}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50",
+                  "app-press app-tap-row shrink-0 inline-flex items-center justify-center min-w-24 px-3.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50",
                   u.isFollowing
                     ? "bg-(--app-surface-2) text-(--app-ink) border border-(--app-line)"
                     : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
@@ -940,7 +954,7 @@ function PublicFact({
     <div className="flex items-start gap-2.5">
       <span className="mt-0.5 text-(--app-ink-3) shrink-0">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold">
+        <p className="t-eyebrow text-(--app-ink-3)">
           {label}
         </p>
         <p className="text-sm text-(--app-ink) break-words">{value}</p>

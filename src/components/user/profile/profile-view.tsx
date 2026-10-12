@@ -217,8 +217,16 @@ export function ProfileView() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] text-(--app-ink-3)">
-        Couldn&apos;t load your profile. Try refreshing.
+      /* A dead end with no button meant a manual browser refresh, which an
+         installed PWA does not even show. */
+      <div className="flex flex-col items-center justify-center gap-3 min-h-[60vh] px-6 text-center">
+        <p className="t-body text-(--app-ink-2)">Couldn&apos;t load your profile.</p>
+        <button
+          onClick={() => void load()}
+          className="app-press app-tap-row inline-flex items-center px-5 rounded-(--app-r-control) bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -240,13 +248,14 @@ export function ProfileView() {
           </p>
           <button
             onClick={acceptAutoCountry}
-            className="px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
+            className="app-press app-tap-row shrink-0 px-3 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             Yes, use it
           </button>
           <button
             onClick={() => setAutoCountry({ ...autoCountry, dismissed: true })}
-            className="p-1.5 text-(--app-accent-ink) hover:text-(--app-ink)"
+            aria-label="Dismiss"
+            className="app-press app-tap shrink-0 -mr-1.5 inline-flex items-center justify-center rounded-lg text-(--app-accent-ink) hover:text-(--app-ink)"
           >
             <X className="w-4 h-4" />
           </button>
@@ -267,7 +276,7 @@ export function ProfileView() {
           )}
           <button
             onClick={() => setPhotoTarget("coverPhoto")}
-            className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/55 backdrop-blur-md text-white text-xs font-medium hover:bg-black/75 border border-white/10"
+            className="app-press absolute top-3 right-3 inline-flex min-h-10 items-center gap-1.5 px-3 rounded-lg bg-black/55 backdrop-blur-md text-white text-xs font-medium hover:bg-black/75 border border-white/10"
           >
             <Camera className="w-3.5 h-3.5" />
             <span className="hidden xs:inline">Edit Cover</span>
@@ -292,10 +301,10 @@ export function ProfileView() {
               />
               <button
                 onClick={() => setPhotoTarget("avatar")}
-                className="absolute bottom-1 right-1 p-2 bg-(--app-surface-2) hover:bg-(--app-surface-hover) rounded-full border-2 border-(--app-surface) shadow-lg"
+                className="app-press absolute -bottom-1 -right-1 grid h-10 w-10 place-items-center bg-(--app-surface-2) hover:bg-(--app-surface-hover) rounded-full border-2 border-(--app-surface) shadow-lg"
                 aria-label="Change profile photo"
               >
-                <Camera className="w-3.5 h-3.5 text-white" />
+                <Camera className="w-4 h-4 text-white" />
               </button>
             </div>
           </div>
@@ -303,16 +312,19 @@ export function ProfileView() {
           <div className="flex justify-end mb-2 gap-2">
             <Link
               href={profileHref(profile)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold"
+              aria-label="View as public"
+              className="app-press app-tap inline-flex items-center justify-center gap-1.5 px-3 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
             >
-              <EyeIcon className="w-3.5 h-3.5" />
-              View as public
+              <EyeIcon className="w-4 h-4" />
+              {/* Icon-only on narrow phones: two labelled buttons ran in under
+                  the 112px avatar that overhangs this row. */}
+              <span className="hidden sm:inline">View as public</span>
             </Link>
             <button
               onClick={() => openEdit("personal")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold shadow-lg shadow-(--app-cta)/30"
+              className="app-press app-tap-row inline-flex items-center gap-1.5 px-3 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold shadow-lg shadow-(--app-cta)/30"
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <Edit3 className="w-4 h-4" />
               Edit Profile
             </button>
           </div>
@@ -334,8 +346,8 @@ export function ProfileView() {
                   href="/badge"
                   className={
                     verification.isBlueVerified
-                      ? "inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20"
-                      : "inline-flex items-center gap-1 rounded-full bg-sky-500 px-3 py-1 text-[11px] font-bold text-white hover:bg-sky-400"
+                      ? "app-press inline-flex min-h-8 items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-3 text-xs font-semibold text-sky-300 hover:bg-sky-500/20"
+                      : "app-press inline-flex min-h-8 items-center gap-1 rounded-full bg-sky-500 px-3 text-xs font-bold text-white hover:bg-sky-400"
                   }
                 >
                   {verification.isBlueVerified ? "Badge styles" : "Get verified"}
@@ -390,7 +402,7 @@ export function ProfileView() {
               return (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-(--app-cta)/10 text-(--app-accent-ink) text-[11px] font-medium border border-(--app-accent-edge)/30"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-(--app-cta)/10 text-(--app-accent-ink) text-xs font-medium border border-(--app-accent-edge)/30"
                 >
                   <span>{meta?.emoji ?? "★"}</span>
                   {meta?.label ?? t}
@@ -399,7 +411,7 @@ export function ProfileView() {
             })}
             <button
               onClick={() => setTagModalOpen(true)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) text-[11px] font-medium border border-(--app-line)"
+              className="app-press inline-flex min-h-8 items-center gap-1.5 px-3 rounded-full bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) text-xs font-semibold border border-(--app-line)"
             >
               <Tag className="w-3 h-3" />
               {profile.tags.length === 0 ? "Add tags" : "Edit tags"}
@@ -412,43 +424,43 @@ export function ProfileView() {
           <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-(--app-line)">
             <button
               onClick={() => setPrimaryTab("posts")}
-              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
+              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 app-press app-tap-row min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
             >
               <span className="text-base font-bold text-white tabular-nums leading-tight">
                 {stats.postsCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-(--app-ink-3) font-medium whitespace-nowrap">Posts</span>
+              <span className="text-xs text-(--app-ink-2) font-medium whitespace-nowrap">Posts</span>
             </button>
             <button
               onClick={() => setPrimaryTab("followers")}
-              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors border-x border-(--app-line)"
+              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 app-press app-tap-row min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors border-x border-(--app-line)"
             >
               <span className="text-base font-bold text-white tabular-nums leading-tight">
                 {stats.followersCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-(--app-ink-3) font-medium whitespace-nowrap">Followers</span>
+              <span className="text-xs text-(--app-ink-2) font-medium whitespace-nowrap">Followers</span>
             </button>
             <button
               onClick={() => setPrimaryTab("following")}
-              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
+              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 app-press app-tap-row min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
             >
               <span className="text-base font-bold text-white tabular-nums leading-tight">
                 {stats.followingCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-(--app-ink-3) font-medium whitespace-nowrap">Following</span>
+              <span className="text-xs text-(--app-ink-2) font-medium whitespace-nowrap">Following</span>
             </button>
           </div>
 
           {/* Social earnings highlight — points earned from posts & engagement */}
           <button
             onClick={() => setPrimaryTab("analytics")}
-            className="w-full mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/15 transition-colors text-left"
+            className="app-press w-full mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/15 transition-colors text-left"
           >
             <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-400 shrink-0">
               <Coins className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90">
+              <p className="t-eyebrow text-amber-400">
                 Social Earnings
               </p>
               <p className="text-xs text-(--app-ink-3) -mt-0.5">From posts &amp; engagement</p>
@@ -456,9 +468,9 @@ export function ProfileView() {
             <div className="text-right shrink-0">
               <p className="text-sm font-extrabold text-white tabular-nums leading-tight">
                 {stats.socialEarningsPoints.toLocaleString()}{" "}
-                <span className="text-[11px] font-semibold text-(--app-ink-3)">pts</span>
+                <span className="text-xs font-semibold text-(--app-ink-3)">pts</span>
               </p>
-              <p className="text-[11px] text-(--app-ink-3) tabular-nums leading-tight">
+              <p className="text-xs text-(--app-ink-3) tabular-nums leading-tight">
                 ≈ {usd(stats.socialEarningsUsd)}
               </p>
             </div>
@@ -485,7 +497,7 @@ export function ProfileView() {
               key={t.key}
               onClick={() => setPrimaryTab(t.key)}
               className={cn(
-                "shrink-0 inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors relative",
+                "app-press app-tap-row shrink-0 inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors relative",
                 primaryTab === t.key
                   ? "text-(--app-accent-ink)"
                   : "text-(--app-ink-3) hover:text-(--app-ink)"

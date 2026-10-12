@@ -132,14 +132,14 @@ export function AnalyticsPanel({
                   className="w-full rounded-t bg-linear-to-t from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-rail-b) transition-colors min-h-0.5"
                   style={{ height: `${Math.max(2, heightPct)}%` }}
                 />
-                <span className="absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-[10px] text-(--app-ink) opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-xs text-(--app-ink) opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
                   {d.views}
                 </span>
               </div>
             );
           })}
         </div>
-        <div className="flex justify-between text-[10px] text-(--app-ink-3) font-mono">
+        <div className="flex justify-between text-[11px] text-(--app-ink-3) tabular-nums">
           <span>{viewsByDay[0]?.date.slice(5)}</span>
           <span>{viewsByDay[viewsByDay.length - 1]?.date.slice(5)}</span>
         </div>
@@ -172,26 +172,26 @@ export function AnalyticsPanel({
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">
+                  <p className="text-sm text-white line-clamp-2 break-words">
                     {p.content || (
                       <span className="italic text-(--app-ink-3)">No caption</span>
                     )}
                   </p>
-                  <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[10px] text-(--app-ink-3)">
-                    <span className="inline-flex items-center gap-0.5">
-                      <EyeIcon className="w-3 h-3" />
+                  <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-(--app-ink-3) tabular-nums">
+                    <span className="inline-flex items-center gap-1">
+                      <EyeIcon className="w-3.5 h-3.5" />
                       {p.viewsCount.toLocaleString()}
                     </span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <ThumbsUp className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1">
+                      <ThumbsUp className="w-3.5 h-3.5" />
                       {p.likesCount.toLocaleString()}
                     </span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <MessageSquare className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5" />
                       {p.commentsCount.toLocaleString()}
                     </span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <Share2 className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1">
+                      <Share2 className="w-3.5 h-3.5" />
                       {p.sharesCount.toLocaleString()}
                     </span>
                     <span className="ml-auto text-(--app-glyph)">
@@ -232,7 +232,7 @@ function AnalyticsTile({
     <div className="glass p-3 flex items-center gap-3 min-w-0">
       <div className={cn("p-2 rounded-lg border shrink-0", tones[tone])}>{icon}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider font-bold truncate">
+        <p className="t-eyebrow text-(--app-ink-3) truncate">
           {label}
         </p>
         <p className={STAT_VALUE_CLASS_SM}>{value}</p>

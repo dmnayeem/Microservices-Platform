@@ -198,10 +198,12 @@ export function DepositView({ from }: { from?: string } = {}) {
 
       <div className="glass rounded-xl p-4 sm:p-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
-            Amount (USD)
+          <label htmlFor="deposit-amount" className="block text-sm font-semibold text-(--app-ink-2) mb-1.5">
+            Amount to add (USD)
           </label>
           <input
+            id="deposit-amount"
+            inputMode="decimal"
             type="number"
             min={1}
             value={amount}
@@ -215,7 +217,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 key={a}
                 type="button"
                 onClick={() => setAmount(String(a))}
-                className={`px-3 py-1 rounded-lg text-xs font-bold border ${
+                className={`app-press min-h-10 px-3 py-1.5 rounded-lg text-sm font-bold border ${
                   Number(amount) === a
                     ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
                     : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2) hover:border-(--app-line)"
@@ -257,9 +259,9 @@ export function DepositView({ from }: { from?: string } = {}) {
                   {selected?.label} charge
                   {chargePct > 0 && ` (${chargePct}%)`}
                   {(selected?.feeFlatUsd ?? 0) > 0 &&
-                    ` ${chargePct > 0 ? "+" : ""} $${selected?.feeFlatUsd} network fee`}
+                    ` ${chargePct > 0 ? "+" : ""} ${usd(selected?.feeFlatUsd ?? 0)} network fee`}
                   {chargePct > 0 && (
-                    <span className="block text-[10px] text-(--app-ink-3)">
+                    <span className="block t-meta text-(--app-ink-3)">
                       {currency?.symbol ?? ""}{(chargePct * 10).toFixed(1)} per{" "}
                       {currency?.symbol ?? ""}1,000
                     </span>
@@ -271,7 +273,7 @@ export function DepositView({ from }: { from?: string } = {}) {
               </div>
             )}
             {selected && chargePct === 0 && selected.chargeType === "cashout" && (
-              <p className="text-[11px] text-emerald-400">
+              <p className="t-meta font-semibold text-emerald-400">
                 Cash out — no extra charge
               </p>
             )}
@@ -289,7 +291,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 {formatLocal(breakdown.totalLocal, currency)}
               </span>
             </div>
-            <p className="text-[10px] text-(--app-ink-3)">
+            <p className="t-meta text-(--app-ink-2)">
               Your wallet is credited {usd(breakdown.amountUsd)} on
               approval. The {currency?.code} total includes the method charge
               {vat.enabled ? " + VAT" : ""}.
@@ -298,9 +300,9 @@ export function DepositView({ from }: { from?: string } = {}) {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
+          <p className="block text-sm font-semibold text-(--app-ink-2) mb-1.5">
             Payment method
-          </label>
+          </p>
           {methods.length === 0 ? (
             <p className="rounded-lg border border-(--app-line) bg-(--app-surface)/50 p-3 text-xs text-(--app-ink-3)">
               No payment methods are available right now. Please check back soon or contact support.
@@ -317,7 +319,8 @@ export function DepositView({ from }: { from?: string } = {}) {
                     key={m.key}
                     type="button"
                     onClick={() => setMethod(m.key)}
-                    className={`p-2.5 rounded-lg border text-sm font-semibold flex flex-col items-center justify-center gap-0.5 ${
+                    aria-pressed={method === m.key}
+                    className={`app-press min-h-14 p-2.5 rounded-lg border text-sm font-semibold flex flex-col items-center justify-center gap-0.5 ${
                       method === m.key
                         ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
                         : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2)"
@@ -328,7 +331,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                       <span className="truncate min-w-0">{m.label}</span>
                     </span>
                     <span
-                      className={`text-[10px] font-bold ${
+                      className={`t-meta font-bold ${
                         pct > 0 ? "text-amber-400" : "text-emerald-400"
                       }`}
                     >
@@ -340,7 +343,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             </div>
           )}
           {methods.length > 0 && (
-            <p className="mt-2 text-[11px] text-(--app-ink-3)">
+            <p className="mt-2 t-meta text-(--app-ink-3)">
               The fee shown is charged on top of what you add — your wallet is
               credited the full USD amount.
               {vat.enabled && vat.pct > 0
@@ -352,12 +355,12 @@ export function DepositView({ from }: { from?: string } = {}) {
 
         {selected && (
           <div className="rounded-lg border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-3 space-y-3">
-            <p className="text-[11px] uppercase tracking-wider text-(--app-accent-ink) font-bold">
+            <p className="text-sm text-(--app-accent-ink) font-bold">
               Send payment to {selected.label}
             </p>
 
             <div>
-              <p className="text-[11px] text-(--app-ink-3) mb-1">
+              <p className="t-meta text-(--app-ink-2) mb-1">
                 {selected.accountLabel || "Receiving account"}
               </p>
               <div className="flex items-center gap-2">
@@ -367,7 +370,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 <button
                   type="button"
                   onClick={copyAccount}
-                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold hover:bg-(--app-cta)/25"
+                  className="app-press app-tap-row shrink-0 inline-flex items-center gap-1 px-3 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold hover:bg-(--app-cta)/25"
                 >
                   {copiedField === "account" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiedField === "account" ? "Copied" : "Copy"}
@@ -383,7 +386,7 @@ export function DepositView({ from }: { from?: string } = {}) {
               * than a clause inside the instructions paragraph. */}
             {selected.network && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
-                <p className="text-[11px] text-amber-300/80 mb-0.5">Network</p>
+                <p className="t-meta font-semibold text-amber-300 mb-0.5">Network</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-sm font-bold text-amber-100 break-all">
                     {selected.network}
@@ -391,16 +394,17 @@ export function DepositView({ from }: { from?: string } = {}) {
                   <button
                     type="button"
                     onClick={() => copy(selected.network ?? "", "network")}
-                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/20 text-amber-100 text-[11px] font-bold hover:bg-amber-500/30"
+                    aria-label="Copy network"
+                    className="app-press app-tap shrink-0 inline-flex items-center justify-center gap-1 px-2 rounded-lg bg-amber-500/20 text-amber-100 text-xs font-bold hover:bg-amber-500/30"
                   >
                     {copiedField === "network" ? (
-                      <Check className="w-3 h-3" />
+                      <Check className="w-4 h-4" />
                     ) : (
-                      <Copy className="w-3 h-3" />
+                      <Copy className="w-4 h-4" />
                     )}
                   </button>
                 </div>
-                <p className="text-[10px] text-amber-200/70 mt-1">
+                <p className="t-meta text-amber-200 mt-1">
                   Send on this network only. A transfer on any other network
                   cannot be recovered.
                 </p>
@@ -411,7 +415,7 @@ export function DepositView({ from }: { from?: string } = {}) {
               * one — the transfer arrives unattributed without it. */}
             {selected.memo && (
               <div>
-                <p className="text-[11px] text-(--app-ink-3) mb-1">Memo / Tag (required)</p>
+                <p className="t-meta font-semibold text-(--app-ink-2) mb-1">Memo / Tag (required)</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-sm text-(--app-ink) break-all bg-(--app-surface)/60 rounded px-2 py-1.5">
                     {selected.memo}
@@ -419,7 +423,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                   <button
                     type="button"
                     onClick={() => copy(selected.memo ?? "", "memo")}
-                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold hover:bg-(--app-cta)/25"
+                    className="app-press app-tap-row shrink-0 inline-flex items-center gap-1 px-3 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold hover:bg-(--app-cta)/25"
                   >
                     {copiedField === "memo" ? (
                       <Check className="w-3.5 h-3.5" />
@@ -463,7 +467,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                     />
                   )}
                 </div>
-                <p className="text-[10px] text-(--app-ink-3)">
+                <p className="t-meta text-(--app-ink-2)">
                   Scan to pay{selected.network ? ` — ${selected.network} only` : ""}
                 </p>
               </div>
@@ -474,7 +478,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 href={selected.payLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold px-3 py-2 hover:bg-(--app-cta)/25"
+                className="app-press app-tap-row inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-sm font-bold px-3 hover:bg-(--app-cta)/25"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Open payment link
               </a>
@@ -483,17 +487,19 @@ export function DepositView({ from }: { from?: string } = {}) {
             {selected.instructions && (
               <p className="text-xs text-(--app-ink-2) whitespace-pre-wrap">{selected.instructions}</p>
             )}
-            <p className="text-[10px] text-(--app-ink-3)">
-              Limits: ${selected.minAmount} – ${selected.maxAmount}. After paying, enter your transaction id below.
+            <p className="t-meta text-(--app-ink-2)">
+              Limits: {usd(selected.minAmount)} – {usd(selected.maxAmount)}. After paying, enter your transaction id below.
             </p>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
+          <label htmlFor="deposit-txn" className="block text-sm font-semibold text-(--app-ink-2) mb-1.5">
             Transaction ID <span className="text-red-400">*</span>
           </label>
           <input
+            id="deposit-txn"
+            autoComplete="off"
             value={txnId}
             onChange={(e) => setTxnId(e.target.value)}
             placeholder="e.g. TXN123456"
@@ -502,9 +508,9 @@ export function DepositView({ from }: { from?: string } = {}) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
+          <p className="block text-sm font-semibold text-(--app-ink-2) mb-1.5">
             Payment screenshot (optional)
-          </label>
+          </p>
           <ProofImageUpload value={proofUrl} onChange={setProofUrl} />
         </div>
 
@@ -512,7 +518,7 @@ export function DepositView({ from }: { from?: string } = {}) {
           <button
             onClick={submitManual}
             disabled={busy}
-            className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 whitespace-nowrap py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
+            className="app-press flex-1 min-w-35 min-h-12 inline-flex items-center justify-center gap-1.5 whitespace-nowrap py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Submit manual deposit
@@ -560,7 +566,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                     · {methods.find((m) => m.key === d.method)?.label ?? d.method.replace("MANUAL_", "")}
                   </span>
                 </p>
-                <p className="text-[11px] text-(--app-ink-3)">
+                <p className="t-meta text-(--app-ink-3)">
                   {new Date(d.createdAt).toLocaleDateString()}
                 </p>
               </div>

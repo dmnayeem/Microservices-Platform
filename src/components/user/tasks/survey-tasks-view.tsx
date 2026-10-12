@@ -7,6 +7,7 @@ import { TaskCard, type TaskDeviceNeeds, type TaskGate } from "@/components/user
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskListError } from "./task-list-error";
 import { TaskSubmissionRow } from "@/components/user/primitives/task-submission-row";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -22,6 +23,8 @@ interface SurveyTask {
   difficulty?: string;
   thumbnailUrl?: string | null;
   duration?: number | null;
+  /** AVAILABLE | IN_PROGRESS | SUBMITTED | REVISION | REJECTED | COMPLETED */
+  userStatus?: string;
 }
 
 interface Submission {
@@ -47,23 +50,29 @@ export function SurveyTasksView() {
   const [tasks, setTasks] = useState<SurveyTask[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       if (tab === "available") {
         const res = await fetch("/api/tasks?type=SURVEY", { cache: "no-store" });
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setTasks(d.tasks ?? []);
       } else {
         const res = await fetch(
           `/api/submissions?status=${TAB_TO_STATUS[tab].join(",")}&type=SURVEY`,
           { cache: "no-store" }
         );
+        if (res.status >= 500) throw new Error(String(res.status)); // 4xx = gated: empty list
         const d = await res.json();
+        setFailed(false);
         setSubmissions(d.submissions ?? []);
       }
     } catch {
+      if (!silent) setFailed(true);
       // ignore
     } finally {
       if (!silent) setLoading(false);
@@ -105,7 +114,9 @@ export function SurveyTasksView() {
 
       {loading && <ListSkeleton rows={4} />}
 
-      {!loading && tab === "available" && tasks.length === 0 && (
+      {!loading && failed && <TaskListError onRetry={() => load()} />}
+
+      {!loading && !failed && tab === "available" && tasks.length === 0 && (
         <EmptyState
           icon={ClipboardList}
           title="No survey tasks available"
@@ -113,7 +124,7 @@ export function SurveyTasksView() {
         />
       )}
 
-      {!loading && tab === "available" && tasks.length > 0 && (
+      {!loading && !failed && tab === "available" && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <TaskCard
@@ -122,11 +133,12 @@ export function SurveyTasksView() {
               deviceNeeds={t as unknown as TaskDeviceNeeds}
               gate={t as unknown as TaskGate}
               description={t.description}
-              type="custom"
+              type="survey"
               reward={t.pointsReward}
               xpReward={t.xpReward}
               durationMin={t.duration ?? undefined}
               thumbnail={t.thumbnailUrl ?? undefined}
+              status={(t.userStatus ?? "AVAILABLE") as never}
               actionLabel="Take Survey"
               onAction={() => router.push(`/survey-tasks/${t.id}`)}
             />
@@ -134,7 +146,7 @@ export function SurveyTasksView() {
         </div>
       )}
 
-      {!loading && tab !== "available" && submissions.length === 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length === 0 && (
         <EmptyState
           icon={ClipboardList}
           title={`No ${tab} submissions`}
@@ -146,7 +158,7 @@ export function SurveyTasksView() {
         />
       )}
 
-      {!loading && tab !== "available" && submissions.length > 0 && (
+      {!loading && !failed && tab !== "available" && submissions.length > 0 && (
         <div className="space-y-2">
           {submissions.map((s) => (
             <TaskSubmissionRow
