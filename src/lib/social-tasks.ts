@@ -3028,6 +3028,16 @@ const txt = (key: string, label: string, required = false, placeholder?: string)
 const EXTRA_ACTIONS: Record<string, SocialAction[]> = {
   FACEBOOK: [
     {
+      key: "FOLLOW_PROFILE",
+      label: "Follow Profile",
+      emoji: "👤",
+      description: "Follow a person's Facebook profile",
+      adminFields: [fieldUrl("targetUrl", "Profile URL")],
+      proofFields: [fieldProofUrl("Your profile URL"), fieldScreenshot],
+      supportsAiPrompt: false,
+      suggestedReward: { min: 5, max: 25 },
+    },
+    {
       key: "SAVE_POST",
       label: "Save Post",
       emoji: "🔖",
@@ -3457,6 +3467,14 @@ export interface BundleItem {
   verify?: "CODE" | "CONTENT" | "TELEGRAM_MEMBER" | "DISCORD_MEMBER";
   /** Rules for `verify: "CONTENT"`. Ignored by every other method. */
   contentRules?: ContentRules;
+  /**
+   * Optional caption the member copies when this action publishes something
+   * (lib/social-caption). `captionUserTag` appends the member's own
+   * #username, which a `usertag` rule can then verify.
+   */
+  caption?: string;
+  captionHashtags?: string;
+  captionUserTag?: boolean;
 }
 
 /**
@@ -3551,6 +3569,12 @@ function coerceBundleItem(raw: unknown): BundleItem | null {
     // switch back would silently revive them.
     contentRules:
       r.verify === "CONTENT" ? parseContentRules(r.contentRules) : undefined,
+    caption: typeof r.caption === "string" && r.caption.trim() ? r.caption.slice(0, 3000) : undefined,
+    captionHashtags:
+      typeof r.captionHashtags === "string" && r.captionHashtags.trim()
+        ? r.captionHashtags.slice(0, 500)
+        : undefined,
+    captionUserTag: r.captionUserTag === true ? true : undefined,
   };
 }
 

@@ -117,37 +117,27 @@ export function TaskStepList({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A collapsible aside — reference material that must be available but must not
- * push the actual work off the screen.
+ * "About this task" / "Instructions" — always shown, never folded away.
  *
- * Closed by default on purpose. "About this task" and a wall of admin-written
- * instructions were the first two things on every task page, so the first
- * screen was reading rather than doing.
+ * They used to start closed so the steps came first; members then did tasks
+ * without ever reading what was asked (owner, 2026-10-13). They are what makes
+ * the task understandable, so they are open and readable.
  */
 export function TaskAside({
   title,
-  defaultOpen = false,
   children,
 }: {
   title: string;
+  /** Kept for callers; the aside is always open now. */
   defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <details
-      open={defaultOpen}
-      className="group rounded-xl border border-(--app-line) bg-(--app-surface)/60"
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-(--app-ink-3) hover:text-(--app-ink) [&::-webkit-details-marker]:hidden">
+    <section className="rounded-xl border border-(--app-line) bg-(--app-surface)/60">
+      <h3 className="px-4 pt-3 text-xs font-bold uppercase tracking-wider text-(--app-ink-2)">
         {title}
-        <span className="text-[10px] font-semibold normal-case tracking-normal text-(--app-ink-3) group-open:hidden">
-          Show
-        </span>
-        <span className="hidden text-[10px] font-semibold normal-case tracking-normal text-(--app-ink-3) group-open:inline">
-          Hide
-        </span>
-      </summary>
-      <div className="border-t border-(--app-line) px-4 py-3">{children}</div>
-    </details>
+      </h3>
+      <div className="px-4 pb-3 pt-2 text-sm">{children}</div>
+    </section>
   );
 }

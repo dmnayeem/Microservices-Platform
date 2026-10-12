@@ -25,6 +25,7 @@ import { closeTaskIfFull } from "@/lib/task-slots";
 import { processReferralCommissions } from "@/lib/referral-commissions";
 import { recordUserAction } from "@/lib/goal-progress";
 import { runAchievementCheck } from "@/lib/achievements";
+import { userHashtag } from "@/lib/social-caption";
 
 /**
  * Look at a submission again, a little later.
@@ -127,7 +128,7 @@ export async function recheckPendingSocialSubmissions(opts?: {
     userId: string;
     taskId: string;
     metadata: unknown;
-    user: { status: string } | null;
+    user: { status: string; username: string | null } | null;
     task: {
       id: string;
       title: string;
@@ -164,7 +165,7 @@ export async function recheckPendingSocialSubmissions(opts?: {
       userId: true,
       taskId: true,
       metadata: true,
-      user: { select: { status: true } },
+      user: { select: { status: true, username: true } },
       task: {
         select: {
           id: true,
@@ -265,6 +266,7 @@ export async function recheckPendingSocialSubmissions(opts?: {
             submittedUsername: (items[i]?.username as string | undefined) ?? undefined,
             expectedCode: verifyCodeFor(sub.taskId, i, sub.userId),
             codeMatcher: contentHasCode,
+            userTag: userHashtag(sub.user?.username),
           });
           status = res.verdict === "verified" ? "verified" : res.verdict;
           if (items[i]) items[i].verifyDetails = res.results;

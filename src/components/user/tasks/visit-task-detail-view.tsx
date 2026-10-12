@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Clock, Coins, ExternalLink, Loader2, Scissors, Sparkles, Timer } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, Coins, ExternalLink, Globe, Loader2, Scissors, Sparkles, Timer, Video as VideoIcon } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import { TaskUpgradeNotice, isUpgradeRequired, AdblockNotice } from "@/components/user/primitives/task-upgrade-notice";
 import { ensureAdsAllowed } from "@/lib/adblock";
+import { TaskInstructions } from "./task-instructions";
+import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 
 /**
  * A VISIT task (lib/visit-tasks.ts).
@@ -24,7 +26,10 @@ interface VisitTask {
   description?: string | null;
   pointsReward: number;
   xpReward: number;
-  visitConfig?: { kind?: string; staySeconds?: number; minSeconds?: number } | null;
+  instructions?: string | null;
+  instructionVideoUrl?: string | null;
+  /** `host` only — the full link is never sent (see task-player-view). */
+  visitConfig?: { kind?: string; staySeconds?: number; minSeconds?: number; host?: string | null } | null;
 }
 
 interface UserStatus {
@@ -243,13 +248,28 @@ export function VisitTaskDetailView({ taskId }: { taskId: string }) {
           </div>
         </div>
 
+        {/* The admin's instructions were stored but never shown on this page. */}
+        <TaskInstructions value={task.instructions} />
+
+        {task.instructionVideoUrl && (
+          <section className="space-y-2">
+            <h2 className="inline-flex items-center gap-1.5 text-xs font-bold text-(--app-ink-2)">
+              <VideoIcon className="h-3.5 w-3.5" />
+              Instruction video
+            </h2>
+            <div className="mx-auto max-w-2xl">
+              <InlineVideoEmbed url={task.instructionVideoUrl} title={`Instruction video — ${task.title}`} />
+            </div>
+          </section>
+        )}
+
         {kind === "DIRECT" ? (
           <div className="rounded-xl bg-(--app-surface-2) p-4 text-center">
             <p className="inline-flex items-center gap-2 text-sm text-(--app-ink-2)">
               <Timer className="h-4 w-4 text-sky-400" /> Stay on the link for at least
             </p>
             <p className="mt-1 text-4xl font-black text-(--app-ink)">{stay}s</p>
-            <p className="mt-1 text-xs text-(--app-ink-3)">Coming back sooner earns nothing — you can open it again.</p>
+            <p className="mt-1 text-xs text-(--app-ink-2)">Coming back sooner earns nothing — you can open it again.</p>
           </div>
         ) : (
           <ol className="list-decimal space-y-1 rounded-xl bg-(--app-surface-2) p-4 pl-8 text-sm text-(--app-ink-2)">
@@ -302,6 +322,12 @@ export function VisitTaskDetailView({ taskId }: { taskId: string }) {
                 >
                   <ExternalLink className="h-4 w-4" /> {openedAt != null || result ? "Open link again" : "Open link"}
                 </button>
+                {/* Where the button goes, so nobody opens an unknown link blind. */}
+                {task.visitConfig?.host && (
+                  <p className="inline-flex w-full items-center justify-center gap-1.5 text-xs text-(--app-ink-2)">
+                    <Globe className="h-3.5 w-3.5" /> Opens: <b className="text-(--app-ink)">{task.visitConfig.host}</b>
+                  </p>
+                )}
               </>
             )}
 
@@ -318,7 +344,8 @@ export function VisitTaskDetailView({ taskId }: { taskId: string }) {
               <button
                 type="button"
                 onClick={claim}
-                disabled={busy}
+                // A shortener claim needs its code — nothing to send without it.
+                disabled={busy || (kind === "SHORTENER" && !code.trim())}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-60"
               >
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />} Claim {task.pointsReward} pts

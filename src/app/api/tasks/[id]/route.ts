@@ -10,6 +10,7 @@ import { verifyCodeFor } from "@/lib/task-verify-code";
 import { CRITERION_LABEL } from "@/lib/link-verify";
 import { matchesTaskAudience } from "@/lib/task-targeting";
 import { toPlayerTask } from "@/lib/task-player-view";
+import { composeCaption, userHashtag } from "@/lib/social-caption";
 
 // GET /api/tasks/:id - Get single task details
 export async function GET(
@@ -136,9 +137,31 @@ export async function GET(
       number,
       { labels: string[]; matchMode: "all" | "any"; canReject: boolean }
     > = {};
+    // The caption each publishing action asks the member to post, with their
+    // own #username appended when the admin asked for it (lib/social-caption).
+    const socialCaptions: Record<number, string> = {};
     if (task.type === "SOCIAL") {
       const { items } = normalizeSocialConfig(task.socialConfig);
+      const needTag = items.some(
+        (it) => it.captionUserTag || it.contentRules?.criteria.some((c) => c.kind === "usertag")
+      );
+      const memberTag = needTag
+        ? userHashtag(
+            (
+              await prisma.user.findUnique({
+                where: { id: session.user.id },
+                select: { username: true },
+              })
+            )?.username
+          )
+        : null;
       items.forEach((it, idx) => {
+        const text = composeCaption({
+          caption: it.caption,
+          hashtags: it.captionHashtags,
+          userTag: it.captionUserTag ? memberTag : null,
+        });
+        if (text) socialCaptions[idx] = text;
         if (it.verify === "CODE") {
           socialVerifyCodes[idx] = verifyCodeFor(id, idx, session.user.id);
         }
@@ -148,9 +171,13 @@ export async function GET(
             // the rest are the admin's own words, nothing secret.
             labels: it.contentRules.criteria
               .filter((c) => c.kind !== "code")
-              .map((c) => `${CRITERION_LABEL[c.kind]}: ${c.value}`),
+              .map((c) =>
+                c.kind === "usertag"
+                  ? `Contains hashtag: #${memberTag ?? "your-username"}`
+                  : `${CRITERION_LABEL[c.kind]}: ${c.value}`
+              ),
             matchMode: it.contentRules.matchMode,
-            canReject: it.contentRules.onMismatch === "reject",
+            canReject: it.contentRules.onMismatch !== "manual",
           };
         }
       });
@@ -173,6 +200,7 @@ export async function GET(
           : null,
       },
       socialVerifyCodes,
+      socialCaptions,
       socialContentRules,
       userStatus: {
         audienceEligible,

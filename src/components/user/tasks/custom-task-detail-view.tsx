@@ -10,6 +10,7 @@ import {
   Coins,
   Clock,
   CheckCircle2,
+  Video as VideoIcon,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
@@ -27,6 +28,8 @@ import {
   AdblockNotice,
 } from "@/components/user/primitives/task-upgrade-notice";
 import { ensureAdsAllowed } from "@/lib/adblock";
+import { TaskInstructions } from "./task-instructions";
+import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 
 interface CustomTask {
   id: string;
@@ -36,6 +39,8 @@ interface CustomTask {
   xpReward: number;
   thumbnailUrl?: string | null;
   duration?: number | null;
+  instructions?: string | null;
+  instructionVideoUrl?: string | null;
   customConfig?: CustomConfig | null;
 }
 
@@ -230,6 +235,38 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
     );
   }
 
+  // The reward sits next to the button so the user sees what pressing it is
+  // worth; an auto-approved task pays on submit, so the label says so.
+  const submitBar = (
+    <div className="space-y-2">
+      <p className="mx-auto w-fit rounded-full border border-(--app-line) bg-(--app-surface) px-3 py-1 text-center text-xs font-semibold text-(--app-ink-2)">
+        Reward:{" "}
+        <span className="text-amber-300">
+          +{task.pointsReward.toLocaleString()} pts
+        </span>
+        {task.xpReward > 0 && <> · +{task.xpReward.toLocaleString()} XP</>}
+        {cfg?.autoApprove ? " — paid instantly" : " — paid after review"}
+      </p>
+      <button
+        type="button"
+        onClick={submit}
+        disabled={busy}
+        className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/30 disabled:opacity-50"
+      >
+        {busy ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <>
+            {cfg?.autoApprove
+              ? `Submit & earn ${task.pointsReward.toLocaleString()} pts`
+              : "Submit for review"}
+            <Sparkles className="w-4 h-4" />
+          </>
+        )}
+      </button>
+    </div>
+  );
+
   return (
     <div className="space-y-5">
       <Link
@@ -293,6 +330,25 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
           </div>
         </div>
       </div>
+
+      {/* The admin's steps were stored but never shown here, so users had only
+          the title to go on. Same renderer as every other task surface. */}
+      <TaskInstructions value={task.instructions} />
+
+      {task.instructionVideoUrl && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-bold text-(--app-ink-2) inline-flex items-center gap-1.5">
+            <VideoIcon className="w-3.5 h-3.5" />
+            Instruction video
+          </h2>
+          <div className="max-w-2xl mx-auto">
+            <InlineVideoEmbed
+              url={task.instructionVideoUrl}
+              title={`Instruction video — ${task.title}`}
+            />
+          </div>
+        </section>
+      )}
 
       <AdRenderer placement="TASK_START" />
 
@@ -358,21 +414,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
           </div>
 
           <div className="sticky bottom-4 z-10 mt-6">
-            <button
-              type="button"
-              onClick={submit}
-              disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/30 disabled:opacity-50"
-            >
-              {busy ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  Submit for review
-                  <Sparkles className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            {submitBar}
           </div>
         </>
       )}
@@ -397,21 +439,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
             />
           </div>
           <div className="sticky bottom-4 z-10 mt-6">
-            <button
-              type="button"
-              onClick={submit}
-              disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/30 disabled:opacity-50"
-            >
-              {busy ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  Submit for review
-                  <Sparkles className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            {submitBar}
           </div>
         </div>
       )}

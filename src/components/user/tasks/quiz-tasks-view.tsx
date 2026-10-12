@@ -143,7 +143,11 @@ export function QuizTasksView() {
       )}
 
       {activeId && (
-        <QuizPlayer quizId={activeId} onClose={() => setActiveId(null)} />
+        <QuizPlayer
+          quizId={activeId}
+          onClose={() => setActiveId(null)}
+          minScore={quizzes.find((q) => q.id === activeId)?.minScore}
+        />
       )}
     </div>
   );
