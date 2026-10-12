@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { toNum } from "@/lib/money";
 import { adNetworkOf } from "@/lib/ad-serve";
+import { incomeByNetworkKey } from "@/lib/finance/platform-income";
 
 /**
  * What each ad network is actually doing, for /admin/ads/networks: how many
  * ads point at it (and how many are live), and — from the measurement layer
  * (`AdMeasureDaily.network`) — what it served, the valid viewable
  * impressions and clicks over the window. Revenue is what the owner entered
- * by hand (`AdNetworkRevenue`), shown only to finance.
+ * at Finance → Platform income (linked by network), shown only to finance.
  *
  * GET /api/admin/ads/networks/stats?days=7|30|90
  */
@@ -40,13 +40,12 @@ export async function GET(req: NextRequest) {
         _sum: { served: number | null; validViews: number | null; invalidViews: number | null; validClicks: number | null };
       }[]
     >,
+    // Entered at Finance → Platform income, linked by the platform's network.
     money
-      ? (prisma.adNetworkRevenue.groupBy({
-          by: ["network"],
-          where: { date: { gte: from } },
-          _sum: { revenueUsd: true },
-        }) as unknown as Promise<{ network: string; _sum: { revenueUsd: unknown } }[]>)
-      : Promise.resolve([]),
+      ? incomeByNetworkKey({ from, to: today }).then((m) =>
+          [...m.entries()].map(([network, usd]) => ({ network, usd }))
+        )
+      : Promise.resolve([] as { network: string; usd: number }[]),
   ]);
 
   type Row = {
@@ -87,7 +86,7 @@ export async function GET(req: NextRequest) {
   }
   for (const v of revenue) {
     const r = row(v.network);
-    if (r.revenueUsd !== null) r.revenueUsd += toNum(v._sum.revenueUsd as never);
+    if (r.revenueUsd !== null) r.revenueUsd += v.usd;
   }
 
   return NextResponse.json({ days, money, rows });

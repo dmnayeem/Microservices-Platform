@@ -45,7 +45,7 @@ const FEATURES: Array<{
   { key: "courses", label: "Courses", revenue: ["course"], payouts: [], note: "In: the platform's commission on course sales.", href: "/admin/courses" },
   { key: "subscriptions", label: "Subscriptions (plans)", revenue: ["subscription"], payouts: [], note: "In: plan purchases and renewals.", href: "/admin/packages" },
   { key: "badges", label: "Blue badges", revenue: ["badges"], payouts: [], note: "In: blue badge and animated badge-style sales and renewals.", href: "/admin/badges" },
-  { key: "ads", label: "Ads", revenue: ["ads"], payouts: ["browse"], note: "In: advertiser spend. Out: Browse & Earn points paid for viewing ads.", href: "/admin/ads" },
+  { key: "ads", label: "Ads", revenue: ["ads", "adrentals", "promotions"], payouts: ["browse"], note: "In: advertiser spend, ad-space rentals and paid promotions of courses / listings. Out: Browse & Earn points paid for viewing ads.", href: "/admin/ads" },
   { key: "offerwalls", label: "Offerwalls", revenue: ["offerwall"], payouts: [], note: "In: the margin — what the network paid minus the user's share (already net).", href: "/admin/offerwalls" },
   { key: "withdrawals", label: "Withdrawal fees", revenue: ["withdrawal"], payouts: [], note: "In: the fee kept on each paid withdrawal.", href: "/admin/withdrawals" },
   { key: "lottery", label: "Lottery", revenue: ["lottery"], payouts: ["lottery"], note: "In: the house cut. Out: winnings, paid from the ticket pool.", href: "/admin/lottery" },
@@ -54,7 +54,10 @@ const FEATURES: Array<{
   { key: "leaderboard", label: "Leaderboard prizes", revenue: [], payouts: ["leaderboard"], note: "Out: daily / weekly / monthly prizes.", href: "/admin/leaderboard" },
   { key: "engagement", label: "Check-in, missions, events", revenue: [], payouts: ["checkin", "daily_mission", "mission", "event", "achievement"], note: "Out: rewards for coming back and completing goals.", href: "/admin/missions" },
   { key: "quiz", label: "Quiz games", revenue: [], payouts: ["quiz_game"], note: "Out: quiz game rewards.", href: "/admin/quizzes" },
-  { key: "social", label: "Social feed", revenue: [], payouts: ["social"], note: "Out: points for likes, posts and engagement.", href: "/admin/social-moderation" },
+  { key: "social", label: "Social feed", revenue: ["boosts", "spotlight"], payouts: ["social"], note: "In: post boosts and winning Spotlight bids. Out: points for likes, posts and engagement.", href: "/admin/social-moderation" },
+  // Outside companies (AdSense, Adsterra…) — every `tp_*` stream plus the
+  // month-end payout adjustment (see the prefix match below).
+  { key: "thirdparty", label: "Third-party platforms", revenue: ["tp_*"], payouts: [], note: "In: AdSense, Adsterra and the other outside companies, entered daily at Platform income.", href: "/admin/finance/platform-income" },
   { key: "welcome", label: "Welcome bonus", revenue: [], payouts: ["welcome"], note: "Out: paid once to each new account." },
   { key: "games", label: "Games & gifts", revenue: [], payouts: ["game", "donation"], note: "Out: mini-games and mystery boxes." },
   { key: "grants", label: "Admin hand grants", revenue: [], payouts: ["admin_grant"], note: "Out: balance added by an admin by hand — see Points → Points added by hand." },
@@ -93,7 +96,14 @@ export async function getMoneyByFeature(
 
   const used = new Set<PointSource>();
   const rows = FEATURES.map((f) => {
-    const inUsd = f.revenue.reduce((a, k) => a + (inByStream.get(k) ?? 0), 0);
+    const inUsd = f.revenue.reduce(
+      (a, k) =>
+        a +
+        (k.endsWith("*")
+          ? [...inByStream].filter(([key]) => key.startsWith(k.slice(0, -1))).reduce((n, [, v]) => n + v, 0)
+          : (inByStream.get(k) ?? 0)),
+      0
+    );
     const outUsd = f.payouts.reduce((a, k) => {
       used.add(k);
       return a + (outBySource.get(k) ?? 0);
