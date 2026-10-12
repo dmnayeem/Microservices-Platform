@@ -71,8 +71,51 @@ const STATUS_TONE: Record<TaskStatus, string> = {
     "bg-(--app-out-soft) border border-(--app-out-line) text-(--app-out)",
 };
 
-/** Sequential and plan locks on a task row (lib/task-list.ts). */
-export type TaskGate = { locked?: boolean | null; lockReason?: string | null; planLock?: PlanLock | null };
+/** Sequential and plan locks on a task row (lib/task-list.ts), plus its slots. */
+export type TaskGate = {
+  locked?: boolean | null;
+  lockReason?: string | null;
+  planLock?: PlanLock | null;
+  /** Credited completions so far (Task.completedCount). */
+  completedCount?: number | null;
+  /** Spots left when the task has a total limit; null = unlimited. */
+  remainingSlots?: number | null;
+  /** The total limit itself, when the row carries it. */
+  totalLimit?: number | null;
+};
+
+/**
+ * "20 / 100 done" with a bar, or "∞ Unlimited · 20 done" — how many people
+ * have done this task, out of how many it takes. Seeing a task fill up is
+ * part of why people do it now.
+ */
+export function SlotsBar({ completed, total }: { completed: number; total: number | null }) {
+  if (total && total > 0) {
+    const pct = Math.min(100, Math.round((completed / total) * 100));
+    const left = Math.max(0, total - completed);
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[12px]">
+          <span className="font-bold tabular-nums text-(--app-ink)">
+            {completed.toLocaleString()} / {total.toLocaleString()} done
+          </span>
+          <span className={cn("font-semibold tabular-nums", left <= Math.ceil(total * 0.1) ? "text-amber-300" : "text-(--app-ink-2)")}>
+            {left.toLocaleString()} left
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-(--app-surface-2)">
+          <div className="h-full rounded-full bg-(image:--app-rail)" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <p className="text-[12px] font-semibold text-(--app-ink-2)">
+      <span className="text-(--app-accent-ink)">∞ Unlimited</span>
+      {completed > 0 ? ` · ${completed.toLocaleString()} done` : ""}
+    </p>
+  );
+}
 
 /** Shape of the two switches on a task row; anything else on it is ignored. */
 export type TaskDeviceNeeds = { requireApp?: boolean | null; requirePush?: boolean | null };
@@ -225,6 +268,17 @@ export function TaskCard({
             )}
             <TaskDeviceChips needs={deviceNeeds} />
           </div>
+          {typeof gate?.completedCount === "number" && (
+            <div className="mt-2.5">
+              <SlotsBar
+                completed={gate.completedCount}
+                total={
+                  gate.totalLimit ??
+                  (typeof gate.remainingSlots === "number" ? gate.completedCount + gate.remainingSlots : null)
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
 

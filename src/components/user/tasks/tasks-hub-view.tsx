@@ -353,6 +353,19 @@ export function TasksHubView({
                 pays, and a Start button. Without a mission it is the old
                 "Start here" pick. */}
             <DailyMissionCard
+              plan={{
+                items: ready.map((r) => ({
+                  key: r.cat.key,
+                  label: r.cat.label,
+                  href: r.cat.href,
+                  left: r.left,
+                  doneToday: r.row.completedToday,
+                  points: r.points,
+                })),
+                completedToday: today.completedToday,
+                pointsEarned: today.pointsEarned,
+                xpEarned: today.xpEarned,
+              }}
               hrefForType={(type) =>
                 visibleCategories.find((c) => c.taskType === type || (type.startsWith("SOCIAL") && c.taskType === "SOCIAL"))?.href ?? null
               }
