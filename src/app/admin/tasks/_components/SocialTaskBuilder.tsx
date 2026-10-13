@@ -1192,29 +1192,45 @@ function AiWritingEditor({
   item: BundleItem;
   onUpdate: (patch: Partial<BundleItem>) => void;
 }) {
+  // What every generated text is guaranteed to carry — the same things Smart
+  // Auto Verification looks for, so the post can be approved without an admin.
+  const criteria = item.verify === "CONTENT" ? item.contentRules?.criteria ?? [] : [];
+  const always: string[] = [
+    ...criteria.filter((c) => c.kind === "text" && c.value.trim()).map((c) => `“${c.value.trim()}”`),
+    ...criteria.filter((c) => c.kind === "hashtag" && c.value.trim()).map((c) => c.value.trim()),
+    ...(item.captionHashtags ?? "").split(/[\s,]+/).filter(Boolean).map((t) => (t.startsWith("#") ? t : `#${t}`)),
+  ];
+  if (item.captionUserTag || criteria.some((c) => c.kind === "usertag")) always.push("the member's own #username");
+  if (item.verify === "CODE" || criteria.some((c) => c.kind === "code")) always.push("the member's personal code");
   return (
     <div className="space-y-2 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
-      <p className="text-xs font-semibold text-sky-300">AI writing for members</p>
+      <p className="text-xs font-semibold text-sky-300">AI caption / comment for members</p>
       <p className="text-[11px] text-gray-400 -mt-1">
-        Under every caption / comment / reply / review box, members get a <b>Generate</b> button that writes a fresh,
-        unique text from this topic and summary. Your links and hashtags are always kept; a caption always has
-        hashtags. Leave empty to use the task title and description.
+        Write what the post should say. Each member gets a <b>Generate</b> button and their own unique text — you
+        don&apos;t need to write a caption above.
       </p>
-      <input
-        value={item.aiTopic ?? ""}
-        onChange={(e) => onUpdate({ aiTopic: e.target.value || undefined })}
-        maxLength={200}
-        placeholder="Topic — e.g. RevType: earn by completing micro-tasks"
-        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 text-sm focus:outline-none focus:border-sky-500"
-      />
       <textarea
         value={item.aiSummary ?? ""}
         onChange={(e) => onUpdate({ aiSummary: e.target.value || undefined })}
         rows={3}
         maxLength={2000}
-        placeholder="Summary — what the text should say: the key points, the tone, the language (e.g. Bangla)"
+        placeholder="e.g. RevType pays you for small online tasks from real businesses — easy to start, withdraw to bKash. Friendly tone, in Bangla."
         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 text-sm focus:outline-none focus:border-sky-500"
       />
+      <div className="rounded-md bg-gray-900/60 px-2.5 py-2 text-[11px] text-gray-300">
+        {always.length ? (
+          <>
+            <b className="text-sky-300">Always in every member&apos;s text:</b> {always.join(" · ")}. Links in your caption
+            stay exactly as written.
+          </>
+        ) : (
+          <>
+            <b className="text-sky-300">To auto-approve without checking:</b> turn on <b>Smart Auto Verification</b> below
+            and add the words / hashtags / &ldquo;Member&apos;s own username hashtag&rdquo; it must find. Every generated
+            text will contain them.
+          </>
+        )}
+      </div>
     </div>
   );
 }

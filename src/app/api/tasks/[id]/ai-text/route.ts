@@ -9,6 +9,7 @@ import { withIdempotency } from "@/lib/idempotency";
 import { getAction, getPlatform, normalizeSocialConfig } from "@/lib/social-tasks";
 import { parseContentRules } from "@/lib/link-verify";
 import { userHashtag } from "@/lib/social-caption";
+import { verifyCodeFor } from "@/lib/task-verify-code";
 import { effectiveSteps, stepType, type VideoConfig } from "@/lib/video-tasks";
 import { copyKindFor, generateCopyText, type CopyKind } from "@/lib/ai-copy-text";
 
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     let hashtags: string | null = null;
     const requiredWords: string[] = [];
     const requiredHashtags: string[] = [];
+    const mustInclude: string[] = [];
 
     if (source === "social") {
       if (task.type !== "SOCIAL") return NextResponse.json({ error: "Task not found" }, { status: 404 });
@@ -104,15 +106,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       if (!item || !def) return NextResponse.json({ error: "Unknown action" }, { status: 400 });
       platformLabel = getPlatform(platformKey)?.label ?? platformLabel;
       if (field === "caption") {
-        if (!item.caption) return NextResponse.json({ error: "No caption on this action" }, { status: 400 });
-        reference = item.caption;
+        // An admin caption, or just an AI summary — either gives the member a box.
+        if (!item.caption && !item.aiSummary && !item.aiTopic) {
+          return NextResponse.json({ error: "No caption on this action" }, { status: 400 });
+        }
+        reference = item.caption ?? null;
         hashtags = item.captionHashtags ?? null;
         kind = "caption";
-        if (item.captionUserTag) {
-          const me = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
-          const tag = userHashtag(me?.username);
-          if (tag) requiredHashtags.push(`#${tag}`);
-        }
       } else {
         // Only a text box the action really shows the member.
         const spec = def.recipe?.find((s) => s.key === field && s.kind === "text");
@@ -122,12 +122,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
       topic = item.aiTopic ?? "";
       summary = item.aiSummary ?? "";
-      // The task's own auto-verify rules: generated text must still pass them.
-      if (item.verify === "CONTENT") {
-        for (const c of parseContentRules(item.contentRules).criteria) {
-          if (c.kind === "text" && c.value.trim()) requiredWords.push(c.value.trim());
-          if (c.kind === "hashtag" && c.value.trim()) requiredHashtags.push(c.value.trim());
-        }
+      // The task's own auto-verify rules: generated text must pass them, so
+      // auto-approval finds every word, hashtag, the member's #username and
+      // their personal code without an admin looking (owner, 2026-10-13).
+      const criteria = item.verify === "CONTENT" ? parseContentRules(item.contentRules).criteria : [];
+      for (const c of criteria) {
+        if (c.kind === "text" && c.value.trim()) requiredWords.push(c.value.trim());
+        if (c.kind === "hashtag" && c.value.trim()) requiredHashtags.push(c.value.trim());
+      }
+      if ((kind === "caption" && item.captionUserTag) || criteria.some((c) => c.kind === "usertag")) {
+        const me = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+        const tag = userHashtag(me?.username);
+        if (tag) requiredHashtags.push(`#${tag}`);
+      }
+      if (item.verify === "CODE" || criteria.some((c) => c.kind === "code")) {
+        mustInclude.push(verifyCodeFor(taskId, index, userId));
       }
     } else {
       if (task.type !== "VIDEO" || field !== "commentTemplate") {
@@ -214,6 +223,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       requiredWords,
       requiredHashtags,
       others,
+      mustInclude,
     });
     if (!out.ok) return NextResponse.json({ error: out.error }, { status: 502 });
 

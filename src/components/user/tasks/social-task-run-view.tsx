@@ -39,6 +39,7 @@ import {
 import { SocialRecipePanel } from "@/components/user/tasks/social-recipe-panel";
 import { CopyButton } from "@/components/user/primitives/copy-field";
 import { AiGenerateTextButton } from "@/components/user/tasks/ai-generate-text-button";
+import { actionTakesCaption } from "@/lib/social-caption";
 import { COPY_KIND_LABEL, copyKindFor } from "@/lib/ai-copy-kind";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SocialWatchModal } from "@/components/user/tasks/social-watch-modal";
@@ -988,6 +989,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           return own ? { ...s, value: own, source: "ai" as const } : s;
         });
         const captionText = aiTexts[`social:${idx}:caption`] ?? captions[idx];
+        // The admin gave only an AI summary: the member still gets a caption
+        // box — empty until they press Generate.
+        const aiCaption = !captionText && !!item.aiWriting && actionTakesCaption(item.action);
         const diyPrompt =
           def && item.aiMode !== "off"
             ? diyPromptFor(
@@ -1167,17 +1171,25 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
             {/* The caption to paste when sharing / posting — the admin's text,
                 with this member's own hashtag when the task asks for it. */}
-            {captionText && (
+            {(captionText || aiCaption) && (
               <div className="rounded-(--app-r-control) border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-bold text-(--app-ink)">Caption to post</p>
-                  <span className="inline-flex items-center rounded-lg bg-violet-500/15 px-2.5 py-1.5">
-                    <CopyButton value={captionText} />
-                  </span>
+                  {captionText && (
+                    <span className="inline-flex items-center rounded-lg bg-violet-500/15 px-2.5 py-1.5">
+                      <CopyButton value={captionText} />
+                    </span>
+                  )}
                 </div>
-                <p className="whitespace-pre-wrap rounded-lg border border-(--app-line) bg-(--app-surface) p-3 text-sm text-(--app-ink-2) select-all">
-                  {captionText}
-                </p>
+                {captionText ? (
+                  <p className="whitespace-pre-wrap rounded-lg border border-(--app-line) bg-(--app-surface) p-3 text-sm text-(--app-ink-2) select-all">
+                    {captionText}
+                  </p>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-(--app-line) bg-(--app-surface) p-3 text-sm text-(--app-ink-3)">
+                    Tap Generate below — you get your own caption to post.
+                  </p>
+                )}
                 <AiGenerateTextButton
                   taskId={task.id}
                   source="social"

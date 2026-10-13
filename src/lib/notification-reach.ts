@@ -117,8 +117,16 @@ export function reachWhere(f: ReachFilters): Prisma.Sql {
     and.push(Prisma.sql`EXISTS (SELECT 1 FROM "UserActiveDay" d WHERE ${Prisma.join(day, " AND ")})`);
   }
   if (f.q) {
-    const like = `%${f.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-    and.push(Prisma.sql`(u.name ILIKE ${like} OR u.email ILIKE ${like} OR u.username ILIKE ${like})`);
+    // "@rafi" finds username "rafi" (people type the @); a phone number or a
+    // pasted user id finds that account too (owner, 2026-10-13).
+    const term = f.q.replace(/^[@#]+/, "").trim();
+    const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const digits = term.replace(/\D/g, "");
+    and.push(Prisma.sql`(u.name ILIKE ${like} OR u.email ILIKE ${like} OR u.username ILIKE ${like} OR u.id = ${term}${
+      digits.length >= 6
+        ? Prisma.sql` OR regexp_replace(COALESCE(u.phone, ''), '[^0-9]', '', 'g') LIKE ${`%${digits}%`}`
+        : Prisma.empty
+    })`);
   }
   return Prisma.join(and, " AND ");
 }

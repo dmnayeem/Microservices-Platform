@@ -3661,6 +3661,8 @@ export interface SocialTaskItemView {
   watchSeconds: number | null;
   targetUrl: string;
   verify?: VerifyMethod;
+  /** The admin set an AI topic / summary — the member gets Generate boxes (not the text itself). */
+  aiWriting?: boolean;
 }
 
 export interface SocialTaskView {
@@ -3718,6 +3720,7 @@ export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
     watchSeconds: it.watchSeconds ?? null,
     targetUrl: it.fields?.targetUrl ?? it.fields?.targetHandle ?? "",
     verify: it.verify,
+    aiWriting: !!(it.aiSummary || it.aiTopic),
   }));
   // Legacy single-action tasks store the action on the Task columns
   // (socialPlatform/socialAction/socialUrl) with a null socialConfig → 0 items.
