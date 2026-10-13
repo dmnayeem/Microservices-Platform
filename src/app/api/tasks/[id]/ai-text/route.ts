@@ -20,25 +20,53 @@ import { copyKindFor, generateCopyText, type CopyKind } from "@/lib/ai-copy-text
  *   { source: "video",  index: <step #>,   field: "commentTemplate" }
  *
  * Built from the admin's topic + summary for that action (falling back to the
- * task title / description), keeping the admin's links and hashtags. Needs the
- * member's own started attempt — the result is saved on it (so a reload keeps
- * it and the reviewer sees what they were given) — and spends one unit of the
- * shared daily AI budget. PER_BOX_MAX per box per attempt.
+ * task title / description), keeping the admin's links and hashtags.
+ *
+ * ONE per box per member, for good (owner, 2026-10-13): the text is saved on
+ * the member's attempt and found again through ANY of their attempts at this
+ * task, so a cleared browser, a new phone or a fresh attempt shows the same
+ * text and never generates a second. It is checked against what every other
+ * member got for the same box, so no two members post the same words. Needs
+ * the member's own started attempt and one unit of the daily AI budget.
+ *
+ * GET returns every text this member already has for this task.
  */
 
-const PER_BOX_MAX = 5;
+interface SavedText {
+  text: string;
+  n?: number;
+  at: number;
+}
+
+/** Every saved box text of this member for this task, oldest attempt first. */
+async function savedTexts(taskId: string, userId: string): Promise<Record<string, string>> {
+  const subs = await prisma.taskSubmission.findMany({
+    where: { taskId, userId },
+    select: { metadata: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const out: Record<string, string> = {};
+  for (const s of subs) {
+    const m = s.metadata && typeof s.metadata === "object" ? (s.metadata as Record<string, unknown>) : null;
+    const texts = m?.aiTexts && typeof m.aiTexts === "object" ? (m.aiTexts as Record<string, SavedText>) : null;
+    if (!texts) continue;
+    for (const [k, v] of Object.entries(texts)) if (typeof v?.text === "string" && !out[k]) out[k] = v.text;
+  }
+  return out;
+}
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id: taskId } = await params;
+  return NextResponse.json({ texts: await savedTexts(taskId, session.user.id) });
+}
 
 const schema = z.object({
   source: z.enum(["social", "video"]),
   index: z.number().int().min(0).max(50),
   field: z.string().min(1).max(60),
 });
-
-interface SavedText {
-  text: string;
-  n: number;
-  at: number;
-}
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -133,12 +161,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const prevTexts =
       prevMeta.aiTexts && typeof prevMeta.aiTexts === "object" ? (prevMeta.aiTexts as Record<string, SavedText>) : {};
     const key = `${source}:${index}:${field}`;
-    const used = prevTexts[key]?.n ?? 0;
-    if (used >= PER_BOX_MAX) {
-      return NextResponse.json(
-        { error: `You've generated this ${PER_BOX_MAX} times already — use one of them.`, left: 0 },
-        { status: 429 }
-      );
+    // Already made — on this attempt or an earlier one: hand the same text
+    // back (and keep it on this attempt too). Never a second generation.
+    const existing = prevTexts[key]?.text ?? (await savedTexts(taskId, userId))[key];
+    if (existing) {
+      if (!prevTexts[key]) {
+        await prisma.taskSubmission.update({
+          where: { id: submission.id },
+          data: {
+            metadata: JSON.parse(
+              JSON.stringify({ ...prevMeta, aiTexts: { ...prevTexts, [key]: { text: existing, at: Date.now() } } })
+            ),
+          },
+        });
+      }
+      return NextResponse.json({ text: existing, saved: true, left: 0 });
     }
 
     if (!(await isGeminiConfigured())) {
@@ -158,7 +195,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    const out = await generateCopyText({ kind, platformLabel, topic, summary, reference, hashtags, requiredWords, requiredHashtags });
+    // What everyone else got for this same box — the new text must differ.
+    const otherRows = await prisma.$queryRaw<{ t: string | null }[]>`
+      SELECT metadata->'aiTexts'->${key}->>'text' AS t
+      FROM "TaskSubmission"
+      WHERE "taskId" = ${taskId} AND "userId" <> ${userId} AND metadata->'aiTexts'->${key} IS NOT NULL
+      ORDER BY "createdAt" DESC
+      LIMIT 2000`;
+    const others = otherRows.map((o) => o.t ?? "").filter(Boolean);
+
+    const out = await generateCopyText({
+      kind,
+      platformLabel,
+      topic,
+      summary,
+      reference,
+      hashtags,
+      requiredWords,
+      requiredHashtags,
+      others,
+    });
     if (!out.ok) return NextResponse.json({ error: out.error }, { status: 502 });
 
     if (metered) {
@@ -174,11 +230,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       where: { id: submission.id },
       data: {
         metadata: JSON.parse(
-          JSON.stringify({ ...prevMeta, aiTexts: { ...prevTexts, [key]: { text: out.text, n: used + 1, at: Date.now() } } })
+          JSON.stringify({ ...prevMeta, aiTexts: { ...prevTexts, [key]: { text: out.text, at: Date.now() } } })
         ),
       },
     });
 
-    return NextResponse.json({ text: out.text, left: PER_BOX_MAX - used - 1 });
+    return NextResponse.json({ text: out.text, saved: true, left: 0 });
   });
 }

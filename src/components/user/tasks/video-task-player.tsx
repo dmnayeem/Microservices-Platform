@@ -127,6 +127,25 @@ export function VideoTaskPlayer({
   const [copiedComment, setCopiedComment] = useState(false);
   // Comment text the member generated, by step index (ai-generate-text-button).
   const [aiComments, setAiComments] = useState<Record<number, string>>({});
+  // Saved on the server across every attempt — shown again on any device.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tasks/${task.id}/ai-text`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { texts?: Record<string, string> } | null) => {
+        if (cancelled || !d?.texts) return;
+        const byStep: Record<number, string> = {};
+        for (const [k, v] of Object.entries(d.texts)) {
+          const m = /^video:(\d+):commentTemplate$/.exec(k);
+          if (m) byStep[Number(m[1])] = v;
+        }
+        setAiComments((p) => ({ ...byStep, ...p }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [task.id]);
   // Sequential proof steps (new flow): shown one at a time after the video.
   // `stepIndex` = how many steps are done (the active step is at this index);
   // `stepShots` holds the uploaded screenshot URL per step id.
@@ -952,6 +971,7 @@ export function VideoTaskPlayer({
                                 index={i}
                                 field="commentTemplate"
                                 noun="comment"
+                                done={!!aiComments[i]}
                                 onText={(text) => setAiComments((p) => ({ ...p, [i]: text }))}
                               />
                             </>
@@ -1101,6 +1121,7 @@ export function VideoTaskPlayer({
                         index={legacyCommentStep}
                         field="commentTemplate"
                         noun="comment"
+                        done={!!aiComments[legacyCommentStep]}
                         onText={(text) => setAiComments((p) => ({ ...p, [legacyCommentStep]: text }))}
                       />
                       </div>

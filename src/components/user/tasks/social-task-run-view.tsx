@@ -148,6 +148,20 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   // Text the member generated for one box ("social:<idx>:<field>"), shown in
   // that box instead of the admin's — see ai-generate-text-button.
   const [aiTexts, setAiTexts] = useState<Record<string, string>>({});
+  // The member's own generated texts live on the server, across every attempt
+  // at this task — a cleared browser or a new phone still shows them.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tasks/${taskId}/ai-text`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { texts?: Record<string, string> } | null) => {
+        if (!cancelled && d?.texts) setAiTexts((p) => ({ ...d.texts, ...p }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
   /** What Smart Auto Verification will check, per item index. */
   const [contentRules, setContentRules] = useState<
     Record<number, { labels: string[]; matchMode: "all" | "any"; canReject: boolean }>
@@ -218,7 +232,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
       for (const [k, v] of Object.entries(meta.aiTexts as Record<string, { text?: unknown }>)) {
         if (typeof v?.text === "string") saved[k] = v.text;
       }
-      setAiTexts(saved);
+      setAiTexts((p) => ({ ...saved, ...p }));
     }
     if (meta?.aiRecipes && typeof meta.aiRecipes === "object") {
       const recipes = meta.aiRecipes as Record<
@@ -1170,6 +1184,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                   index={idx}
                   field="caption"
                   noun="caption"
+                  done={!!aiTexts[`social:${idx}:caption`]}
                   onText={(text) => setAiTexts((p) => ({ ...p, [`social:${idx}:caption`]: text }))}
                 />
                 <p className="text-xs text-(--app-ink-2)">
@@ -1278,6 +1293,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                     index={idx}
                     field={step.key}
                     noun={COPY_KIND_LABEL[copyKindFor(step.key, item.action)]}
+                    done={!!aiTexts[`social:${idx}:${step.key}`]}
                     onText={(text) => setAiTexts((p) => ({ ...p, [`social:${idx}:${step.key}`]: text }))}
                   />
                 ) : null
