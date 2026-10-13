@@ -90,6 +90,8 @@ export async function generateCopyText(opts: {
   /** From the auto-verify rules: words / hashtags the text must contain. */
   requiredWords?: string[];
   requiredHashtags?: string[];
+  /** Exact strings that must end up in the text (e.g. the member's personal verification code). */
+  mustInclude?: string[];
   /** What other members already got for this same box — the result must not match any. */
   others?: string[];
 }): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
@@ -152,6 +154,14 @@ export async function generateCopyText(opts: {
     .replace(/\{\{[^}]*\}\}|[{}]{2,}/g, "")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
+
+  // Auto-approval depends on these words being there: any the model dropped
+  // is added at the end, word for word (owner, 2026-10-13).
+  const lower = text.toLowerCase();
+  const missing = [...(opts.requiredWords ?? []), ...(opts.mustInclude ?? [])]
+    .map((w) => w.trim())
+    .filter((w) => w && !lower.includes(w.toLowerCase()));
+  if (missing.length) text = `${text}\n${missing.join(" · ")}`;
 
   // Hashtags.
   const have = new Set((text.match(/#[\p{L}\p{N}_]+/gu) ?? []).map((h) => h.toLowerCase()));
