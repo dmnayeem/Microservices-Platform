@@ -35,6 +35,7 @@ import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { AdInterstitialOverlay } from "@/components/user/primitives/ad-interstitial-overlay";
 import { VideoOverlayAd } from "@/components/user/primitives/video-overlay-ad";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
+import { AiGenerateTextButton } from "@/components/user/tasks/ai-generate-text-button";
 
 const ReactPlayer = dynamic(() => import("react-player"), {
   ssr: false,
@@ -124,10 +125,15 @@ export function VideoTaskPlayer({
   });
   const allEngDone = engSteps.every((s) => engDone[s.key]);
   const [copiedComment, setCopiedComment] = useState(false);
+  // Comment text the member generated, by step index (ai-generate-text-button).
+  const [aiComments, setAiComments] = useState<Record<number, string>>({});
   // Sequential proof steps (new flow): shown one at a time after the video.
   // `stepIndex` = how many steps are done (the active step is at this index);
   // `stepShots` holds the uploaded screenshot URL per step id.
   const steps = useMemo(() => effectiveSteps(cfg), [cfg]);
+  // The old checklist has no step list of its own; its comment is this step
+  // of effectiveSteps, which is what /api/tasks/[id]/ai-text looks up.
+  const legacyCommentStep = useMemo(() => steps.findIndex((x) => stepType(x) === "comment"), [steps]);
   const [stepIndex, setStepIndex] = useState(0);
   const [stepShots, setStepShots] = useState<Record<string, string>>({});
   // Per-step pasted proof link + whether each step was done or skipped.
@@ -924,21 +930,31 @@ export function VideoTaskPlayer({
                             </a>
                           )}
                           {stepType(s) === "comment" && s.commentTemplate && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void navigator.clipboard
-                                  ?.writeText(s.commentTemplate ?? "")
-                                  .then(() => toast.success("Comment copied"))
-                                  .catch(() => {});
-                              }}
-                              className="w-full flex items-start gap-2 rounded-lg border border-(--app-line) bg-(--app-page) px-2.5 py-2 text-left"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-(--app-accent-ink) shrink-0 mt-0.5" />
-                              <span className="flex-1 text-xs text-(--app-ink-2)">
-                                {s.commentTemplate}
-                              </span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void navigator.clipboard
+                                    ?.writeText(aiComments[i] ?? s.commentTemplate ?? "")
+                                    .then(() => toast.success("Comment copied"))
+                                    .catch(() => {});
+                                }}
+                                className="w-full flex items-start gap-2 rounded-lg border border-(--app-line) bg-(--app-page) px-2.5 py-2 text-left"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-(--app-accent-ink) shrink-0 mt-0.5" />
+                                <span className="flex-1 whitespace-pre-wrap text-xs text-(--app-ink-2)">
+                                  {aiComments[i] ?? s.commentTemplate}
+                                </span>
+                              </button>
+                              <AiGenerateTextButton
+                                taskId={task.id}
+                                source="video"
+                                index={i}
+                                field="commentTemplate"
+                                noun="comment"
+                                onText={(text) => setAiComments((p) => ({ ...p, [i]: text }))}
+                              />
+                            </>
                           )}
                           {s.requireScreenshot && (
                             <ProofImageUpload
@@ -1059,15 +1075,16 @@ export function VideoTaskPlayer({
                       </a>
                     </div>
                     {s.key === "comment" && cfg?.engagement?.commentTemplate && (
+                      <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 px-2 py-1.5 rounded bg-(--app-page) border border-(--app-line) text-(--app-ink-2) text-xs break-words">
-                          {cfg.engagement.commentTemplate}
+                        <code className="flex-1 whitespace-pre-wrap px-2 py-1.5 rounded bg-(--app-page) border border-(--app-line) text-(--app-ink-2) text-xs break-words">
+                          {aiComments[legacyCommentStep] ?? cfg.engagement.commentTemplate}
                         </code>
                         <button
                           type="button"
                           onClick={() => {
                             void navigator.clipboard
-                              ?.writeText(cfg.engagement!.commentTemplate!)
+                              ?.writeText(aiComments[legacyCommentStep] ?? cfg.engagement!.commentTemplate!)
                               .then(() => {
                                 setCopiedComment(true);
                                 setTimeout(() => setCopiedComment(false), 1500);
@@ -1077,6 +1094,15 @@ export function VideoTaskPlayer({
                         >
                           {copiedComment ? "Copied!" : "Copy"}
                         </button>
+                      </div>
+                      <AiGenerateTextButton
+                        taskId={task.id}
+                        source="video"
+                        index={legacyCommentStep}
+                        field="commentTemplate"
+                        noun="comment"
+                        onText={(text) => setAiComments((p) => ({ ...p, [legacyCommentStep]: text }))}
+                      />
                       </div>
                     )}
                     <label className="flex items-center gap-2 cursor-pointer">

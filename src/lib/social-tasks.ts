@@ -3475,6 +3475,13 @@ export interface BundleItem {
   caption?: string;
   captionHashtags?: string;
   captionUserTag?: boolean;
+  /**
+   * What the member's "Generate" buttons write about (lib/ai-copy-text): a
+   * fresh caption / comment / review / reply each time, under every text box.
+   * Empty = the task title and description.
+   */
+  aiTopic?: string;
+  aiSummary?: string;
 }
 
 /**
@@ -3575,6 +3582,8 @@ function coerceBundleItem(raw: unknown): BundleItem | null {
         ? r.captionHashtags.slice(0, 500)
         : undefined,
     captionUserTag: r.captionUserTag === true ? true : undefined,
+    aiTopic: typeof r.aiTopic === "string" && r.aiTopic.trim() ? r.aiTopic.slice(0, 200) : undefined,
+    aiSummary: typeof r.aiSummary === "string" && r.aiSummary.trim() ? r.aiSummary.slice(0, 2000) : undefined,
   };
 }
 

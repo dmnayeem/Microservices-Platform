@@ -38,6 +38,8 @@ import {
 } from "@/lib/social-ai-recipe";
 import { SocialRecipePanel } from "@/components/user/tasks/social-recipe-panel";
 import { CopyButton } from "@/components/user/primitives/copy-field";
+import { AiGenerateTextButton } from "@/components/user/tasks/ai-generate-text-button";
+import { COPY_KIND_LABEL, copyKindFor } from "@/lib/ai-copy-kind";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SocialWatchModal } from "@/components/user/tasks/social-watch-modal";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
@@ -143,6 +145,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   // The caption each publishing action asks the member to post (their own
   // #username already appended by the server when the task asks for it).
   const [captions, setCaptions] = useState<Record<number, string>>({});
+  // Text the member generated for one box ("social:<idx>:<field>"), shown in
+  // that box instead of the admin's — see ai-generate-text-button.
+  const [aiTexts, setAiTexts] = useState<Record<string, string>>({});
   /** What Smart Auto Verification will check, per item index. */
   const [contentRules, setContentRules] = useState<
     Record<number, { labels: string[]; matchMode: "all" | "any"; canReject: boolean }>
@@ -208,6 +213,13 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     // AI output lives OUTSIDE metadata.items — the progress autosave replaces
     // `items` wholesale, so anything stored in there would be lost on the next
     // keystroke. See /api/tasks/[id]/ai-recipe.
+    if (meta?.aiTexts && typeof meta.aiTexts === "object") {
+      const saved: Record<string, string> = {};
+      for (const [k, v] of Object.entries(meta.aiTexts as Record<string, { text?: unknown }>)) {
+        if (typeof v?.text === "string") saved[k] = v.text;
+      }
+      setAiTexts(saved);
+    }
     if (meta?.aiRecipes && typeof meta.aiRecipes === "object") {
       const recipes = meta.aiRecipes as Record<
         string,
@@ -346,13 +358,20 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     (idx: number): string => {
       const typed = (postedTextByIndex[idx] ?? "").trim();
       if (typed) return typed;
-      const fields = aiFieldsByIndex[idx];
-      if (!fields) return "";
+      // Per-box generated text wins over the whole-recipe AI for that field.
+      const prefix = `social:${idx}:`;
+      const boxes = Object.fromEntries(
+        Object.entries(aiTexts)
+          .filter(([k]) => k.startsWith(prefix))
+          .map(([k, v]) => [k.slice(prefix.length), v])
+      );
+      const fields = { ...(aiFieldsByIndex[idx] ?? {}), ...boxes };
+      if (!Object.keys(fields).length) return "";
       return Object.entries(fields)
         .map(([k, v]) => `${k}: ${v}`)
         .join("\n");
     },
-    [postedTextByIndex, aiFieldsByIndex]
+    [postedTextByIndex, aiFieldsByIndex, aiTexts]
   );
 
   // Auto-save partial progress (debounced) whenever watched/proof/AI changes,
@@ -950,7 +969,11 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         const proof = proofByIndex[idx] ?? EMPTY_PROOF;
         // AI values win over the admin's, but the admin's link/board/image are
         // always emitted — see resolveRecipe.
-        const recipeSteps = resolveRecipe(def, item, aiFieldsByIndex[idx] ?? null);
+        const recipeSteps = resolveRecipe(def, item, aiFieldsByIndex[idx] ?? null).map((s) => {
+          const own = aiTexts[`social:${idx}:${s.key}`];
+          return own ? { ...s, value: own, source: "ai" as const } : s;
+        });
+        const captionText = aiTexts[`social:${idx}:caption`] ?? captions[idx];
         const diyPrompt =
           def && item.aiMode !== "off"
             ? diyPromptFor(
@@ -1130,17 +1153,25 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
             {/* The caption to paste when sharing / posting — the admin's text,
                 with this member's own hashtag when the task asks for it. */}
-            {captions[idx] && (
+            {captionText && (
               <div className="rounded-(--app-r-control) border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-bold text-(--app-ink)">Caption to post</p>
                   <span className="inline-flex items-center rounded-lg bg-violet-500/15 px-2.5 py-1.5">
-                    <CopyButton value={captions[idx]} />
+                    <CopyButton value={captionText} />
                   </span>
                 </div>
                 <p className="whitespace-pre-wrap rounded-lg border border-(--app-line) bg-(--app-surface) p-3 text-sm text-(--app-ink-2) select-all">
-                  {captions[idx]}
+                  {captionText}
                 </p>
+                <AiGenerateTextButton
+                  taskId={task.id}
+                  source="social"
+                  index={idx}
+                  field="caption"
+                  noun="caption"
+                  onText={(text) => setAiTexts((p) => ({ ...p, [`social:${idx}:caption`]: text }))}
+                />
                 <p className="text-xs text-(--app-ink-2)">
                   Copy it and paste it as the text of your {def?.label?.toLowerCase() ?? "post"} — don&apos;t change the hashtags.
                 </p>
@@ -1237,6 +1268,20 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
               hasGenerated={!!aiFieldsByIndex[idx]}
               onGenerate={(regen) => generateRecipe(idx, regen)}
               error={aiErrorByIndex[idx] || null}
+              afterStep={(step) =>
+                // Every text the member pastes as a caption / comment / reply /
+                // review / post gets its own Generate button.
+                step.kind === "text" && step.role === "body" ? (
+                  <AiGenerateTextButton
+                    taskId={task.id}
+                    source="social"
+                    index={idx}
+                    field={step.key}
+                    noun={COPY_KIND_LABEL[copyKindFor(step.key, item.action)]}
+                    onText={(text) => setAiTexts((p) => ({ ...p, [`social:${idx}:${step.key}`]: text }))}
+                  />
+                ) : null
+              }
             />
 
             {/* Copy-prompt mode never shows us the content, so give the

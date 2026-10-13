@@ -106,6 +106,9 @@ export interface VideoStepProof {
 
 export interface VideoConfig {
   videoUrl: string;
+  /** What the member's "Generate comment" button writes about (lib/ai-copy-text). Empty = the task title / description. */
+  aiTopic?: string;
+  aiSummary?: string;
   provider: VideoProvider;
   /** Total watch time in seconds the user must complete */
   watchSeconds: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Sparkles,
   Loader2,
@@ -41,6 +41,7 @@ export function SocialRecipePanel({
   hasGenerated,
   onGenerate,
   error,
+  afterStep,
 }: {
   steps: ResolvedStep[];
   platformLabel: string;
@@ -58,6 +59,8 @@ export function SocialRecipePanel({
   hasGenerated: boolean;
   onGenerate: (regenerate: boolean) => void;
   error?: string | null;
+  /** Rendered under a step — the per-box "Generate" button (ai-generate-text-button). */
+  afterStep?: (step: ResolvedStep) => ReactNode;
 }) {
   const canGenerate = mode === "generate" || mode === "both";
   const showDiyUpfront = mode === "diy" || mode === "both";
@@ -148,11 +151,10 @@ export function SocialRecipePanel({
               : `Copy each item below, then create your ${platformLabel} post:`}
           </p>
           {shownSteps.map((step) => (
-            <RecipeStep
-              key={step.key}
-              step={step}
-              platformLabel={platformLabel}
-            />
+            <div key={step.key} className="space-y-1.5">
+              <RecipeStep step={step} platformLabel={platformLabel} />
+              {afterStep?.(step)}
+            </div>
           ))}
         </div>
       )}
