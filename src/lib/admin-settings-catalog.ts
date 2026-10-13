@@ -296,6 +296,7 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
 
   // ── Integrations ──
   { key: "gemini_api_key", group: "integrations", label: "Gemini API key", secret: true, description: "Powers every AI feature — caption generation, KYC document reading. Stored encrypted. The GEMINI_API_KEY env var wins when set.", effect: "Empty = AI features are unavailable." },
+  { key: "gemini_api_keys_backup", group: "integrations", label: "Backup Gemini keys", secret: true, description: "One key per line. When the main key's quota is used up (or Google rejects it), the same request moves to the next key automatically, and the used-up key is tried again once Google says its quota is back. Quota belongs to a Google Cloud project, so a backup only helps if it comes from a different project. The GEMINI_API_KEYS env var (comma-separated) adds to this list.", effect: "Empty = only the main key." },
   { key: "openai_api_key", group: "integrations", label: "OpenAI API key", secret: true, description: "ChatGPT image generation in the Stock Studio. Billed by OpenAI, separately from the others." },
   { key: "magnific_api_key", group: "integrations", label: "Magnific API key", secret: true, description: "Magnific (ex-Freepik): the stock library, its image models, and video generation. The env var MAGNIFIC_API_KEY wins when it is set." },
   { key: "magnific_webhook_secret", group: "integrations", label: "Magnific webhook secret", secret: true, description: "Only needed if you switch Magnific to push results. The scheduler polls instead, so this can stay empty." },
@@ -771,7 +772,7 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         id: "ai",
         title: "AI providers",
         blurb: "“Test” asks the provider whether the SAVED key is good using a read-only call, so it never spends generation credits.",
-        keys: ["gemini_api_key", "openai_api_key", "magnific_api_key", "magnific_webhook_secret"],
+        keys: ["gemini_api_key", "gemini_api_keys_backup", "openai_api_key", "magnific_api_key", "magnific_webhook_secret"],
       },
       {
         id: "security-services",

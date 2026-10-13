@@ -504,6 +504,32 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
           </div>
         );
       })()}
+
+      {/* What the members' "Generate comment" button writes about. */}
+      {((value.steps ?? []).some((s) => s.type === "comment") || value.engagement?.requireComment) && (
+        <div className="space-y-2 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
+          <p className="text-xs font-semibold text-sky-300">AI writing for members</p>
+          <p className="-mt-1 text-[11px] text-gray-400">
+            Under the comment box, members get a <b>Generate</b> button that writes a fresh, unique comment from this
+            topic and summary. Leave empty to use the task title and description.
+          </p>
+          <input
+            value={value.aiTopic ?? ""}
+            onChange={(e) => onChange({ ...value, aiTopic: e.target.value || undefined })}
+            maxLength={200}
+            placeholder="Topic — e.g. the video's subject"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-sky-500 focus:outline-none"
+          />
+          <textarea
+            value={value.aiSummary ?? ""}
+            onChange={(e) => onChange({ ...value, aiSummary: e.target.value || undefined })}
+            rows={3}
+            maxLength={2000}
+            placeholder="Summary — what the comment should say, the tone, the language (e.g. Bangla)"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-sky-500 focus:outline-none"
+          />
+        </div>
+      )}
     </div>
   );
 }

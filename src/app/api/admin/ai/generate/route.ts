@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { isGeminiConfigured, generateQuizQuestions } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
-import { getSecret } from "@/lib/system-settings";
+import { geminiFetch, hasGeminiKey } from "@/lib/gemini-keys";
 import { z } from "zod";
 
 // Key resolution lives in lib/gemini.ts (env var, then the admin Integrations
@@ -35,12 +35,12 @@ async function callGemini(prompt: string): Promise<{
   text?: string;
   error?: string;
 }> {
-  const key = await getSecret("GEMINI_API_KEY", "gemini_api_key");
-  if (!key) {
+  // The key pool (lib/gemini-keys): main key, then backups on a used-up quota.
+  if (!(await hasGeminiKey())) {
     return { success: false, error: "GEMINI_API_KEY not set" };
   }
   try {
-    const res = await fetch(`${GEMINI_API_URL}?key=${key}`, {
+    const res = await geminiFetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

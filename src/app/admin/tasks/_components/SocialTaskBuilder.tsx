@@ -671,6 +671,13 @@ function SocialActionCard({
       {/* The caption members copy for a share / post — optional. */}
       {actionTakesCaption(item.action) && <CaptionEditor item={item} onUpdate={onUpdate} />}
 
+      {/* What the members' "Generate" buttons write about — every caption /
+          comment / reply / review box on the task page gets one. */}
+      {(actionTakesCaption(item.action) ||
+        def.recipe?.some((s) => s.kind === "text" && s.role === "body")) && (
+        <AiWritingEditor item={item} onUpdate={onUpdate} />
+      )}
+
       {(def.supportsAiPrompt || actionTakesCaption(item.action)) && (
         <ContentRulesEditor
           item={item}
@@ -1176,6 +1183,41 @@ function deriveDefaultProofRequirements(
    against these. Deliberately plain rows rather than a query builder: the
    whole value is that an admin can add "must contain our link" in two clicks.
    ───────────────────────────────────────────────────────────────────────── */
+
+/** What the members' Generate buttons write about (lib/ai-copy-text). */
+function AiWritingEditor({
+  item,
+  onUpdate,
+}: {
+  item: BundleItem;
+  onUpdate: (patch: Partial<BundleItem>) => void;
+}) {
+  return (
+    <div className="space-y-2 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
+      <p className="text-xs font-semibold text-sky-300">AI writing for members</p>
+      <p className="text-[11px] text-gray-400 -mt-1">
+        Under every caption / comment / reply / review box, members get a <b>Generate</b> button that writes a fresh,
+        unique text from this topic and summary. Your links and hashtags are always kept; a caption always has
+        hashtags. Leave empty to use the task title and description.
+      </p>
+      <input
+        value={item.aiTopic ?? ""}
+        onChange={(e) => onUpdate({ aiTopic: e.target.value || undefined })}
+        maxLength={200}
+        placeholder="Topic — e.g. RevType: earn by completing micro-tasks"
+        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 text-sm focus:outline-none focus:border-sky-500"
+      />
+      <textarea
+        value={item.aiSummary ?? ""}
+        onChange={(e) => onUpdate({ aiSummary: e.target.value || undefined })}
+        rows={3}
+        maxLength={2000}
+        placeholder="Summary — what the text should say: the key points, the tone, the language (e.g. Bangla)"
+        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 text-sm focus:outline-none focus:border-sky-500"
+      />
+    </div>
+  );
+}
 
 /**
  * The caption a member copies for a share / post. All optional: an empty
