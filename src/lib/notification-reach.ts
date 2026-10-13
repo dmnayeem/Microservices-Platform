@@ -56,8 +56,12 @@ export interface ReachFilters {
   from: string;
   to: string;
   q: string;
-  /** "all" includes SUSPENDED / BANNED / unverified accounts. */
-  accounts: "active" | "all";
+  /**
+   * "everyone" (the default) = every account, staff and unverified included —
+   * the owner wants to see all users here (2026-10-13). "all" = members of any
+   * status; "active" = ACTIVE members. Reminders only ever go to ACTIVE members.
+   */
+  accounts: "everyone" | "all" | "active";
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -73,7 +77,7 @@ export function parseReachFilters(p: Record<string, string | undefined>): ReachF
     from: ISO_DAY.test(p.from ?? "") ? p.from! : "",
     to: ISO_DAY.test(p.to ?? "") ? p.to! : "",
     q: (p.q ?? "").trim().slice(0, 100),
-    accounts: p.accounts === "all" ? "all" : "active",
+    accounts: p.accounts === "all" ? "all" : p.accounts === "active" ? "active" : "everyone",
   };
 }
 
@@ -83,13 +87,19 @@ const PUSH_OFF = Prisma.sql`(NOT u."pushNotifications")`;
 const PUSH_NOTSET = Prisma.sql`(u."pushNotifications" AND NOT ${HAS_SUB})`;
 const EMAIL_ON = Prisma.sql`(u."emailNotifications" AND u.email <> '' AND u.email NOT LIKE '%@deleted.local')`;
 
-/** Staff out, always. Raw-SQL twin of NON_STAFF_WHERE, built from the same STAFF_ROLES. */
-function baseWhere(accounts: "active" | "all"): Prisma.Sql[] {
+/** Staff out unless "everyone". Raw-SQL twin of NON_STAFF_WHERE, built from the same STAFF_ROLES. */
+function baseWhere(accounts: ReachFilters["accounts"]): Prisma.Sql[] {
+  if (accounts === "everyone") return [Prisma.sql`TRUE`];
   const parts: Prisma.Sql[] = [
     Prisma.sql`u.role::text NOT IN (${Prisma.join(STAFF_ROLES.map((r) => String(r)))})`,
   ];
   if (accounts === "active") parts.push(Prisma.sql`u.status = 'ACTIVE'`);
   return parts;
+}
+
+/** Is this role staff (shown with a role badge, never reminded)? */
+export function isStaffRoleName(role: string): boolean {
+  return (STAFF_ROLES as readonly string[]).map(String).includes(role);
 }
 
 export function reachWhere(f: ReachFilters): Prisma.Sql {
@@ -119,6 +129,7 @@ export interface ReachRow {
   username: string | null;
   email: string;
   status: string;
+  role: string;
   createdAt: Date;
   pushNotifications: boolean;
   emailOn: boolean;
@@ -135,6 +146,7 @@ interface RawRow {
   username: string | null;
   email: string;
   status: string;
+  role: string;
   createdAt: Date;
   pushNotifications: boolean;
   emailOn: boolean;
@@ -154,7 +166,7 @@ export async function reachPage(
   skip: number
 ): Promise<{ rows: ReachRow[]; total: number }> {
   const raw = await prisma.$queryRaw<RawRow[]>`
-    SELECT u.id, u.name, u.username, u.email, u.status::text AS status, u."createdAt",
+    SELECT u.id, u.name, u.username, u.email, u.status::text AS status, u.role::text AS role, u."createdAt",
            u."pushNotifications", ${EMAIL_ON} AS "emailOn",
            u."pwaFirstSeenAt", u."pwaPlatform",
            COUNT(*) OVER ()::int AS total
@@ -197,6 +209,7 @@ function toRow(r: RawRow, extra: { devices: number; lastActive: Date | null } | 
     username: r.username,
     email: r.email,
     status: r.status,
+    role: r.role,
     createdAt: r.createdAt,
     pushNotifications: r.pushNotifications,
     emailOn: r.emailOn,
@@ -215,6 +228,11 @@ export async function reachExport(f: ReachFilters, cap = 10_000): Promise<ReachR
 }
 
 export interface ReachStats {
+  /** Every account, staff and every status included. */
+  accounts: number;
+  unverified: number;
+  blocked: number;
+  staff: number;
   users: number;
   pushOn: number;
   pushOff: number;
@@ -246,9 +264,16 @@ export const reachStats = unstable_cache(
         FROM "User" u
         WHERE ${Prisma.join(baseWhere("active"), " AND ")}
       ) x`;
-    return r;
+    // The whole user base, so "all users" is visible here too.
+    const [t] = await prisma.$queryRaw<Array<{ accounts: number; unverified: number; blocked: number; staff: number }>>`
+      SELECT COUNT(*)::int AS accounts,
+             COUNT(*) FILTER (WHERE u.status = 'PENDING_VERIFICATION')::int AS unverified,
+             COUNT(*) FILTER (WHERE u.status IN ('BANNED', 'SUSPENDED'))::int AS blocked,
+             COUNT(*) FILTER (WHERE u.role::text IN (${Prisma.join(STAFF_ROLES.map((x) => String(x)))}))::int AS staff
+      FROM "User" u`;
+    return { ...r, ...t };
   },
-  ["admin-notification-reach-stats"],
+  ["admin-notification-reach-stats-v2"],
   { revalidate: 60 }
 );
 
