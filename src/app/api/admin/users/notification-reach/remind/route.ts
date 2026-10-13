@@ -15,8 +15,9 @@ export const runtime = "nodejs";
 /**
  * POST — "Remind to turn on notifications".
  * Body: { userIds: string[] }  or  { filters: Record<string,string> } (the page's
- * current filter, capped at 5,000). One in-app notification per user; anyone
- * reminded in the last 7 days is skipped. One audit row with the counts.
+ * current filter, capped at 5,000). Per user: a bell notification that also
+ * pops up over the app on their next visit, plus an email (broadcast, daily
+ * cap). Anyone reminded in the last 7 days is skipped. One audit row.
  */
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to send" }, { status: 400 });
   }
 
-  const result = await sendPushReminders(target);
+  const result = await sendPushReminders(target, session.user.id);
 
   if (result.sent > 0 || result.skippedRecent > 0) {
     await writeAudit({
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
       entity: "Notification",
       summary:
         `Reminded ${result.sent.toLocaleString()} user(s) to turn on notifications` +
+        (result.emailQueued ? ` (${result.emailQueued.toLocaleString()} by email too)` : "") +
         (result.skippedRecent ? ` (${result.skippedRecent.toLocaleString()} skipped: reminded in the last ${PUSH_REMINDER_COOLDOWN_DAYS} days)` : ""),
       meta: { mode, ...result, ...("filters" in target ? { filters: target.filters } : {}) },
     });

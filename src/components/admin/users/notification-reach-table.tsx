@@ -32,6 +32,7 @@ const PUSH_BADGE: Record<ReachTableRow["pushState"], { label: string; cls: strin
 
 interface RemindResult {
   sent: number;
+  emailQueued?: number;
   skippedRecent: number;
   skippedOther: number;
   capped: boolean;
@@ -75,7 +76,7 @@ export function NotificationReachTable({
   const send = async (body: { userIds: string[] } | { filters: Record<string, string> }, what: string) => {
     const ok = await confirmDialog({
       title: "Send reminder?",
-      description: `${what} will get an in-app notification: "Turn on notifications". Anyone reminded in the last ${cooldownDays} days is skipped.`,
+      description: `${what} will get "Turn on notifications" as a popup the next time they open RevType (and in their bell), plus an email if their email updates are on. Anyone reminded in the last ${cooldownDays} days is skipped.`,
       confirmLabel: "Send reminder",
     });
     if (!ok) return;
@@ -89,6 +90,7 @@ export function NotificationReachTable({
       const data = (await res.json().catch(() => ({}))) as RemindResult;
       if (!res.ok) throw new Error(data.error || "Try again");
       const parts = [
+        data.emailQueued ? `${data.emailQueued.toLocaleString()} by email too` : "",
         data.skippedRecent ? `${data.skippedRecent.toLocaleString()} skipped (reminded in the last ${cooldownDays} days)` : "",
         data.skippedOther ? `${data.skippedOther.toLocaleString()} skipped (already on or not active)` : "",
         data.capped ? "capped at 5,000 — send again for the rest" : "",

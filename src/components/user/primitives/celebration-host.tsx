@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Trophy, Ticket, Award, Banknote, X } from "lucide-react";
+import { Trophy, Ticket, Award, Banknote, Bell, X } from "lucide-react";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import type { CelebrationKind, CelebrationPayload } from "@/lib/celebration";
 
@@ -14,6 +14,7 @@ const LOOK: Record<CelebrationKind, { Icon: typeof Trophy; band: string; emoji: 
   leaderboard: { Icon: Trophy, band: "from-yellow-300 via-amber-500 to-orange-600", emoji: "🏆" },
   achievement: { Icon: Award, band: "from-violet-400 via-fuchsia-500 to-pink-500", emoji: "🏅" },
   payment: { Icon: Banknote, band: "from-emerald-400 via-teal-500 to-cyan-500", emoji: "💸" },
+  notice: { Icon: Bell, band: "from-sky-400 via-indigo-500 to-violet-500", emoji: "🔔" },
 };
 
 /**
@@ -95,11 +96,14 @@ export function CelebrationHost() {
       >
         {/* Band + confetti */}
         <div className={`relative h-28 bg-linear-to-br ${look.band}`}>
-          <div aria-hidden className="celebrate-confetti absolute inset-0">
-            {Array.from({ length: 18 }).map((_, i) => (
-              <span key={i} style={{ left: `${(i * 53) % 100}%`, animationDelay: `${(i % 6) * 0.12}s` }} />
-            ))}
-          </div>
+          {/* A reminder is not a celebration — no confetti. */}
+          {current.kind !== "notice" && (
+            <div aria-hidden className="celebrate-confetti absolute inset-0">
+              {Array.from({ length: 18 }).map((_, i) => (
+                <span key={i} style={{ left: `${(i * 53) % 100}%`, animationDelay: `${(i % 6) * 0.12}s` }} />
+              ))}
+            </div>
+          )}
           <div className="absolute inset-x-0 -bottom-9 flex justify-center">
             <span className="grid h-18 w-18 place-items-center rounded-2xl border-4 border-(--app-surface) bg-white text-3xl shadow-lg">
               {look.emoji}

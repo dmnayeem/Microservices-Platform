@@ -146,11 +146,15 @@ export function SettingsView({
   // "Turn on notifications" reminder links here, so this is where it gets fixed.
   const [devicePush, setDevicePush] = useState<"unknown" | "unsupported" | "denied" | "off" | "on">("unknown");
   const [enablingPush, setEnablingPush] = useState(false);
+  const [isIphone, setIsIphone] = useState(false);
   useEffect(() => {
     let alive = true;
     (async () => {
       if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-        if (alive) setDevicePush("unsupported");
+        if (alive) {
+          setIsIphone(/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+          setDevicePush("unsupported");
+        }
         return;
       }
       if (Notification.permission === "denied") {
@@ -385,6 +389,30 @@ export function SettingsView({
                   </div>
                   <Toggle checked={pushNotif} onChange={onPushNotif} disabled={savingPref} />
                 </div>
+                {/* This browser can't do push at all. On iPhone that means Safari
+                    outside the Home Screen app (Apple only allows push there);
+                    elsewhere an in-app browser (Facebook, Messenger …). The
+                    reminder sends members HERE, so say what to do instead of
+                    showing nothing (owner, 2026-10-13). */}
+                {devicePush === "unsupported" && (
+                  <div className="space-y-1.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-(--app-ink-2)">
+                    {isIphone ? (
+                      <>
+                        <p className="font-semibold text-(--app-ink)">On iPhone, notifications work only in the RevType app on your Home Screen.</p>
+                        <ol className="list-decimal space-y-0.5 pl-5">
+                          <li>Open revtype.com in <b>Safari</b>.</li>
+                          <li>Tap <b>Share</b> (the square with the arrow) → <b>Add to Home Screen</b>.</li>
+                          <li>Open RevType from the new icon, come back here and tap <b>Turn on notifications</b>.</li>
+                        </ol>
+                      </>
+                    ) : (
+                      <p>
+                        This browser can&apos;t show notifications. Open <b>revtype.com</b> in <b>Chrome</b> (or install the
+                        RevType app from the browser menu), then turn them on here.
+                      </p>
+                    )}
+                  </div>
+                )}
                 {(devicePush === "off" || devicePush === "denied" || (devicePush === "on" && !pushNotif)) && (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--app-line) bg-(--app-surface-2) p-3">
                     <p className="text-sm text-(--app-ink-2)">
