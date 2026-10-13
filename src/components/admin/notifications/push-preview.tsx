@@ -7,7 +7,7 @@ import { personalize } from "@/lib/personalize";
 
 /**
  * What the push looks like on an Android phone's lock screen — title, the
- * message line by line, the app logo on the right and the big picture under
+ * message line by line, the app logo beside it, centred, and the big picture under
  * it (the "rich" notification). Tap the arrow to see the folded version, the
  * way it first shows in the shade. `{name}` is filled with a sample name.
  */
@@ -34,9 +34,18 @@ export function PushPreview({
       <div className="rounded-2xl bg-gradient-to-b from-zinc-600 to-zinc-700 p-3">
         <p className="mb-2 px-1 text-[11px] font-medium text-white/80">Lock screen · Android</p>
         <div className="overflow-hidden rounded-[22px] bg-[#1f1f1f] p-3.5 text-white shadow-xl">
-          <div className="flex items-start gap-2.5">
+          {/* The RevType logo sits beside the text, centred on it — the way
+              Android draws the app icon on a notification (owner, 2026-10-13). */}
+          <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/app-icon/192" alt="" className="h-7 w-7 shrink-0 rounded-full bg-zinc-700 object-cover" />
+            <img
+              src="/app-icon/192"
+              alt=""
+              className={cn(
+                "shrink-0 rounded-full bg-zinc-700 object-cover ring-1 ring-white/10",
+                expanded ? "h-11 w-11" : "h-10 w-10"
+              )}
+            />
             <div className="min-w-0 flex-1">
               <p className="text-[12px] text-white/60">
                 RevType <span className="text-white/40">· now</span>
@@ -51,7 +60,7 @@ export function PushPreview({
                 {m}
               </p>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
+            <div className="flex shrink-0 flex-col items-end gap-2 self-start">
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
