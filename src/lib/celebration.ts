@@ -7,7 +7,8 @@
  * leaderboard prize, a big achievement, a payment received. Everything else
  * stays a quiet bell notification.
  */
-export type CelebrationKind = "lottery" | "leaderboard" | "achievement" | "payment";
+/** `notice`: an admin reminder that must be seen (e.g. "turn on notifications") — no confetti. */
+export type CelebrationKind = "lottery" | "leaderboard" | "achievement" | "payment" | "notice";
 
 export interface CelebrationWinner {
   rank: number;

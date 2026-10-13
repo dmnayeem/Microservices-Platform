@@ -3,6 +3,8 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { Prisma, NotificationType } from "@/generated/prisma/client";
 import { STAFF_ROLES } from "@/lib/staff";
+import { createBroadcast, deliverBroadcast } from "@/lib/broadcast";
+import type { CelebrationPayload } from "@/lib/celebration";
 import { PWA_PLATFORMS, type PwaPlatform } from "@/lib/pwa-shared";
 
 /**
@@ -36,6 +38,15 @@ export const PUSH_REMINDER_LINK = "/settings#notifications";
 export const PUSH_REMINDER_TITLE = "Turn on notifications";
 export const PUSH_REMINDER_BODY =
   "Be first to new offers, tasks and events — turn notifications on to earn more.";
+/** The reminder email: the one channel that reaches someone who never opens the app. */
+export const PUSH_REMINDER_EMAIL_SUBJECT = "Turn on RevType notifications — don't miss new tasks";
+export const PUSH_REMINDER_EMAIL_BODY = [
+  "New tasks, offers and events go to members with notifications on first — and the best ones fill up fast.",
+  "",
+  "Android: open RevType in Chrome, go to Settings → Notifications and tap “Turn on notifications”, then Allow.",
+  "",
+  "iPhone: notifications only work in the RevType app on your Home Screen. Open revtype.com in Safari, tap Share → “Add to Home Screen”, open RevType from the new icon, then go to Settings → Notifications and tap “Turn on notifications”.",
+].join("\n");
 
 export interface ReachFilters {
   status: PushState | "all";
@@ -248,6 +259,8 @@ export type ReminderTarget = { userIds: string[] } | { filters: ReachFilters };
 export interface ReminderResult {
   matched: number;
   sent: number;
+  /** Of `sent`, how many will also get the reminder by email (queued, sent by the broadcast sweep). */
+  emailQueued: number;
   skippedRecent: number;
   /** Selected users who already have push on, or aren't ACTIVE non-staff accounts. */
   skippedOther: number;
@@ -287,10 +300,10 @@ async function reminderCandidates(target: ReminderTarget): Promise<{ ids: string
  * itself (`data.kind = push_reminder`), found for the whole set in one query.
  * Inserts go in chunks of 1,000 — one query each.
  */
-export async function sendPushReminders(target: ReminderTarget): Promise<ReminderResult> {
+export async function sendPushReminders(target: ReminderTarget, actorId: string): Promise<ReminderResult> {
   const { ids, requested, capped } = await reminderCandidates(target);
   if (ids.length === 0) {
-    return { matched: 0, sent: 0, skippedRecent: 0, skippedOther: requested, capped };
+    return { matched: 0, sent: 0, emailQueued: 0, skippedRecent: 0, skippedOther: requested, capped };
   }
 
   const since = new Date(Date.now() - PUSH_REMINDER_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
@@ -307,11 +320,20 @@ export async function sendPushReminders(target: ReminderTarget): Promise<Reminde
   const recentSet = new Set(recent.map((r) => r.userId));
   const toSend = ids.filter((id) => !recentSet.has(id));
 
+  // A bell row alone reached nobody: these members have no push, so they only
+  // saw it if they happened to open the bell (owner, 2026-10-13). It is now
+  // also a popup over the app the next time they open it, and an email.
   const data = {
     kind: PUSH_REMINDER_KIND,
     link: PUSH_REMINDER_LINK,
     actionUrl: PUSH_REMINDER_LINK,
     actionLabel: "Turn on",
+    popup: {
+      kind: "notice",
+      headline: PUSH_REMINDER_TITLE,
+      sub: "Be first to new tasks and offers. iPhone: add RevType to your Home Screen first (Share → Add to Home Screen), then open it from the icon.",
+      cta: { label: "Turn on notifications", href: PUSH_REMINDER_LINK },
+    } satisfies CelebrationPayload,
   };
   for (let i = 0; i < toSend.length; i += 1_000) {
     await prisma.notification.createMany({
@@ -320,14 +342,40 @@ export async function sendPushReminders(target: ReminderTarget): Promise<Reminde
         type: NotificationType.SYSTEM,
         title: PUSH_REMINDER_TITLE,
         message: PUSH_REMINDER_BODY,
+        popup: true,
         data,
       })),
     });
   }
 
+  // Email through a broadcast: durable, resumed by the scheduler, inside the
+  // daily email cap, and only to members whose email updates are on.
+  let emailQueued = 0;
+  if (toSend.length) {
+    emailQueued = await prisma.user.count({
+      where: { id: { in: toSend }, emailNotifications: true, email: { not: "" } },
+    });
+    if (emailQueued > 0) {
+      const b = await createBroadcast({
+        createdById: actorId,
+        title: PUSH_REMINDER_TITLE,
+        message: PUSH_REMINDER_BODY,
+        emailSubject: PUSH_REMINDER_EMAIL_SUBJECT,
+        emailBody: PUSH_REMINDER_EMAIL_BODY,
+        actionUrl: PUSH_REMINDER_LINK,
+        actionLabel: "Turn on notifications",
+        channels: { inApp: false, push: false, email: true },
+        targetKind: "SPECIFIC",
+        userIds: toSend,
+      });
+      await deliverBroadcast(b.id, { maxMs: 8_000 }).catch(() => {});
+    }
+  }
+
   return {
     matched: ids.length,
     sent: toSend.length,
+    emailQueued,
     skippedRecent: recentSet.size,
     skippedOther: Math.max(0, requested - ids.length),
     capped,
