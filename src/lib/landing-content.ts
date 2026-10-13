@@ -476,6 +476,45 @@ export function isSectionKey(s: string): s is SectionKey {
 // Defaults — mirrors the current hardcoded copy in src/components/landing/*
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * FAQ answers the home page must always carry (owner brief, 2026-10-13):
+ * RevType pays for completed tasks and work — NOT for watching ads — and a
+ * visitor should learn the task types, how points become cash and what keeps
+ * it safe without leaving the page. They are in the defaults AND re-added by
+ * `withRequiredFaq` when a stored FAQ (saved before they existed) lacks them;
+ * matched by `match`, so an admin-edited copy is left exactly as written.
+ *
+ * Answers may hold live-value tokens, filled at render by `fillFaqTokens`
+ * from the real settings (never typed numbers that go stale):
+ *   {points_per_usd} {convert_min_points} {convert_min_usd} {min_withdrawal} {payout_time}
+ */
+export const REQUIRED_FAQ_ITEMS: ReadonlyArray<FaqItem & { match: RegExp }> = [
+  {
+    match: /watch(ing)?\s+(ads|adverts|advertisements)/i,
+    question: "Do I get paid for watching ads?",
+    answer:
+      "No. RevType only pays for tasks you complete and for work you sell or teach. You are never paid for viewing, watching or clicking ads. Ads help keep the platform free, but they are not a way to earn here.",
+  },
+  {
+    match: /kinds? of tasks|types? of tasks/i,
+    question: "What kinds of tasks are there?",
+    answer:
+      "Short jobs posted by businesses: social actions (follow, like, comment or share), app installs and tests, short surveys and quizzes, website visits and sign-ups, writing articles or reviews, and custom tasks. Each one shows its instructions, the proof you must send and its reward before you start.",
+  },
+  {
+    match: /points.*cash|minimum withdrawal/i,
+    question: "How do points turn into cash, and what is the minimum withdrawal?",
+    answer:
+      "Approved tasks credit points to your wallet. {points_per_usd} points equal $1, and you can convert once you hold {convert_min_points} points ({convert_min_usd}). The minimum withdrawal starts at {min_withdrawal}; some plans set a higher one. The exact minimum, fee and processing time ({payout_time}) are shown on the withdrawal screen before you confirm.",
+  },
+  {
+    match: /safe|fraud|secure/i,
+    question: "How does RevType keep work and payouts fair and safe?",
+    answer:
+      "Every submission is checked against the task's proof before it is paid, and rejected work shows the reason. Duplicate accounts and cheating are screened by fraud checks, larger withdrawals need identity verification (KYC), and marketplace service deals are held in escrow until the work is delivered. Every withdrawal request is reviewed by the team.",
+  },
+];
+
 export const DEFAULT_LANDING_CONTENT: LandingContent = {
   navbar: {
     // Features, Pricing and FAQ were removed from the bar at the owner's
@@ -499,7 +538,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     title_line1: "Get Paid for Real Work.",
     title_line2: "Sell, Learn and Teach.",
     subtitle:
-      "Do small paid tasks for real businesses, sell digital products and services, and take or teach courses — all from one free account.",
+      "Get paid for tasks you complete for real businesses — never for watching ads. Sell digital products and services, and take or teach courses, all from one free account.",
     cta_primary_label: "Create a Free Account",
     cta_primary_href: "/register",
     cta_secondary_label: "See how it works",
@@ -719,7 +758,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         description: "Join, explore and complete tasks",
         features: [
           "5 tasks per day",
-          "Basic video rewards",
+          "Standard task access",
           "3-level referral bonus",
           "Email support",
         ],
@@ -735,7 +774,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         description: "For regular task takers",
         features: [
           "20 tasks per day",
-          "Premium video rewards",
+          "More task categories",
           "5-level referral bonus",
           "Priority support",
           "Exclusive tasks",
@@ -752,7 +791,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         description: "Higher daily limits",
         features: [
           "50 tasks per day",
-          "2x video rewards",
+          "Lower withdrawal fee",
           "7-level referral bonus",
           "Priority support",
           "VIP tasks access",
@@ -770,7 +809,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         description: "For full-time freelancers",
         features: [
           "Unlimited tasks",
-          "3x video rewards",
+          "Lowest withdrawal fee",
           "10-level referral bonus",
           "Exclusive VIP tasks",
           "Daily bonus rewards",
@@ -819,8 +858,9 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       {
         question: "Is RevType a PTC (paid-to-click) site?",
         answer:
-          "No. Pay on RevType comes from completed work, marketplace sales and teaching: tasks have defined instructions and are verified before they are paid. Like many free platforms, RevType does display ads, and some tasks and activities are sponsored by advertisers. Earnings are never guaranteed.",
+          "No. Pay on RevType comes from completed work, marketplace sales and teaching: tasks have defined instructions and are verified before they are paid. Like many free platforms, RevType shows ads, but nobody is paid for viewing or clicking them. Earnings are never guaranteed.",
       },
+      ...REQUIRED_FAQ_ITEMS.map(({ question, answer }) => ({ question, answer })),
       {
         question: "How does RevType make money?",
         answer:
@@ -983,6 +1023,38 @@ export function withRequiredNavLinks(navbar: NavbarContent): NavbarContent {
   const links = [...navbar.nav_links];
   links.splice(at === -1 ? links.length : at, 0, ...missing);
   return { ...navbar, nav_links: links };
+}
+
+/**
+ * Adds back any required FAQ answer a stored FAQ lacks (see REQUIRED_FAQ_ITEMS).
+ * Run on the RAW content, before `publicLanding`: an item the admin hid stays
+ * hidden instead of being re-added.
+ */
+export function withRequiredFaq(c: LandingContent): LandingContent {
+  const items = c.faq?.items ?? [];
+  const missing = REQUIRED_FAQ_ITEMS.filter(
+    (r) => !items.some((it) => r.match.test(it.question ?? ""))
+  ).map(({ question, answer }) => ({ question, answer }));
+  if (missing.length === 0) return c;
+  return { ...c, faq: { ...c.faq, items: [...items, ...missing] } };
+}
+
+export interface FaqFacts {
+  points_per_usd: string;
+  convert_min_points: string;
+  convert_min_usd: string;
+  min_withdrawal: string;
+  payout_time: string;
+}
+
+/** Fills the {token}s in FAQ answers with the live values. Unknown tokens are left as typed. */
+export function fillFaqTokens(c: LandingContent, facts: FaqFacts): LandingContent {
+  const fill = (t: string) =>
+    t.replace(/\{(\w+)\}/g, (m, k: string) => (k in facts ? facts[k as keyof FaqFacts] : m));
+  return {
+    ...c,
+    faq: { ...c.faq, items: (c.faq?.items ?? []).map((it) => ({ ...it, answer: fill(it.answer ?? "") })) },
+  };
 }
 
 /** Gives every known earn card its destination, without overriding a custom one. */

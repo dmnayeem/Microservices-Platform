@@ -13,7 +13,7 @@ export const revalidate = 300;
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "Blog",
+    title: "Blog — Guides to Micro-Tasks, Selling and Courses",
     description: `Guides from ${COMPANY_NAME} on freelance micro-tasks, selling digital products and services, teaching online courses, and staying safe on the platform.`,
     path: "/blog",
   });

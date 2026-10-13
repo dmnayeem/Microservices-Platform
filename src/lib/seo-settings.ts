@@ -17,12 +17,14 @@ import { OFFICIAL_SOCIAL_PROFILES, OFFICIAL_X_HANDLE } from "@/lib/seo/social-pr
 export const SEO_DEFAULTS = {
   "seo.site_name": "RevType",
   // The home page's title and description — what Google shows for the site.
-  "seo.default_title": "RevType — Earn Money Online with Tasks, Videos, Surveys & Courses",
+  // 50–60 chars, brand first. RevType pays for completed tasks and work only —
+  // never for watching ads (owner, 2026-10-13), so no "videos" here.
+  "seo.default_title": "RevType — Get Paid for Completed Micro-Tasks & Real Work",
   "seo.title_template": "%s | RevType",
-  // ≤155 chars (what Google shows uncut) and strictly factual — no income
-  // promises. The stored /admin/seo value wins over this default.
+  // 140–160 chars and strictly factual — no income promises. The stored
+  // /admin/seo value wins over this default.
   "seo.description":
-    "RevType: paid micro-tasks, a digital marketplace for products and services, and online courses. Earn from completed tasks, sales, referrals and affiliates.",
+    "RevType pays you for completed micro-tasks from real businesses, never for watching ads. Sell digital products and services, or take and teach courses.",
   "seo.keywords":
     "micro tasks, freelance micro-tasks, online side work, digital marketplace, sell digital products, freelance services, online courses, affiliate program, referral program",
   "seo.logo_url": "/icon-512.png",
@@ -45,9 +47,10 @@ export const SEO_DEFAULTS = {
   "seo.org_type": "Organization",
   "seo.org_legal_name": "",
   "seo.org_description":
-    "RevType is a platform for paid micro-tasks, a digital marketplace for products and services, and online courses.",
+    "RevType pays members for completed micro-tasks, never for watching ads, and runs a marketplace for digital products and services plus online courses.",
   "seo.org_founding_date": "",
-  "seo.org_email": "",
+  // The same support address the Contact page and FAQ give (config/company).
+  "seo.org_email": "support@revtype.com",
   "seo.org_phone": "",
   "seo.org_address": "",
   "seo.org_country": "",

@@ -51,6 +51,9 @@ import "./globals.css";
 import { SITE_URL } from "@/lib/seo/site-url";
 import { ShortcutInstallBanner } from "@/components/pwa/shortcut-install-banner";
 
+/** Other spellings of the brand for the Organization / WebSite markup. */
+const BRAND_ALT_NAMES = ["RevType", "Revtype", "Rev Type", "revtype.com"];
+
 /**
  * Title, description, icons, share image, verification tags and indexing all
  * come from /admin/seo (src/lib/seo-settings.ts). They were hard-coded here;
@@ -207,7 +210,8 @@ export default async function RootLayout({
               // publisher point at the SAME entity instead of three nameless ones.
               "@id": `${SITE_URL}/#organization`,
               name: seo["seo.site_name"],
-              alternateName: ["RevType", "revtype.com"].filter((n) => n !== seo["seo.site_name"]),
+              // How people actually type the brand (the owner writes "Revtype").
+              alternateName: BRAND_ALT_NAMES.filter((n) => n !== seo["seo.site_name"]),
               ...(seo["seo.org_legal_name"] ? { legalName: seo["seo.org_legal_name"] } : {}),
               url: SITE_URL,
               // The square brand mark, not the uploaded header logo: that one is
@@ -251,8 +255,9 @@ export default async function RootLayout({
               "@type": "WebSite",
               "@id": `${SITE_URL}/#website`,
               name: seo["seo.site_name"],
-              alternateName: "revtype.com",
+              alternateName: BRAND_ALT_NAMES.filter((n) => n !== seo["seo.site_name"]),
               url: SITE_URL,
+              description: seo["seo.org_description"],
               inLanguage: "en",
               // No SearchAction: Google retired the sitelinks search box
               // (Nov 2024), so it would add markup with no effect.
@@ -271,9 +276,9 @@ export default async function RootLayout({
               operatingSystem: "Web, Android, iOS (installable web app)",
               browserRequirements: "Requires a modern web browser with JavaScript.",
               description:
-                `${seo["seo.site_name"]} is a platform for paid micro-tasks, a digital marketplace for products and services, ` +
-                "and online courses. Members complete small jobs posted by businesses, sell digital products and services, " +
-                "teach or take courses, and earn referral and affiliate commission.",
+                `${seo["seo.site_name"]} is a task-based earning platform with a digital marketplace and online courses. ` +
+                "Members are paid for small jobs they complete for businesses (never for watching ads), sell digital " +
+                "products and services, teach or take courses, and earn referral and affiliate commission.",
               keywords:
                 "Freelance micro-tasks, Digital marketplace, Online courses, Micro-services, Affiliate program, Advertising",
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free to join" },

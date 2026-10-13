@@ -4,7 +4,8 @@ import { pageMeta } from "@/lib/seo/page-meta";
 import { JsonLd } from "@/components/seo/json-ld";
 import { COMPANY_NAME, SUPPORT_EMAIL } from "@/config/company";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
+// Never localhost: a dev .env must not reach structured data (lib/seo/site-url).
+import { SITE_URL } from "@/lib/seo/site-url";
 
 // The page is a client component (the form), so its metadata lives here.
 export function generateMetadata(): Promise<Metadata> {

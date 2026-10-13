@@ -7,7 +7,7 @@ import { pageMeta } from "@/lib/seo/page-meta";
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "System Status",
+    title: "System Status — Services and How to Report Issues",
     description: `The services that make up ${COMPANY_NAME} and how to report a problem with any of them.`,
     path: "/status",
   });

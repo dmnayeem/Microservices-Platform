@@ -533,7 +533,7 @@ export function EarningsCalculator(props: Props) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] uppercase tracking-wider font-bold text-amber-600">
-                        Yearly Projection
+                        Yearly total (example)
                       </p>
                       <p className="text-lg sm:text-xl font-extrabold text-(--mk-text) tabular-nums">
                         ${formatCompact(yearly)}
@@ -546,11 +546,11 @@ export function EarningsCalculator(props: Props) {
                     href="/register"
                     className="mk-press group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/25 active:scale-[0.99]"
                   >
-                    Start Earning Now
+                    Create a Free Account
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <p className="text-[10px] sm:text-[11px] text-(--mk-subtle) text-center mt-2.5">
-                    Estimates only · Actual earnings vary by activity
+                    Example only · Real pay depends on available tasks and approved work
                   </p>
                 </div>
               </div>

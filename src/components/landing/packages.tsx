@@ -30,16 +30,18 @@ type Props = Partial<PackagesContent> & {
    * price or feature the real plan does not have.
    */
   livePlans?: PlanCardData[];
+  /** "h1" on /pricing, where this section IS the page; "h2" on the home page. */
+  headingAs?: "h1" | "h2";
 };
 
-export function Packages({ livePlans, ...props }: Props) {
+export function Packages({ livePlans, headingAs, ...props }: Props) {
   const v: PackagesContent = { ...DEFAULT_LANDING_CONTENT.packages, ...props };
 
   if (livePlans && livePlans.length > 0) {
     return (
       <section id="pricing" className="mk-section">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeading eyebrow={v.badge} line1={v.heading_line1} line2={v.heading_line2} sub={v.subheading} />
+          <SectionHeading as={headingAs} eyebrow={v.badge} line1={v.heading_line1} line2={v.heading_line2} sub={v.subheading} />
           <div
             className={`mk-rise grid grid-cols-1 gap-6 pt-3 md:grid-cols-2 ${
               livePlans.length >= 3 ? "xl:grid-cols-3" : ""
@@ -75,6 +77,7 @@ export function Packages({ livePlans, ...props }: Props) {
     <section id="pricing" className="mk-section">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading
+          as={headingAs}
           eyebrow={v.badge}
           line1={v.heading_line1}
           line2={v.heading_line2}

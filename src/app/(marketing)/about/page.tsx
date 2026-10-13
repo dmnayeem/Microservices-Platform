@@ -33,14 +33,15 @@ import {
 } from "@/config/company";
 import { JsonLd } from "@/components/seo/json-ld";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
+// Never localhost: a dev .env must not reach structured data (lib/seo/site-url).
+import { SITE_URL } from "@/lib/seo/site-url";
 import { pageMeta } from "@/lib/seo/page-meta";
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "About Us",
+    title: "About Us — Who We Are and How the Platform Works",
     // ≤155 chars — what Google shows uncut.
-    description: `${COMPANY_NAME} is a freelance micro-task marketplace and digital skill-sharing community: micro-tasks, digital products, services and courses.`,
+    description: `${COMPANY_NAME} pays members for completed micro-tasks, never for watching ads, and runs a marketplace for digital products, services and courses.`,
     path: "/about",
   });
 }

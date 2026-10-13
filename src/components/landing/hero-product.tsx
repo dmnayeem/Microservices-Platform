@@ -2,11 +2,10 @@
 
 import { useRef } from "react";
 import {
-  ArrowUpRight,
   Bell,
   CheckCircle2,
   ListTodo,
-  PlayCircle,
+  ThumbsUp,
   Wallet,
 } from "lucide-react";
 import { heroMoney, normalizeHeroAnimation, type HeroAnimation } from "@/lib/landing-content";
@@ -29,8 +28,10 @@ import {
  * the critical path, would be wrong the first time a screen changed, and would
  * be pinned to one theme. This themes with the page and weighs nothing.
  */
+// Every row is a TASK with proof. RevType pays for completed work, never for
+// watching ads — the first row used to read "Watch & verify a 30s clip".
 const ROWS = [
-  { icon: PlayCircle, title: "Watch & verify a 30s clip", meta: "Video · 2 min", reward: 0.35 },
+  { icon: ThumbsUp, title: "Follow a page and send proof", meta: "Social · 2 min", reward: 0.35 },
   { icon: ListTodo, title: "Try an app and send a screenshot", meta: "Install · 5 min", reward: 1.2 },
   { icon: CheckCircle2, title: "Short opinion survey", meta: "Survey · 4 min", reward: 0.8 },
 ];
@@ -54,14 +55,16 @@ export function HeroProduct({ animation }: { animation?: HeroAnimation }) {
         {/* App header */}
         <div className="flex items-center gap-3 px-1 pb-3">
           <span className="w-9 h-9 shrink-0 rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-white text-sm font-bold flex items-center justify-center">
-            M
+            R
           </span>
+          {/* A sample screen, not a member's account: no invented name, and
+              every figure on it is labelled as an example. */}
           <span className="min-w-0 flex-1">
             <span className="block text-[11px] text-(--mk-subtle) leading-tight">
-              Good evening
+              Example screen
             </span>
             <span className="block text-sm font-semibold text-(--mk-text) truncate leading-tight">
-              Michael R.
+              Your dashboard
             </span>
           </span>
           <span className="relative w-9 h-9 shrink-0 rounded-xl border border-(--mk-border) flex items-center justify-center text-(--mk-muted)">
@@ -79,9 +82,9 @@ export function HeroProduct({ animation }: { animation?: HeroAnimation }) {
               </div>
               <HeroBalance a={a} active={active} motion={motion} />
             </div>
+            {/* Was a "↑ 12.4%" growth chip — read as a return on money. */}
             <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[11px] font-semibold">
-              <ArrowUpRight className="w-3 h-3" />
-              12.4%
+              Example
             </span>
           </div>
           <div className="mt-4 flex items-center gap-2">
@@ -130,6 +133,9 @@ export function HeroProduct({ animation }: { animation?: HeroAnimation }) {
             </div>
           ))}
         </div>
+        <p className="mt-3 px-1 text-[11px] leading-snug text-(--mk-subtle)">
+          Example only — amounts are illustrative, not typical or guaranteed earnings.
+        </p>
       </div>
 
       {/* The one moving element — style chosen in the landing editor (Hero →

@@ -12,7 +12,7 @@ import { pageMeta } from "@/lib/seo/page-meta";
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "Press Kit",
+    title: "Press Kit — Company Facts, Boilerplate and Logos",
     description: `Company boilerplate, fast facts and brand assets for ${COMPANY_NAME}, a freelance micro-task marketplace and digital skill-sharing community.`,
     path: "/press",
   });
