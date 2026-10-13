@@ -106,14 +106,25 @@ export function NotificationCard({
           the icon AND the mark-read/delete buttons, which left it ~84px —
           two words to a line. */}
       <div className="flex items-start gap-2.5 sm:gap-3">
-        <div
-          className={cn(
-            "w-9 h-9 sm:w-10 sm:h-10 rounded-xl grid place-items-center shrink-0",
-            def.web.iconWrap
-          )}
-        >
-          <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-        </div>
+        {decorated ? (
+          <div
+            className={cn(
+              "w-9 h-9 sm:w-10 sm:h-10 rounded-xl grid place-items-center shrink-0",
+              def.web.iconWrap
+            )}
+          >
+            <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          </div>
+        ) : (
+          // A Normal notice comes from RevType itself — its own logo, not a
+          // stock bell (owner, 2026-10-13). The admin's home-screen icon.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/app-icon/192"
+            alt=""
+            className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl object-cover"
+          />
+        )}
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">

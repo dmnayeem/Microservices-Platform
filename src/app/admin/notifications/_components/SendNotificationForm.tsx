@@ -42,6 +42,35 @@ import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { DateField } from "@/components/ui/date-field";
 import { EmailComposer } from "./EmailComposer";
 import { NameTokenButton, PushPreview } from "@/components/admin/notifications/push-preview";
+import { EmojiPicker, insertAtCaret } from "@/components/admin/notifications/emoji-picker";
+import {
+  AlertCircle as StAlertCircle,
+  AlertTriangle as StAlertTriangle,
+  CheckCircle2 as StCheck,
+  Coins as StCoins,
+  Gift as StGift,
+  Newspaper as StNews,
+  PartyPopper as StParty,
+  Siren as StSiren,
+  Sparkles as StSparkles,
+  Wrench as StWrench,
+  type LucideIcon,
+} from "lucide-react";
+
+/** The template icons (lib/notification-styles `icon` names). */
+const STYLE_ICONS: Record<string, LucideIcon> = {
+  Bell,
+  Siren: StSiren,
+  AlertCircle: StAlertCircle,
+  Gift: StGift,
+  Coins: StCoins,
+  Sparkles: StSparkles,
+  CheckCircle2: StCheck,
+  AlertTriangle: StAlertTriangle,
+  PartyPopper: StParty,
+  Newspaper: StNews,
+  Wrench: StWrench,
+};
 import { personalize } from "@/lib/personalize";
 
 const NOTIFICATION_TYPES = [
@@ -452,6 +481,20 @@ export function SendNotificationForm() {
     setSelectedUsers(selectedUsers.filter((u) => u.id !== userId));
   };
 
+  // "Icons" puts the emoji where the caret is in that field, then puts the
+  // caret right after it so the admin keeps typing.
+  const titleRef = useRef<HTMLInputElement>(null);
+  const messageRef = useRef<HTMLTextAreaElement>(null);
+  const putIcon = (field: "title" | "message", emoji: string) => {
+    const el = field === "title" ? titleRef.current : messageRef.current;
+    const { value, caret } = insertAtCaret(el, formData[field], emoji, field === "title" ? 80 : 500);
+    setFormData({ ...formData, [field]: value });
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(caret, caret);
+    });
+  };
+
   const applyTemplate = (t: (typeof TEMPLATES)[number]) => {
     setFormData((prev) => ({
       ...prev,
@@ -601,12 +644,14 @@ export function SendNotificationForm() {
                       setFormData({ ...formData, title: `${formData.title}${formData.title && !formData.title.endsWith(" ") ? " " : ""}{name}`.slice(0, 80) })
                     }
                   />
+                  <EmojiPicker onPick={(e) => putIcon("title", e)} />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
                   {formData.title.length}/50
                 </span>
               </div>
               <input
+                ref={titleRef}
                 type="text"
                 maxLength={80}
                 value={formData.title}
@@ -627,12 +672,14 @@ export function SendNotificationForm() {
                       setFormData({ ...formData, message: `${formData.message}${formData.message && !/\s$/.test(formData.message) ? " " : ""}{name}`.slice(0, 500) })
                     }
                   />
+                  <EmojiPicker onPick={(e) => putIcon("message", e)} />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
                   {formData.message.length}/200
                 </span>
               </div>
               <textarea
+                ref={messageRef}
                 maxLength={500}
                 value={formData.message}
                 onChange={(e) =>
@@ -651,28 +698,39 @@ export function SendNotificationForm() {
               <label className="block text-xs font-medium text-slate-400 mb-1.5">
                 Template
               </label>
-              <div className="flex flex-wrap gap-1.5">
-                {NOTIFICATION_STYLES.map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, style: st.id })}
-                    title={st.hint}
-                    className={cn(
-                      "rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition",
-                      formData.style === st.id
-                        ? "border-white/60 text-white"
-                        : "border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white"
-                    )}
-                    style={
-                      formData.style === st.id
-                        ? { backgroundColor: st.mail.accent }
-                        : undefined
-                    }
-                  >
-                    {st.label}
-                  </button>
-                ))}
+              {/* Each template as a small card in its own colour and icon, so
+                  the choice is visible before the preview below. */}
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {NOTIFICATION_STYLES.map((st) => {
+                  const on = formData.style === st.id;
+                  const StIcon = STYLE_ICONS[st.icon] ?? Bell;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, style: st.id })}
+                      title={st.hint}
+                      aria-pressed={on}
+                      className={cn(
+                        "flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] font-bold transition",
+                        on ? "text-white shadow-lg" : "border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500"
+                      )}
+                      style={
+                        on
+                          ? { borderColor: st.mail.accent, backgroundColor: `${st.mail.accent}33`, boxShadow: `0 0 0 1px ${st.mail.accent}` }
+                          : undefined
+                      }
+                    >
+                      <span
+                        className="grid h-7 w-7 place-items-center rounded-lg"
+                        style={{ backgroundColor: `${st.mail.accent}26`, color: st.mail.accent }}
+                      >
+                        <StIcon className="h-4 w-4" />
+                      </span>
+                      {st.label}
+                    </button>
+                  );
+                })}
               </div>
               <p className="mt-1.5 text-[11px] text-slate-500">
                 {NOTIFICATION_STYLES.find((x) => x.id === formData.style)?.hint}
