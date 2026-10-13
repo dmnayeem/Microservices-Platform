@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * was the same grey card with a tiny grey label.
  *
  * Colours are literal Tailwind hues on purpose — `indigo` is remapped to the
- * admin's accent, which the submit area already uses. Instructions are sky
+ * admin's accent, which the submit area already uses. Instructions are orange
  * (task-instructions.tsx); these take the others.
  */
 const TONES = {

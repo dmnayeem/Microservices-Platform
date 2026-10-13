@@ -303,6 +303,10 @@ export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
     const staff = role === "SUPER_ADMIN" || role === "ADMIN";
     if (overrides.donations === true || (staff && overrides.donations !== false)) enabled.add("donations");
     else enabled.delete("donations");
+    // Browse & Earn: an admin test tool, not a member feature — members are
+    // paid for tasks, never for viewing ads (owner, 2026-10-13). Same rule.
+    if (overrides.browseEarn === true || (staff && overrides.browseEarn !== false)) enabled.add("browseEarn");
+    else enabled.delete("browseEarn");
     const value: FeatureResult = { pkg, overrides, enabled };
     _featCache.delete(userId);
     _featCache.set(userId, { value, at: Date.now() });
