@@ -13,15 +13,19 @@ import { useEffect } from "react";
  *    guarded by a sessionStorage flag so a genuinely broken chunk can't loop.
  */
 
-const RELOAD_FLAG = "rt:chunk-reload-at";
-// A second stale-deploy error within this window means the reload didn't help.
-const RELOAD_WINDOW_MS = 60_000;
+const RELOAD_FLAG = "rt:chunk-reload";
+// Up to this many automatic reloads inside the window, then the buttons.
+// One was not enough on mobile data: a chunk that dies in transit (a carrier
+// breaking HTTP/3, a dropped radio link) often fails on the first reload too,
+// while the browser is still switching to a working connection.
+const MAX_RELOADS = 3;
+const RELOAD_WINDOW_MS = 120_000;
 
 export function isStaleDeployError(error: unknown): boolean {
   const e = error as { name?: string; message?: string } | null;
   if (e?.name === "ChunkLoadError") return true;
   const msg = e?.message ?? "";
-  return /Loading chunk|Loading CSS chunk|ChunkLoadError|Failed to fetch dynamically imported module|Importing a module script failed|Failed to find Server Action/i.test(
+  return /Loading chunk|Loading CSS chunk|Failed to load chunk|ChunkLoadError|Failed to fetch dynamically imported module|Importing a module script failed|Failed to find Server Action/i.test(
     msg
   );
 }
@@ -29,15 +33,22 @@ export function isStaleDeployError(error: unknown): boolean {
 /** True if a reload was started (the caller can show a "Reloading…" state). */
 function reloadOnceForStaleDeploy(): boolean {
   try {
-    const last = Number(window.sessionStorage.getItem(RELOAD_FLAG) ?? 0);
-    if (last && Date.now() - last < RELOAD_WINDOW_MS) return false;
-    window.sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
+    const raw = window.sessionStorage.getItem(RELOAD_FLAG);
+    const prev = raw ? (JSON.parse(raw) as { n: number; at: number }) : null;
+    const fresh = !prev || Date.now() - prev.at > RELOAD_WINDOW_MS;
+    const n = fresh ? 0 : prev!.n;
+    if (n >= MAX_RELOADS) return false;
+    window.sessionStorage.setItem(
+      RELOAD_FLAG,
+      JSON.stringify({ n: n + 1, at: fresh ? Date.now() : prev!.at })
+    );
   } catch {
     // Storage blocked (private mode / disabled) → no loop guard possible, so
     // don't auto-reload; the user still has the Reload button.
     return false;
   }
-  window.location.reload();
+  // A short pause after the first try gives the connection time to recover.
+  window.setTimeout(() => window.location.reload(), 600);
   return true;
 }
 
