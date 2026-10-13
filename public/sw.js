@@ -120,10 +120,34 @@ async function trimRuntime() {
 // case this function exists to handle, so it was broken exactly when it
 // mattered. `Response.error()` is the honest answer: it surfaces to the page as
 // an ordinary network failure that the app's own error handling can see.
+// A JS / CSS chunk that fails once is retried before the page is told it
+// failed. On Bangladeshi mobile data the first try often dies in transit (a
+// carrier that breaks HTTP/3-over-UDP, a dropped radio link); Chrome then falls
+// back to TCP, so a retry a moment later succeeds. One failed chunk used to be
+// "ChunkLoadError — Something went wrong" for the whole app.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function fetchWithRetry(req, tries = 3) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(req, i === 0 ? undefined : { cache: "reload" });
+      // A server error is worth another go; anything else is the answer.
+      if (res.status < 500 || i === tries - 1) return res;
+      last = res;
+    } catch (e) {
+      last = e;
+      if (i === tries - 1) throw e;
+    }
+    await sleep(i === 0 ? 400 : 1200);
+  }
+  if (last instanceof Response) return last;
+  throw last;
+}
+
 async function staleWhileRevalidate(req) {
   const cache = await caches.open(RUNTIME);
   const cached = await cache.match(req);
-  const network = fetch(req)
+  const network = fetchWithRetry(req)
     .then((res) => {
       if (res && res.ok && res.type === "basic") {
         // No unhandled rejection: a full quota makes cache.put throw, and an
