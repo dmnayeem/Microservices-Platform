@@ -15,6 +15,8 @@ export interface ReachTableRow {
   username: string | null;
   email: string;
   status: string;
+  /** Staff role name ("ADMIN" …) — shown as a badge; staff are never reminded. Null for members. */
+  staffRole: string | null;
   pushState: "on" | "off" | "notset";
   devices: number;
   emailOn: boolean;
@@ -60,8 +62,9 @@ export function NotificationReachTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
-  // Only users who are NOT on can be reminded.
-  const selectable = rows.filter((r) => r.pushState !== "on");
+  // Only ACTIVE members who are NOT on can be reminded (the server checks again).
+  const canPick = (r: ReachTableRow) => r.pushState !== "on" && !r.staffRole && r.status === "ACTIVE";
+  const selectable = rows.filter(canPick);
   const allSelected = selectable.length > 0 && selectable.every((r) => selected.has(r.id));
 
   const toggle = (id: string) =>
@@ -173,7 +176,7 @@ export function NotificationReachTable({
                   <tr key={u.id} className="border-b border-gray-800/60 hover:bg-gray-800/30">
                     {canRemind && (
                       <td className="px-4 py-3">
-                        {u.pushState !== "on" && (
+                        {canPick(u) && (
                           <input
                             type="checkbox"
                             aria-label={`Select ${u.name || u.email}`}
@@ -187,6 +190,11 @@ export function NotificationReachTable({
                       <Link href={`/admin/users/${u.id}`} className="group block min-w-0">
                         <span className="font-medium text-white group-hover:underline">{u.name || u.username || "—"}</span>
                         <span className="block max-w-[14rem] truncate text-xs text-gray-500">{u.email}</span>
+                        {u.staffRole && (
+                          <span className="mr-1.5 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-indigo-300">
+                            {u.staffRole.replace(/_/g, " ")}
+                          </span>
+                        )}
                         {u.status !== "ACTIVE" && <span className="text-[10px] uppercase text-gray-500">{u.status}</span>}
                       </Link>
                     </td>

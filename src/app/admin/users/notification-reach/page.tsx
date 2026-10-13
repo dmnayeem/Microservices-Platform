@@ -5,7 +5,7 @@ import { BellRing, BellOff, Bell, Users, Mail, MailX, Smartphone, Search, Downlo
 import { can } from "@/lib/permissions";
 import { parsePage } from "@/lib/paginate";
 import { PWA_PLATFORMS, PWA_PLATFORM_LABEL, type PwaPlatform } from "@/lib/pwa-shared";
-import { parseReachFilters, reachPage, reachStats, PUSH_REMINDER_COOLDOWN_DAYS } from "@/lib/notification-reach";
+import { isStaffRoleName, parseReachFilters, reachPage, reachStats, PUSH_REMINDER_COOLDOWN_DAYS } from "@/lib/notification-reach";
 import { NotificationReachTable } from "@/components/admin/users/notification-reach-table";
 
 /**
@@ -38,7 +38,7 @@ export default async function NotificationReachPage({ searchParams }: PageProps)
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const filterParams: Record<string, string> = {};
-  for (const [k, v] of Object.entries(f)) if (v && !(k === "status" && v === "all") && !(k === "accounts" && v === "active")) filterParams[k] = v;
+  for (const [k, v] of Object.entries(f)) if (v && !(k === "status" && v === "all") && !(k === "accounts" && v === "everyone")) filterParams[k] = v;
 
   const qs = (over: Record<string, string | number | undefined>) => {
     const next: Record<string, string | number | undefined> = { ...filterParams, ...over };
@@ -50,7 +50,14 @@ export default async function NotificationReachPage({ searchParams }: PageProps)
 
   const pct = (n: number) => (stats.users > 0 ? `${((n / stats.users) * 100).toFixed(1)}%` : "0%");
   const cards = [
-    { label: "Active users", value: stats.users.toLocaleString(), sub: "ACTIVE accounts, staff excluded", icon: Users, tone: "text-gray-300" },
+    {
+      label: "All accounts",
+      value: stats.accounts.toLocaleString(),
+      sub: `${stats.users.toLocaleString()} active members · ${stats.unverified.toLocaleString()} unverified · ${stats.blocked.toLocaleString()} banned/suspended · ${stats.staff.toLocaleString()} staff`,
+      icon: Users,
+      tone: "text-gray-300",
+    },
+    { label: "Active members", value: stats.users.toLocaleString(), sub: "ACTIVE, staff excluded — the % below are of these", icon: Users, tone: "text-gray-300" },
     { label: "Push on", value: stats.pushOn.toLocaleString(), sub: `${pct(stats.pushOn)} of active users`, icon: BellRing, tone: "text-emerald-400", to: "on" },
     { label: "Push off (setting)", value: stats.pushOff.toLocaleString(), sub: `${pct(stats.pushOff)} — switched off in settings`, icon: BellOff, tone: "text-rose-400", to: "off" },
     { label: "Push not set up", value: stats.notSet.toLocaleString(), sub: `${pct(stats.notSet)} — never allowed in a browser`, icon: HelpCircle, tone: "text-amber-400", to: "notset" },
@@ -77,6 +84,7 @@ export default async function NotificationReachPage({ searchParams }: PageProps)
     username: u.username,
     email: u.email,
     status: u.status,
+    staffRole: isStaffRoleName(u.role) ? u.role : null,
     pushState: u.pushState,
     devices: u.devices,
     emailOn: u.emailOn,
@@ -99,7 +107,7 @@ export default async function NotificationReachPage({ searchParams }: PageProps)
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
         {cards.map((c) => {
           const body = (
             <>
@@ -204,8 +212,9 @@ export default async function NotificationReachPage({ searchParams }: PageProps)
               defaultValue={f.accounts}
               className="block rounded-lg border border-gray-700 bg-gray-950 px-2 py-1.5 text-sm text-white"
             >
-              <option value="active">Active only</option>
-              <option value="all">All statuses</option>
+              <option value="everyone">Everyone (incl. staff)</option>
+              <option value="all">Members, any status</option>
+              <option value="active">Active members only</option>
             </select>
           </label>
           <div className="relative w-full sm:w-56">
