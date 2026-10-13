@@ -34,6 +34,13 @@ import { guestCatalogStatus } from "@/lib/public-catalog-data";
 import { utcDay } from "@/lib/active-days";
 import { checkAndNoteVpn, getVpnSettings, pathVpnLocked } from "@/lib/vpn";
 import { realIp } from "@/lib/client-ip";
+import type { CSSProperties } from "react";
+import { getSetting } from "@/lib/system-settings";
+import {
+  DEFAULT_TASK_INSTRUCTIONS_COLOR,
+  TASK_INSTRUCTIONS_COLOR_KEY,
+  taskInstructionsHex,
+} from "@/lib/task-instructions-color";
 
 export default async function MainLayout({
   children,
@@ -86,7 +93,7 @@ export default async function MainLayout({
   //    — every request but the rare one — pays nothing extra for the check.
   //  - getAppNavConfig: the admin-edited tab bar / header / sidebar menus
   //    (Settings -> Navigation). Cached setting reads, in the same batch.
-  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav, pwaReward, vpnCfg] = await Promise.all([
+  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav, pwaReward, vpnCfg, insColor] = await Promise.all([
     getEffectiveFeatures(session.user.id),
     getHiddenPaths(session.user.id),
     prisma.user
@@ -118,6 +125,10 @@ export default async function MainLayout({
     // VPN page locks (cached settings) — in the batch rather than one more
     // serial await on every page once the settings memo expires.
     getVpnSettings().catch(() => null),
+    // Admin-picked colour of the task Instructions block (cached setting).
+    getSetting<string>(TASK_INSTRUCTIONS_COLOR_KEY, DEFAULT_TASK_INSTRUCTIONS_COLOR).catch(
+      () => DEFAULT_TASK_INSTRUCTIONS_COLOR
+    ),
   ]);
 
   // Server-side page-visibility guard: a hidden page never renders on a hard
@@ -162,7 +173,10 @@ export default async function MainLayout({
       : null;
 
   return (
-    <div className="min-h-screen bg-(--app-page)">
+    <div
+      className="min-h-screen bg-(--app-page)"
+      style={{ "--task-ins-pick": taskInstructionsHex(insColor) } as CSSProperties}
+    >
       {/* Redirect away from pages an admin has hidden for this user. */}
       <PageAccessGuard hiddenPaths={hiddenPaths} vpnLockedPaths={vpnLockedPaths} />
 
