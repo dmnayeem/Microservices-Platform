@@ -38,8 +38,18 @@ import {
   getReconciliation,
 } from "@/lib/finance/scope";
 import { getRevenueBreakdown } from "@/lib/finance/revenue";
-import { getDailySeries, getLedgerTotals } from "@/lib/finance/series";
-import { thirdPartyDaily } from "@/lib/finance/platform-income";
+import { getCostByCategory, getDailySeries, getLedgerTotals } from "@/lib/finance/series";
+import { parseDay, thirdPartyDaily } from "@/lib/finance/platform-income";
+import {
+  autoGranularity,
+  earliestMoneyDate,
+  getCompanyExpensesByCategory,
+  getFlows,
+  getWithdrawalSummary,
+  GRANULARITIES,
+  type Granularity,
+} from "@/lib/finance/flows";
+import { FlowsTab } from "@/components/admin/finance/flows-tab";
 import { getFinancePulse } from "@/lib/finance/pulse";
 import { getPointsBreakdown } from "@/lib/finance/points-breakdown";
 import { POINT_SOURCE_META } from "@/lib/finance/points-source";
@@ -67,6 +77,9 @@ export const revalidate = 60;
 
 const TABS = [
   { id: "overview", label: "Overview" },
+  // Inflow / outflow / net by day-week-month, income and payouts by category,
+  // withdrawals by status and method, and the per-period reconciliation.
+  { id: "flows", label: "Cash flow" },
   // Where the points came from and who got them — the question the "Points
   // earned today" card raised and nothing on the page could answer.
   { id: "points", label: "Points" },
@@ -90,10 +103,12 @@ function rangeOf(id: string) {
   return RANGES.find((r) => r.id === id) ?? RANGES[1];
 }
 
+const DAY_MS = 86_400_000;
+
 export default async function AdminFinancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; range?: string }>;
+  searchParams: Promise<{ tab?: string; range?: string; from?: string; to?: string; g?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -101,15 +116,50 @@ export default async function AdminFinancePage({
 
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "overview";
-  const range = rangeOf(sp.range ?? "30d");
-  const from = range.days
-    ? (() => {
-        const d = new Date();
-        d.setUTCHours(0, 0, 0, 0);
-        d.setUTCDate(d.getUTCDate() - (range.days - 1));
-        return d;
-      })()
-    : undefined;
+  // A custom from–to (UTC days, both inclusive) beside the presets. With a
+  // preset, `toIncl`/`toEnd` stay undefined and every figure reads to "now",
+  // exactly as before.
+  const customFrom = sp.range === "custom" ? parseDay(sp.from) : null;
+  const customTo = sp.range === "custom" ? parseDay(sp.to) : null;
+  const [cFrom, cTo] =
+    customFrom && customTo && customFrom > customTo ? [customTo, customFrom] : [customFrom, customTo];
+  const custom = !!(cFrom && cTo);
+  const preset = rangeOf(sp.range ?? "30d");
+  const range = cFrom && cTo
+    ? {
+        id: "custom",
+        label: `${cFrom.toISOString().slice(0, 10)} → ${cTo.toISOString().slice(0, 10)}`,
+        days: Math.round((cTo.getTime() - cFrom.getTime()) / DAY_MS) + 1,
+      }
+    : preset;
+  const from = cFrom && cTo
+    ? cFrom
+    : preset.days
+      ? (() => {
+          const d = new Date();
+          d.setUTCHours(0, 0, 0, 0);
+          d.setUTCDate(d.getUTCDate() - (preset.days - 1));
+          return d;
+        })()
+      : undefined;
+  /** Exclusive end (the next UTC midnight) and inclusive end — custom only. */
+  const toEnd = cFrom && cTo ? new Date(cTo.getTime() + DAY_MS) : undefined;
+  const toIncl = toEnd ? new Date(toEnd.getTime() - 1) : undefined;
+  const fromKey = cFrom ? cFrom.toISOString().slice(0, 10) : undefined;
+  const toKey = cTo ? cTo.toISOString().slice(0, 10) : undefined;
+  const granularityParam = GRANULARITIES.find((g) => g.id === sp.g)?.id;
+  /** Every link on the page keeps the range (and the granularity once chosen). */
+  const hrefFor = (t: string, extra: { g?: Granularity; range?: string } = {}) => {
+    const r = extra.range ?? range.id;
+    const q = new URLSearchParams({ tab: t, range: r });
+    if (r === "custom" && fromKey && toKey) {
+      q.set("from", fromKey);
+      q.set("to", toKey);
+    }
+    const g = extra.g ?? granularityParam;
+    if (g) q.set("g", g);
+    return `/admin/finance?${q.toString()}`;
+  };
 
   const [
     balances,
@@ -127,10 +177,10 @@ export default async function AdminFinancePage({
     getBalances(),
     getObligations(),
     getReconciliation(),
-    getRevenueBreakdown({ from }),
-    getLedgerTotals({ from }),
-    getDailySeries({ from }),
-    getPayrollExpense({ from }),
+    getRevenueBreakdown({ from, to: toIncl }),
+    getLedgerTotals({ from, to: toIncl }),
+    getDailySeries({ from, to: toIncl }),
+    getPayrollExpense({ from, to: toIncl }),
     getFinancePulse(),
     getSetting<string>("billing.seller_name", ""),
     getSetting<string>("billing.tax_id", ""),
@@ -141,7 +191,7 @@ export default async function AdminFinancePage({
   // Third-party income (AdSense, Adsterra…) per UTC day, beside the ledger's
   // money in / out — the same figures the revenue total above includes.
   if (from) {
-    const tp = await thirdPartyDaily(from, new Date()).catch(() => null);
+    const tp = await thirdPartyDaily(from, toIncl ?? new Date()).catch(() => null);
     if (tp) {
       const byDay = new Map(tp.days.map((d) => [d.date, d.usd]));
       for (const d of series as unknown as Array<Record<string, unknown>>) {
@@ -156,17 +206,37 @@ export default async function AdminFinancePage({
   const endOfToday = new Date();
   endOfToday.setUTCHours(24, 0, 0, 0);
   const startOfToday = new Date(endOfToday.getTime() - 86_400_000);
+  const rangeEnd = toEnd ?? endOfToday;
   const points =
     tab === "points"
-      ? await getPointsBreakdown(from ?? new Date(Date.UTC(2000, 0, 1)), endOfToday)
+      ? await getPointsBreakdown(from ?? new Date(Date.UTC(2000, 0, 1)), rangeEnd)
       : tab === "overview"
         ? await getPointsBreakdown(startOfToday, endOfToday)
         : null;
   // Money by feature + cash in/out, for the Sources tab only.
   const [byFeature, cash] =
     tab === "sources"
-      ? await Promise.all([getMoneyByFeature(revenue, from, endOfToday), getCashFlow(from)])
+      ? await Promise.all([getMoneyByFeature(revenue, from, rangeEnd), getCashFlow(from, toIncl)])
       : [null, null];
+
+  // Cash flow tab: periods, payouts by category, company expenses, withdrawals.
+  // Loaded only by that tab. Each read is guarded so one failure leaves the
+  // rest of the page standing.
+  const flowData =
+    tab === "flows"
+      ? await (async () => {
+          const flowFrom = from ?? (await earliestMoneyDate().catch(() => new Date(Date.UTC(2026, 0, 1))));
+          const flowTo = toIncl ?? new Date();
+          const granularity = granularityParam ?? autoGranularity(flowFrom, flowTo);
+          const [flows, costs, companyExpenses, withdrawals] = await Promise.all([
+            getFlows({ from: flowFrom, to: flowTo, granularity }).catch(() => null),
+            getCostByCategory({ from, to: toIncl }).catch(() => null),
+            getCompanyExpensesByCategory({ from, to: toIncl }).catch(() => ({ categories: [], totalUsd: 0 })),
+            getWithdrawalSummary({ from, to: toIncl }).catch(() => null),
+          ]);
+          return { flows, costs, companyExpenses, withdrawals };
+        })()
+      : null;
 
   const billingIncomplete = !String(sellerName || "").trim() || !String(taxId || "").trim();
 
@@ -182,11 +252,12 @@ export default async function AdminFinancePage({
             Every money flow on the platform. Days are UTC.
           </p>
         </div>
+        <div className="flex flex-col items-end gap-2">
         <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden">
           {RANGES.map((r) => (
             <Link
               key={r.id}
-              href={`/admin/finance?tab=${tab}&range=${r.id}`}
+              href={hrefFor(tab, { range: r.id })}
               className={`px-3 py-1.5 text-xs font-semibold ${
                 range.id === r.id
                   ? "bg-emerald-600 text-white"
@@ -196,6 +267,39 @@ export default async function AdminFinancePage({
               {r.label}
             </Link>
           ))}
+        </div>
+        {/* Custom from–to: a plain GET form, so the page stays a server
+            component and the URL can be shared. */}
+        <form action="/admin/finance" className="flex items-center gap-1.5 flex-wrap justify-end">
+          <input type="hidden" name="tab" value={tab} />
+          <input type="hidden" name="range" value="custom" />
+          {granularityParam && <input type="hidden" name="g" value={granularityParam} />}
+          <input
+            type="date"
+            name="from"
+            required
+            defaultValue={from ? from.toISOString().slice(0, 10) : undefined}
+            className="px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs"
+            aria-label="From (UTC)"
+          />
+          <span className="text-xs text-slate-500">to</span>
+          <input
+            type="date"
+            name="to"
+            required
+            defaultValue={toKey}
+            className="px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs"
+            aria-label="To (UTC)"
+          />
+          <button
+            type="submit"
+            className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+              custom ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+            }`}
+          >
+            Apply
+          </button>
+        </form>
         </div>
       </div>
 
@@ -236,7 +340,7 @@ export default async function AdminFinancePage({
         <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[12px] text-sky-400">
           <b>{testIds.length} test user{testIds.length === 1 ? "" : "s"} excluded</b> from
           every figure on this page.{" "}
-          <Link href={`/admin/finance?tab=test-users&range=${range.id}`} className="underline font-semibold">
+          <Link href={hrefFor("test-users")} className="underline font-semibold">
             Manage test users
           </Link>
         </div>
@@ -246,7 +350,7 @@ export default async function AdminFinancePage({
         {TABS.map((t) => (
           <Link
             key={t.id}
-            href={`/admin/finance?tab=${t.id}&range=${range.id}`}
+            href={hrefFor(t.id)}
             className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px ${
               tab === t.id
                 ? "text-white border-emerald-500"
@@ -272,6 +376,29 @@ export default async function AdminFinancePage({
         />
       )}
 
+      {tab === "flows" && flowData && (
+        flowData.flows && flowData.costs && flowData.withdrawals ? (
+          <FlowsTab
+            flows={flowData.flows}
+            revenue={revenue}
+            costs={flowData.costs}
+            companyExpenses={flowData.companyExpenses}
+            withdrawals={flowData.withdrawals}
+            rangeLabel={range.label}
+            granularityHref={(g) => hrefFor("flows", { g })}
+            csvHref={`/api/admin/finance/flows?${new URLSearchParams({
+              ...(from ? { from: from.toISOString().slice(0, 10) } : {}),
+              ...(toKey ? { to: toKey } : {}),
+              g: flowData.flows.granularity,
+            }).toString()}`}
+          />
+        ) : (
+          <p className="text-sm text-amber-300 py-10 text-center">
+            Cash flow could not be loaded right now. Refresh to try again.
+          </p>
+        )
+      )}
+
       {tab === "points" && points && <PointsTab data={points} rangeLabel={range.label} />}
 
       {tab === "sources" && (
@@ -284,7 +411,9 @@ export default async function AdminFinancePage({
         </div>
       )}
 
-      {tab === "ledger" && <LedgerTab days={range.days} />}
+      {tab === "ledger" && (
+        <LedgerTab days={custom ? null : preset.days} from={fromKey} to={toKey} />
+      )}
 
       {tab === "users" && (
         <UsersTab balances={balances} recon={recon} obligations={obligations} testIds={testIds} />

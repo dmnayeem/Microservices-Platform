@@ -15,6 +15,7 @@ import {
   sourceOf,
   type LedgerRow,
 } from "./signing";
+import { POINT_SOURCE_META, pointSourceOf } from "./points-source";
 
 /**
  * Ledger aggregation — by day and by source.
@@ -232,4 +233,48 @@ export async function getDailySeries(range: Range = {}): Promise<DayPoint[]> {
   }
 
   return [...byDay.values()].map((d) => ({ ...d, net: d.revenue - d.cost }));
+}
+
+/** One payout category: a `pointSourceOf` label, or staff payroll. */
+export interface CostCategory {
+  key: string;
+  label: string;
+  usd: number;
+  /** Settled rows behind it (penalties included — they net the figure down). */
+  count: number;
+  points: number;
+}
+
+/**
+ * What the platform paid out in the window, by category.
+ *
+ * The SAME rows and the same USD rule as `getLedgerTotals().costUsd` — so the
+ * categories always add up to the Overview's outflow — but labelled with
+ * `pointSourceOf`, which knows a leaderboard prize from a task payment.
+ * Wallet payroll (`payroll_` BONUS rows) is its own category: it is in the
+ * outflow, but it is the company's wage bill, not money paid to members.
+ */
+export async function getCostByCategory(range: Range = {}): Promise<{
+  categories: CostCategory[];
+  totalUsd: number;
+}> {
+  const [rows, pointsPerUsd] = await Promise.all([loadRows(range), getPointsPerUsd()]);
+  const byKey = new Map<string, CostCategory>();
+  for (const row of rows) {
+    if (!isSettled(row) || direction(row) !== "cost") continue;
+    const payroll = (row.reference ?? "").toLowerCase().startsWith("payroll_");
+    const key = payroll ? "payroll" : pointSourceOf(row);
+    const label = payroll
+      ? "Staff payroll (wallet)"
+      : (POINT_SOURCE_META[key as keyof typeof POINT_SOURCE_META]?.label ?? key);
+    const usd = platformUsd(row, pointsPerUsd);
+    const cur = byKey.get(key) ?? { key, label, usd: 0, count: 0, points: 0 };
+    const sign = row.type === "PENALTY" ? -1 : 1;
+    cur.usd += sign * usd;
+    cur.points += sign * magnitudePoints(row);
+    cur.count += 1;
+    byKey.set(key, cur);
+  }
+  const categories = [...byKey.values()].sort((a, b) => b.usd - a.usd);
+  return { categories, totalUsd: categories.reduce((n, c) => n + c.usd, 0) };
 }

@@ -44,7 +44,16 @@ interface LedgerRow {
   user: { id: string; email: string; name: string | null; isStaff: boolean } | null;
 }
 
-export function LedgerTab({ days }: { days: number | null }) {
+export function LedgerTab({
+  days,
+  from,
+  to,
+}: {
+  days: number | null;
+  /** Custom range from the page (`YYYY-MM-DD`, UTC, inclusive) — wins over `days`. */
+  from?: string;
+  to?: string;
+}) {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [total, setTotal] = useState(0);
   const [exact, setExact] = useState(true);
@@ -55,6 +64,8 @@ export function LedgerTab({ days }: { days: number | null }) {
   const [status, setStatus] = useState("all");
   const [q, setQ] = useState("");
   const [applied, setApplied] = useState("");
+  const [user, setUser] = useState("");
+  const [appliedUser, setAppliedUser] = useState("");
   const [open, setOpen] = useState<LedgerRow | null>(null);
 
   const params = useCallback(
@@ -65,12 +76,17 @@ export function LedgerTab({ days }: { days: number | null }) {
         status,
         q: applied,
         page: String(page),
-        ...(days ? { days: String(days) } : {}),
+        ...(appliedUser ? { user: appliedUser } : {}),
+        ...(from || to
+          ? { ...(from ? { from } : {}), ...(to ? { to } : {}) }
+          : days
+            ? { days: String(days) }
+            : {}),
         ...extra,
       });
       return sp.toString();
     },
-    [source, type, status, applied, page, days]
+    [source, type, status, applied, appliedUser, page, days, from, to]
   );
 
   useEffect(() => {
@@ -118,6 +134,20 @@ export function LedgerTab({ days }: { days: number | null }) {
               className="w-full pl-8 pr-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs placeholder:text-slate-600"
             />
           </div>
+        </div>
+        <div className="min-w-40">
+          <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">
+            User
+          </label>
+          <input
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") reset(() => setAppliedUser(user.trim()));
+            }}
+            placeholder="User id, email or name"
+            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs placeholder:text-slate-600"
+          />
         </div>
         <div>
           <label className="block text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">
@@ -181,6 +211,8 @@ export function LedgerTab({ days }: { days: number | null }) {
         {exact ? total.toLocaleString() : `${rows.length}+`} row
         {total === 1 ? "" : "s"}
         {!exact && " matching this source on the pages scanned"} · times are UTC
+        {from || to ? ` · ${from ?? "…"} → ${to ?? "…"}` : ""} · CSV exports every
+        matching row (up to 10,000) and opens in Excel
       </p>
 
       {loading ? (
@@ -269,7 +301,10 @@ export function LedgerTab({ days }: { days: number | null }) {
           >
             Previous
           </button>
-          <span className="text-[11px] text-slate-500">Page {page + 1}</span>
+          <span className="text-[11px] text-slate-500">
+            Page {page + 1}
+            {exact && total > 0 ? ` of ${Math.max(1, Math.ceil(total / 50))}` : ""}
+          </span>
           <button
             onClick={() => {
               setLoading(true);
