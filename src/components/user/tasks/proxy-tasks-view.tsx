@@ -44,6 +44,7 @@ interface ProxyTask {
   serverHost?: string;
   serverPort?: number;
   instructions?: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl?: string | null;
   locked?: boolean;
 }
@@ -436,6 +437,7 @@ export function ProxyTasksView() {
             {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
             <TaskInstructions
               value={active.instructions}
+              color={active.instructionsColor}
             />
 
             {active.instructionVideoUrl && (

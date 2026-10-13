@@ -3667,6 +3667,7 @@ export interface SocialTaskView {
   /** When true actions unlock one-by-one (each done before the next). */
   sequential: boolean;
   instructions: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl: string | null;
 }
 
@@ -3681,6 +3682,7 @@ export interface SocialTaskRow {
   socialUrl: string | null;
   socialConfig: unknown;
   instructions: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl: string | null;
 }
 
@@ -3742,6 +3744,7 @@ export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
     items,
     sequential: norm.sequential,
     instructions: t.instructions,
+    instructionsColor: t.instructionsColor ?? null,
     instructionVideoUrl: t.instructionVideoUrl,
   };
 }

@@ -31,6 +31,7 @@ interface ManualTask {
   thumbnailUrl?: string | null;
   duration?: number | null;
   instructions?: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl?: string | null;
   /** Where the task is done, when the task has one (task-list ships it). */
   contentUrl?: string | null;
@@ -315,6 +316,7 @@ export function ManualTasksView() {
           {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
           <TaskInstructions
             value={submitting?.instructions}
+            color={submitting?.instructionsColor}
           />
 
           {submitting?.instructionVideoUrl && (

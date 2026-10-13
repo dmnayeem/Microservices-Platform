@@ -27,6 +27,7 @@ interface VisitTask {
   pointsReward: number;
   xpReward: number;
   instructions?: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl?: string | null;
   /** `host` only — the full link is never sent (see task-player-view). */
   visitConfig?: { kind?: string; staySeconds?: number; minSeconds?: number; host?: string | null } | null;
@@ -249,7 +250,7 @@ export function VisitTaskDetailView({ taskId }: { taskId: string }) {
         </div>
 
         {/* The admin's instructions were stored but never shown on this page. */}
-        <TaskInstructions value={task.instructions} />
+        <TaskInstructions value={task.instructions} color={task.instructionsColor} />
 
         {task.instructionVideoUrl && (
           <section className="space-y-2">

@@ -47,6 +47,7 @@ interface SurveyTask {
   thumbnailUrl?: string | null;
   duration?: number | null;
   instructions?: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl?: string | null;
   surveyConfig?: SurveyConfig | null;
   /** Set when an advertiser funded this survey rather than the platform. */
@@ -342,7 +343,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
       </div>
 
       {/* The admin's instructions were stored but never shown on this page. */}
-      <TaskInstructions value={task.instructions} />
+      <TaskInstructions value={task.instructions} color={task.instructionsColor} />
 
       {task.instructionVideoUrl && (
         <section className="space-y-2">

@@ -6,7 +6,7 @@ import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
 import type { DeviceTarget } from "@/lib/device-target";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Save, X, Plus, Trash2, AlertCircle, Loader2, Image as ImageIcon, Smartphone } from "lucide-react";
+import { Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Save, X, Plus, Trash2, AlertCircle, Loader2, Image as ImageIcon, Smartphone, Check } from "lucide-react";
 import { MediaSelector } from "@/components/media/MediaSelector";
 import dynamic from "next/dynamic";
 import {
@@ -51,6 +51,11 @@ import {
 import { AppInstallTaskBuilder } from "./AppInstallTaskBuilder";
 import { DateField } from "@/components/ui/date-field";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import {
+  DEFAULT_TASK_INSTRUCTIONS_COLOR,
+  TASK_INSTRUCTIONS_COLORS,
+  taskInstructionsHex,
+} from "@/lib/task-instructions-color";
 import {
   validateAppInstallConfig,
   normalizeAppInstallConfig,
@@ -100,6 +105,7 @@ interface TaskFormProps {
     title: string;
     description: string;
     instructions: string | null;
+    instructionsColor?: string | null;
     instructionVideoUrl: string | null;
     type: string;
     status: string;
@@ -192,6 +198,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     description: task?.description || "",
     instructions: task?.instructions || "",
     instructionVideoUrl: task?.instructionVideoUrl || "",
+    // The Instructions block colour on the task page (lib/task-instructions-color).
+    instructionsColor: task?.instructionsColor || DEFAULT_TASK_INSTRUCTIONS_COLOR,
     type: task?.type || typeFromUrl,
     pointsReward: task?.pointsReward || 0,
     xpReward: task?.xpReward || 0,
@@ -606,6 +614,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
         instructions: isEmptyInstructionsHtml(instructionsHtml)
           ? ""
           : instructionsHtml,
+        instructionsColor: formData.instructionsColor,
         dailyLimit: formData.dailyLimit ? parseInt(formData.dailyLimit.toString()) : null,
         totalLimit: formData.totalLimit ? parseInt(formData.totalLimit.toString()) : null,
         order: parseInt((formData.order ?? 0).toString()) || 0,
@@ -1655,6 +1664,51 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             handles all of that, converts a Markdown paste, and takes
             screenshots through the media library the rest of this form uses. */}
         <div>
+          {/* The colour of this task's Instructions block on the task page —
+              a fixed list that reads in dark and light (owner, 2026-10-13). */}
+          <div className="mb-3">
+            <p className="mb-1.5 text-sm font-medium text-gray-400">Instructions colour</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TASK_INSTRUCTIONS_COLORS.map((c) => {
+                const on = formData.instructionsColor === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, instructionsColor: c.key })}
+                    aria-pressed={on}
+                    title={c.label}
+                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition ${
+                      on ? "border-white bg-gray-800 text-white" : "border-gray-700 text-gray-300 hover:border-gray-500"
+                    }`}
+                  >
+                    <span className="grid h-4 w-4 place-items-center rounded-full" style={{ background: c.hex }}>
+                      {on && <Check className="h-3 w-3 text-white" />}
+                    </span>
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Live preview — the same frame the task page draws. */}
+            {(() => {
+              const hex = taskInstructionsHex(formData.instructionsColor);
+              return (
+                <div
+                  className="relative mt-2 overflow-hidden rounded-xl border px-4 py-2.5 pl-5"
+                  style={{ borderColor: `${hex}4d`, background: `linear-gradient(to bottom right, ${hex}26, ${hex}0d, transparent)` }}
+                >
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: hex }} />
+                  <span className="inline-flex items-center gap-2 text-sm font-bold text-white">
+                    <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] text-white" style={{ background: hex }}>
+                      1
+                    </span>
+                    Instructions — preview
+                  </span>
+                </div>
+              );
+            })()}
+          </div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-gray-400">
               <FileText className="w-4 h-4 inline mr-1" />

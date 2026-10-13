@@ -418,7 +418,7 @@ export function TasksHubView({
               <section>
                 <h2 className="t-section text-white">Tasks for you</h2>
                 <p className="t-meta text-(--app-ink-3) mt-0.5">In order of what they pay — start with number 1.</p>
-                <ol className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
+                <ol className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {ready.map((r, i) => (
                     <li key={r.cat.key}>
                       <Link href={r.cat.href} className="app-card app-press app-lift relative flex h-full flex-col gap-2.5 !p-4">
@@ -452,7 +452,7 @@ export function TasksHubView({
             {more.length > 0 && (
               <section>
                 <h2 className="t-section text-white">More ways to earn</h2>
-                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
                   {more.map((cat) => (
                     <Link key={cat.key} href={cat.href} className="app-card app-press app-lift flex flex-col gap-2 !p-3">
                       <span className={cn("grid h-10 w-10 place-items-center rounded-xl", TONE[cat.color])}>
@@ -471,7 +471,7 @@ export function TasksHubView({
                 <h2 className="t-meta font-bold uppercase tracking-wider text-(--app-ink-3)">
                   No tasks right now — check back soon
                 </h2>
-                <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
+                <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
                   {empty.map((cat) => (
                     <Link
                       key={cat.key}

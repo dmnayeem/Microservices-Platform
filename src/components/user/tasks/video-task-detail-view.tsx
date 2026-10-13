@@ -40,6 +40,7 @@ interface VideoTask {
   thumbnailUrl?: string | null;
   duration?: number | null;
   instructions?: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl?: string | null;
   videoConfig?: VideoConfig | null;
   contentUrl?: string | null;
@@ -335,7 +336,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
 
       {/* Instructions — same renderer as every other task surface, so rich
           text, sanitisation and the numbered-step styling all match. */}
-      <TaskInstructions value={task.instructions} />
+      <TaskInstructions value={task.instructions} color={task.instructionsColor} />
 
       {/* Instruction video (separate from the task's main video) */}
       {task.instructionVideoUrl && (

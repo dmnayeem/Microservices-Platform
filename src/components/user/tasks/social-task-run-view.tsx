@@ -872,10 +872,13 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             </TaskAside>
           )}
           {hasInstructions(task.instructions) && (
-            <TaskAside title="Instructions from the advertiser">
-              {/* One renderer for every surface — see task-instructions.tsx. */}
-              <TaskInstructions value={task.instructions} title={null} className="" />
-            </TaskAside>
+            // The coloured instructions card, in the colour the admin picked
+            // for this task — not a grey aside (owner, 2026-10-13).
+            <TaskInstructions
+              value={task.instructions}
+              title="Instructions from the advertiser"
+              color={task.instructionsColor}
+            />
           )}
         </div>
       )}
