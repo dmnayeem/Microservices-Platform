@@ -11,7 +11,8 @@ import { COMPANY_NAME } from "@/config/company";
 import { OFFER_RICHTEXT_CLASS } from "@/lib/offers";
 import { ArticleViewBeacon } from "./view-beacon";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
+// Never localhost: a dev .env must not reach structured data (lib/seo/site-url).
+import { SITE_URL } from "@/lib/seo/site-url";
 
 // Rebuilt in the background at most every five minutes, and at once when the
 // article is saved at /admin/blog.

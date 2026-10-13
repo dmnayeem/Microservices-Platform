@@ -31,7 +31,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     id: "/",
     name: `${name} - Earn Money Online`,
     short_name: name,
-    description: s?.["seo.org_description"] || `Complete tasks, watch videos, and earn real money with ${name}.`,
+    description: s?.["seo.org_description"] || `${name} pays members for completed micro-tasks — never for watching ads.`,
     lang: "en",
     dir: "ltr",
     // Home = the feed (/social). The marker tells PwaLaunchHome this launch

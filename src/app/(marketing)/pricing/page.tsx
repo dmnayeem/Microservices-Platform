@@ -33,7 +33,7 @@ export default async function PricingPage() {
 
   return (
     <>
-      <Packages {...content.packages} livePlans={plans.plans} />
+      <Packages {...content.packages} livePlans={plans.plans} headingAs="h1" />
       <Section width="narrow" className="text-center">
         <p className="text-(--mk-muted)">
           Every package is chosen after you sign up — creating an account costs nothing.

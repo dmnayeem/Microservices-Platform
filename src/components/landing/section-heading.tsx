@@ -20,6 +20,7 @@ export function SectionHeading({
   line2,
   sub,
   align = "center",
+  as: Tag = "h2",
   children,
 }: {
   eyebrow?: string;
@@ -27,6 +28,8 @@ export function SectionHeading({
   line2?: string;
   sub?: string;
   align?: "center" | "start";
+  /** "h1" when this is the page's own title (e.g. /pricing). Same look. */
+  as?: "h1" | "h2";
   children?: ReactNode;
 }) {
   const centered = align === "center";
@@ -39,7 +42,7 @@ export function SectionHeading({
       }
     >
       {eyebrow ? <span className="mk-eyebrow mb-5">{eyebrow}</span> : null}
-      <h2 className="mk-h2 text-(--mk-text) mt-0 mb-4">
+      <Tag className="mk-h2 text-(--mk-text) mt-0 mb-4">
         {line1}
         {line2 ? (
           <>
@@ -49,7 +52,7 @@ export function SectionHeading({
             </span>
           </>
         ) : null}
-      </h2>
+      </Tag>
       {sub ? (
         <p
           className={

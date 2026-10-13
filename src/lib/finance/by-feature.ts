@@ -125,8 +125,9 @@ export interface CashFlow {
 }
 
 /** Real cash in and out: deposits and withdrawals, with who and when. */
-export async function getCashFlow(from: Date | undefined): Promise<CashFlow> {
-  const at = from ? { createdAt: { gte: from } } : {};
+export async function getCashFlow(from: Date | undefined, to?: Date): Promise<CashFlow> {
+  // `to` (inclusive) is optional, for the console's custom from–to range.
+  const at = from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {};
   // Finance test users' deposits and withdrawals are left out of every figure
   // and list here (they still appear in the operational queues).
   const testIds = await getFinanceTestUserIds();

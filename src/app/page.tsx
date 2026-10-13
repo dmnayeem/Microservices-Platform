@@ -23,6 +23,7 @@ import { getPlansForDisplay } from "@/lib/plans-display";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
+import { withLiveFaq } from "@/lib/seo/landing-facts";
 
 // The landing content comes from a raw Prisma read, not a tracked `fetch`, so
 // Next cannot infer whether this page is static or dynamic — it would either
@@ -47,7 +48,9 @@ export default async function Home() {
   // Hidden items dropped, switched-off sections skipped — set in the editor
   // without deleting anything.
   const [content, plans] = await Promise.all([
-    getLandingContent().then(publicLanding),
+    // Required FAQ answers (paid for tasks, not ads; points → cash) are
+    // added back if a stored FAQ lacks them, with the live numbers filled in.
+    getLandingContent().then(withLiveFaq).then(publicLanding),
     getPlansForDisplay().catch(() => ({ plans: [], rows: [] })),
   ]);
   const on = (k: Parameters<typeof sectionOn>[1]) => sectionOn(content, k);

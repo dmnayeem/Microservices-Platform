@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { ShoppingCart, GraduationCap, Trophy, type LucideIcon } from "lucide-react";
 
 interface OverviewSection {
@@ -10,7 +11,8 @@ interface OverviewSection {
 interface PlatformOverviewProps {
   marketplace: { listings: number; orders: number; pending: number };
   courses: { active: number; enrollments: number };
-  financials: { totalWithdrawn: number };
+  /** Finance only — omit it and the money row is not rendered at all. */
+  financials?: { totalWithdrawn: number };
   title?: string;
 }
 
@@ -41,16 +43,18 @@ export function PlatformOverview({
         },
       ],
     },
-    {
+  ];
+  if (financials) {
+    sections.push({
       icon: Trophy,
       label: "Platform Financials",
       primary: {
-        value: `$${financials.totalWithdrawn.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        value: usd(financials.totalWithdrawn, { dp: 0 }),
         label: "Total Withdrawn",
       },
       secondary: [],
-    },
-  ];
+    });
+  }
 
   return (
     <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 h-full">

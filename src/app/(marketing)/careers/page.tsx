@@ -13,7 +13,7 @@ import { pageMeta } from "@/lib/seo/page-meta";
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "Careers",
+    title: "Careers — Join the Team Behind the Platform",
     description: `Work with ${COMPANY_NAME}, a freelance micro-task marketplace and digital skill-sharing community. How to get in touch about future roles.`,
     path: "/careers",
   });

@@ -6,6 +6,9 @@ import { prisma, safeRead } from "@/lib/prisma";
 import {
   CheckCircle,
   Users,
+  TrendingUp,
+  ArrowUpRight,
+  Hourglass,
   Star,
   Gift,
   Trophy,
@@ -44,8 +47,18 @@ import { getEffectiveFeatures } from "@/lib/packages";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { ProfileCompletionBanner } from "@/components/user/primitives/profile-completion-banner";
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
-import { summarizeEarnings } from "@/lib/dashboard-earnings";
-import { EarningsOverview } from "@/components/user/dashboard/earnings-overview";
+import { breakdownEarnings, resolveRange, summarizeEarnings } from "@/lib/dashboard-earnings";
+import { EarningsBreakdownCard } from "@/components/user/dashboard/earnings-breakdown";
+import {
+  TaskStatusCard,
+  WithdrawalsCard,
+  ProfileTeamCard,
+  NotificationsCard,
+} from "@/components/user/dashboard/at-a-glance";
+import { getTaskViewerContext, visibleTaskWhere } from "@/lib/task-visibility";
+import { getWithdrawalConfig } from "@/lib/withdrawal";
+import { calculateProfileCompletion } from "@/lib/profile-completion";
+import { usd } from "@/lib/utils";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
 import { PwaRewardCard } from "@/components/pwa/pwa-reward-card";
 import { OpenWithdrawalCard } from "@/components/user/wallet/open-withdrawal-card";
@@ -74,6 +87,58 @@ const EXPLORE = [
   { label: "Games", href: "/games", icon: Gamepad2 },
   { label: "Lottery", href: "/lottery", icon: Trophy },
 ];
+
+/** Active tasks this member may see — the same `visibleTaskWhere` as /tasks. */
+async function countAvailableTasks(userId: string): Promise<number | null> {
+  const ctx = await getTaskViewerContext(userId);
+  if (!ctx) return null;
+  if (!ctx.hasTasksFeature) return 0;
+  return prisma.task.count({
+    where: visibleTaskWhere(ctx.viewer, {
+      accessLevel: ctx.accessLevel,
+      allowedTypes: ctx.allowedTypes,
+    }),
+  });
+}
+
+/** Sent and waiting for review — the reward each would pay if approved. */
+async function submittedRewardPoints(userId: string): Promise<number[]> {
+  const rows = await prisma.taskSubmission.findMany({
+    where: { userId, status: "PENDING", submittedAt: { not: null } },
+    select: { task: { select: { pointsReward: true } } },
+    take: 1000,
+  });
+  // The Accelerate-extended client drops relation types from `select` (the
+  // same cast as api/admin/analytics/export).
+  return (rows as unknown as Array<{ task: { pointsReward: number } | null }>).map(
+    (r) => r.task?.pointsReward ?? 0
+  );
+}
+
+/** The member's three latest rejections, with the reviewer's reason. */
+async function latestRejectionsOf(
+  userId: string
+): Promise<Array<{ id: string; title: string; reason: string | null; at: Date }>> {
+  const rows = await prisma.taskSubmission.findMany({
+    where: { userId, status: "REJECTED" },
+    orderBy: [{ reviewedAt: { sort: "desc", nulls: "last" } }, { updatedAt: "desc" }],
+    take: 3,
+    select: {
+      id: true,
+      rejectionReason: true,
+      reviewedAt: true,
+      updatedAt: true,
+      task: { select: { title: true } },
+    },
+  });
+  type Row = (typeof rows)[number] & { task: { title: string } | null };
+  return (rows as Row[]).map((r) => ({
+    id: r.id,
+    title: r.task?.title ?? "Task",
+    reason: r.rejectionReason,
+    at: r.reviewedAt ?? r.updatedAt,
+  }));
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -105,6 +170,13 @@ export default async function DashboardPage() {
     convertThreshold,
     hiddenPaths,
     pwaCfg,
+    inProgressCount,
+    submittedRewards,
+    latestRejections,
+    recentWithdrawals,
+    withdrawalCfg,
+    notifications,
+    availableCount,
   ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
@@ -125,6 +197,29 @@ export default async function DashboardPage() {
           pwaDays: true,
           pwaFirstSeenAt: true,
           pwaRewardedAt: true,
+          // At a glance: lifetime totals (USD, as the wallet shows them).
+          totalEarnings: true,
+          totalWithdrawals: true,
+          // Profile completion — the same snapshot /api/profile feeds
+          // calculateProfileCompletion, so the dashboard and the ring agree.
+          avatar: true,
+          coverPhoto: true,
+          firstName: true,
+          lastName: true,
+          bio: true,
+          gender: true,
+          dateOfBirth: true,
+          nidNumber: true,
+          emailVerified: true,
+          phone: true,
+          phoneVerified: true,
+          country: true,
+          city: true,
+          street: true,
+          postalCode: true,
+          kycStatus: true,
+          tags: true,
+          _count: { select: { socialAccounts: true } },
         },
       }),
       // One groupBy instead of a count: approved (AUTO_APPROVED too — quiz,
@@ -186,6 +281,47 @@ export default async function DashboardPage() {
       getHiddenPaths(session.user.id),
       // Settings reads are cached — no database query.
       getPwaRewardConfig(),
+      // Opened but not sent: PENDING with no submittedAt (how /api/tasks/social
+      // and the admin queue tell the two apart).
+      safeRead(
+        prisma.taskSubmission.count({
+          where: { userId: session.user.id, status: "PENDING", submittedAt: null },
+        }),
+        0,
+        "dashboard in-progress"
+      ),
+      // Sent and waiting for review — the reward each would pay if approved.
+      safeRead(submittedRewardPoints(session.user.id), [], "dashboard submitted rewards"),
+      safeRead(latestRejectionsOf(session.user.id), [], "dashboard rejections"),
+      safeRead(
+        prisma.withdrawal.findMany({
+          where: { userId: session.user.id },
+          orderBy: { createdAt: "desc" },
+          take: 3,
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            method: true,
+            createdAt: true,
+            rejectionReason: true,
+          },
+        }),
+        [],
+        "dashboard withdrawals"
+      ),
+      safeRead(getWithdrawalConfig(session.user.id), null, "dashboard withdrawal config"),
+      safeRead(
+        prisma.notification.findMany({
+          where: { userId: session.user.id },
+          orderBy: { createdAt: "desc" },
+          take: 4,
+          select: { id: true, title: true, message: true, createdAt: true, isRead: true },
+        }),
+        [],
+        "dashboard notifications"
+      ),
+      safeRead(countAvailableTasks(session.user.id), null, "dashboard available count"),
     ]);
 
   // Super-admin page visibility: a shortcut to a hidden page is a side door.
@@ -209,6 +345,21 @@ export default async function DashboardPage() {
     _sum: { amount: unknown };
   };
   const earnings = summarizeEarnings(ledger30);
+  // First paint of "Earnings by source" (30 days) from the ledger already read;
+  // other ranges come from /api/me/earnings. The read is capped at 1000 rows.
+  const initialBreakdown = breakdownEarnings(
+    ledger30,
+    resolveRange("30d", null, null)!,
+    ledgerRaw.length >= 1000
+  );
+  const awaitingPoints = submittedRewards.reduce((a, p) => a + p, 0);
+  const pendingCount = subCount("PENDING");
+  const profile = userData
+    ? calculateProfileCompletion({
+        ...userData,
+        socialAccountsCount: userData._count.socialAccounts,
+      })
+    : null;
   const points = userData?.pointsBalance ?? 0;
   const cash = toNum(userData?.cashBalance ?? 0);
   const adCredit = toNum(userData?.adCreditBalance ?? 0);
@@ -266,18 +417,36 @@ export default async function DashboardPage() {
           withdrawHref="/wallet"
           className="lg:col-span-1"
         />
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
+        <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard
-            label="Tasks Completed"
-            value={tasksCompleted}
-            icon={<CheckCircle className="w-5 h-5" />}
+            label="Total earned"
+            value={usd(toNum(userData?.totalEarnings ?? 0))}
+            hint="Lifetime"
+            icon={<TrendingUp className="w-5 h-5" />}
             tone="green"
           />
           <StatCard
-            label="Referrals"
-            value={referralsCount}
-            icon={<Users className="w-5 h-5" />}
+            label="Total withdrawn"
+            value={usd(toNum(userData?.totalWithdrawals ?? 0))}
+            hint="Lifetime"
+            icon={<ArrowUpRight className="w-5 h-5" />}
+            tone="purple"
+          />
+          <StatCard
+            label="Pending earnings"
+            value={awaitingPoints.toLocaleString("en-US")}
+            unit="pts"
+            hint={`${Math.max(0, pendingCount - inProgressCount).toLocaleString("en-US")} in review · paid if approved`}
+            icon={<Hourglass className="w-5 h-5" />}
             tone="amber"
+          />
+          <StatCard
+            label="Earned today"
+            value={earnings.today.toLocaleString("en-US")}
+            unit="pts"
+            hint={`${earnings.week.toLocaleString("en-US")} pts in 7 days`}
+            icon={<Star className="w-5 h-5" />}
+            tone="blue"
           />
           <StatCard
             label="Day Streak"
@@ -298,20 +467,60 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Earnings + activity */}
-      <EarningsOverview
-        e={earnings}
-        pointsPerUsd={pointsPerUsd}
-        tasks={{
-          approved: tasksCompleted,
-          pending: subCount("PENDING", "REVISION_REQUESTED"),
-          rejected: subCount("REJECTED"),
-        }}
-        pendingWithdrawal={{
-          count: pendingW._count._all,
-          amount: toNum(pendingW._sum.amount as Parameters<typeof toNum>[0]),
-        }}
-      />
+      {/* Earnings by source + where the work stands */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
+        <div className="min-w-0 lg:col-span-2">
+          <EarningsBreakdownCard initial={initialBreakdown} pointsPerUsd={pointsPerUsd} />
+        </div>
+        <TaskStatusCard
+          pointsPerUsd={pointsPerUsd}
+          t={{
+            available: availableCount,
+            inProgress: inProgressCount,
+            submitted: Math.max(0, pendingCount - inProgressCount),
+            needsChanges: subCount("REVISION_REQUESTED"),
+            approved: tasksCompleted,
+            rejected: subCount("REJECTED"),
+            awaitingPoints,
+            rejections: latestRejections,
+          }}
+        />
+      </div>
+
+      {/* Withdrawals, profile + team, notifications */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 lg:items-start">
+        {withdrawalCfg && (
+          <WithdrawalsCard
+            w={{
+              cash,
+              min: withdrawalCfg.min,
+              enabled: withdrawalCfg.enabled,
+              subscriptionRequired: withdrawalCfg.subscriptionRequired,
+              payoutMessage: withdrawalCfg.payoutMessage,
+              open: {
+                count: pendingW._count._all,
+                amount: toNum(pendingW._sum.amount as Parameters<typeof toNum>[0]),
+              },
+              recent: recentWithdrawals.map((w) => ({
+                id: w.id,
+                amount: toNum(w.amount),
+                status: w.status,
+                method: w.method,
+                createdAt: w.createdAt,
+                rejectionReason: w.rejectionReason,
+              })),
+            }}
+          />
+        )}
+        <ProfileTeamCard
+          profile={{
+            percentage: profile?.percentage ?? 0,
+            missing: profile?.missing ?? [],
+          }}
+          team={{ referrals: referralsCount, teamPoints30: earnings.teamPoints }}
+        />
+        <NotificationsCard items={notifications} />
+      </div>
 
       {/* Convert-points nudge — points become withdrawable cash at the threshold */}
       {canConvertPoints && (

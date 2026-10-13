@@ -82,7 +82,7 @@ export function Footer({ socials = [], ...props }: Props) {
 
           {v.link_groups.map((group, gi) => (
             <div key={gi}>
-              <h4 className="font-semibold text-(--mk-text) mb-4">{group.title}</h4>
+              <h3 className="font-semibold text-(--mk-text) mb-4">{group.title}</h3>
               <ul className="space-y-3">
                 {group.links.map((link, li) => (
                   <li key={li}>

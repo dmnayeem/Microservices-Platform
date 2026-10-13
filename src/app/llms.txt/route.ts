@@ -6,6 +6,7 @@ import { getSetting } from "@/lib/system-settings";
 import { getArticles } from "@/lib/blog";
 import { COMPANY_LEGAL, SUPPORT_EMAIL } from "@/config/company";
 import { SITE_URL } from "@/lib/seo/site-url";
+import { getLandingFaqFacts, withLiveFaq } from "@/lib/seo/landing-facts";
 
 /**
  * /llms.txt — a plain-language summary of the site for AI answer engines
@@ -24,9 +25,10 @@ import { SITE_URL } from "@/lib/seo/site-url";
 export const revalidate = 3600;
 
 export async function GET() {
-  const [seo, landing, minWithdrawal, feePct, needsPackage, allowWithdrawals, articles] = await Promise.all([
+  const [seo, landing, minWithdrawal, feePct, needsPackage, allowWithdrawals, articles, facts] = await Promise.all([
     getSeoSettings().catch(() => null),
     getLandingContent()
+      .then(withLiveFaq)
       .then(publicLanding)
       .catch(() => null),
     getSetting<number>("min_withdrawal", 5).catch(() => 5),
@@ -34,6 +36,7 @@ export async function GET() {
     getSetting<boolean>("withdrawal_requires_subscription", false).catch(() => false),
     getSetting<boolean>("allow_withdrawals", true).catch(() => true),
     getArticles().catch(() => []),
+    getLandingFaqFacts().catch(() => null),
   ]);
   const name = seo?.["seo.site_name"] || "RevType";
   const faq = (landing?.faq?.items ?? []).filter((f) => !f.hidden && f.question && f.answer);
@@ -55,7 +58,7 @@ export async function GET() {
   const lines = [
     `# ${name}`,
     "",
-    `> ${name} is an online platform where people earn by doing small paid jobs (micro-tasks), selling digital products and services in a marketplace, and teaching or taking online courses. Businesses use it to get tasks done and to advertise.`,
+    `> ${name} is a task-based earning platform: people are paid for small jobs they complete (micro-tasks), for digital products and services they sell in a marketplace, and for online courses they teach. Members are never paid for watching or clicking ads. Businesses use it to get tasks done and to advertise.`,
     "",
     `${name} is operated by ${COMPANY_LEGAL}. Joining is free. It is not an investment scheme: members are paid for work they complete or items they sell, not for depositing money. Earnings are not fixed: they depend on the work available to each member and on approval of what they submit.`,
     "",
@@ -66,15 +69,16 @@ export async function GET() {
     "- Businesses and advertisers who post paid tasks for real people to complete, or buy ad placements.",
     "",
     "## How members earn",
-    "- **Micro-tasks**: short jobs posted by businesses — website and app visits, app installs, surveys, quizzes, article reading, video watching, social media actions and custom tasks. Most need proof (a screenshot, link or answer) that is checked automatically or by a reviewer before payment; rejected or fraudulent submissions are not paid.",
+    "- **Micro-tasks**: short jobs posted by businesses — website and app visits, app installs, surveys, quizzes, article reading, video tasks with proof steps, social media actions and custom tasks. Most need proof (a screenshot, link or answer) that is checked automatically or by a reviewer before payment; rejected or fraudulent submissions are not paid.",
     "- **Marketplace sales**: sellers set their own prices for digital products and services; payments go through escrow and the platform keeps a commission.",
     "- **Courses**: tutors earn from course sales; learners can earn certificates.",
     "- **Referrals and affiliate links**: commission on qualifying activity of invited members and on marketplace and course sales made through a member's link.",
-    "- **Sponsored activities**: the platform shows advertising, and some activities are sponsored — partner offers (offerwalls), Browse & Earn (a small reward for time spent on pages that carry ads) and sponsored video tasks. These pay small amounts and are a minor part of the platform.",
+    "- **Partner offers (offerwalls)**: tasks completed with a partner network and confirmed by the partner's own server before they are credited.",
+    "- **Not paid: ads.** The platform shows advertising to stay free to join, but members are never paid for viewing, watching or clicking ads. Earning comes only from completed tasks and work.",
     "- **Bonuses**: daily missions, events, achievements and leaderboard prizes.",
     "",
     "## Points, wallet and withdrawals",
-    `Task rewards are paid in points. Points convert to cash in the member's wallet at the published rate. ${withdrawalLine}`,
+    `Task rewards are paid in points. Points convert to cash in the member's wallet${facts ? ` (${facts.points_per_usd} points = $1; converting unlocks at ${facts.convert_min_points} points)` : " at the published rate"}. ${withdrawalLine}`,
     "",
     "## Rules that protect members and businesses",
     "- One account per person; duplicate accounts, bots and fake proof are not allowed and lead to rejection or suspension.",

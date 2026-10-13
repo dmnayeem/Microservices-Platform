@@ -68,8 +68,8 @@ const TASK_TYPES = [
   },
   {
     icon: Video,
-    title: "Watch a video",
-    body: "Watch for a set time. Watch time is measured on the server from real playback heartbeats, not claimed by the viewer.",
+    title: "Video tasks",
+    body: "Review a specific video for the time the task sets and complete its proof steps. Time is measured on the server from real playback, not claimed. This is a task with proof — RevType never pays for viewing ads.",
   },
   {
     icon: FileText,
@@ -105,11 +105,6 @@ const TASK_TYPES = [
 
 /** Earning surfaces that are not a task row. */
 const MORE_WAYS = [
-  {
-    icon: Globe,
-    title: "Browse & Earn",
-    body: "A time-based sponsored browsing activity: advertisers' content rotates while you keep the page in view, and each rotation is paid as an ad impression. It is funded by advertisers, so availability and rates vary.",
-  },
   {
     icon: Flame,
     title: "Daily missions",
@@ -189,7 +184,7 @@ export default function MicroTaskPage() {
         badge="Micro Tasks"
         title="Small jobs,"
         highlight="and you know the pay before you start"
-        subtitle="Do short online jobs for real businesses — follow a page, test an app, answer a survey, watch a product video. Every task shows its reward up front, and approved work is paid to your wallet. Some tasks are sponsored by advertisers."
+        subtitle="Do short online jobs for real businesses — follow a page, test an app, answer a survey, review a product video. Every task shows its reward up front, and approved work is paid to your wallet. Some tasks are sponsored by advertisers."
         actions={
           <>
             <PrimaryButton href="/register">

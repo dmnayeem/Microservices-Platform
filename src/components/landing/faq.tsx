@@ -34,10 +34,13 @@ export function FAQ(props: Props) {
                     : "border-(--mk-border) hover:border-(--mk-border-strong)"
                 }`}
               >
+                {/* Each question is an h3 under the section's h2. */}
+                <h3 className="m-0 text-base font-normal">
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : i)}
                   className="w-full flex items-center justify-between p-5 text-left"
                   aria-expanded={isOpen}
+                  aria-controls={`faq-a-${i}`}
                 >
                   <span
                     className={`font-semibold pr-4 ${
@@ -60,11 +63,13 @@ export function FAQ(props: Props) {
                     )}
                   </span>
                 </button>
-                {isOpen && (
-                  <div className="px-5 pb-5">
-                    <p className="text-(--mk-muted) leading-relaxed">{faq.answer}</p>
-                  </div>
-                )}
+                </h3>
+                {/* Always in the HTML, only hidden when closed: a crawler (and
+                    the FAQPage markup's "visible on the page" rule) sees every
+                    answer, not just the first one. */}
+                <div id={`faq-a-${i}`} hidden={!isOpen} className="px-5 pb-5">
+                  <p className="text-(--mk-muted) leading-relaxed">{faq.answer}</p>
+                </div>
               </div>
             );
           })}

@@ -7,6 +7,7 @@ import { deriveSource, SOURCE_ORDER, type SourceKey } from "@/lib/tx-sources";
 import { direction, magnitudeUsd } from "@/lib/finance/signing";
 import { csvFilename, csvResponse, toCsv } from "@/lib/csv";
 import { excludeTestUsers } from "@/lib/finance/test-users";
+import { parseDay } from "@/lib/finance/platform-income";
 
 /**
  * The searchable ledger — the view that did not exist.
@@ -24,6 +25,15 @@ import { excludeTestUsers } from "@/lib/finance/test-users";
 const PAGE = 50;
 
 function parseRange(sp: URLSearchParams): { from?: Date; to?: Date } {
+  // An explicit from–to (UTC days, both inclusive) wins over `days`.
+  const f = parseDay(sp.get("from"));
+  const t = parseDay(sp.get("to"));
+  if (f || t) {
+    return {
+      from: f ?? undefined,
+      to: t ? new Date(t.getTime() + 86_400_000 - 1) : undefined,
+    };
+  }
   const days = Number(sp.get("days"));
   if (Number.isFinite(days) && days > 0) {
     const from = new Date();
@@ -47,14 +57,28 @@ export async function GET(request: NextRequest) {
   const search = (sp.get("q") ?? "").trim();
   const page = Math.max(0, Number(sp.get("page")) || 0);
   const wantsCsv = sp.get("format") === "csv";
-  const { from } = parseRange(sp);
+  const { from, to } = parseRange(sp);
+  // One member's rows: an exact user id, or an email / name match.
+  const userQ = (sp.get("user") ?? "").trim();
 
   // Finance test users' rows are left out of the ledger and its CSV export,
   // so the books here are only real money.
   const where = await excludeTestUsers({
     ...(type && type !== "all" ? { type: type as never } : {}),
     ...(status && status !== "all" ? { status: status as never } : {}),
-    ...(from ? { createdAt: { gte: from } } : {}),
+    ...(from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
+    ...(userQ
+      ? /^c[a-z0-9]{20,}$/i.test(userQ)
+        ? { userId: userQ }
+        : {
+            user: {
+              OR: [
+                { email: { contains: userQ, mode: "insensitive" as const } },
+                { name: { contains: userQ, mode: "insensitive" as const } },
+              ],
+            },
+          }
+      : {}),
     ...(search
       ? {
           OR: [

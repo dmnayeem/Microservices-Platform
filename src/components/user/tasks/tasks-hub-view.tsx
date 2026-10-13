@@ -199,8 +199,15 @@ export function TasksHubView({
     loadStats();
   });
 
+  // Per real task type only: SOCIAL_POSTS / SOCIAL_ENGAGE are views of the
+  // SOCIAL tasks, so adding them counted every social task two or three times
+  // (7 shown for 4 tasks). And only what is still open — the same
+  // available − completed rule the category cards use.
   const totalAvailable = useMemo(
-    () => Object.values(data.summary).reduce((a, s) => a + s.available, 0),
+    () =>
+      Object.entries(data.summary)
+        .filter(([type]) => type !== "SOCIAL_POSTS" && type !== "SOCIAL_ENGAGE")
+        .reduce((a, [, s]) => a + Math.max(0, s.available - (s.completed ?? 0)), 0),
     [data.summary]
   );
 
