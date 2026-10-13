@@ -22,6 +22,7 @@ import { taskCompletabilityError } from "@/lib/task-completability";
 import { isGeminiConfigured } from "@/lib/gemini";
 import { writeAudit } from "@/lib/audit";
 import { taskSnapshot } from "@/lib/task-audit";
+import { normalizeTaskInstructionsColor } from "@/lib/task-instructions-color";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -110,6 +111,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       title,
       description,
       instructions,
+      instructionsColor,
       instructionVideoUrl,
       type,
       status,
@@ -247,6 +249,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         title,
         description,
         instructions: instructions || null,
+        // Left alone when the caller does not send it (bulk/status edits).
+        ...(instructionsColor !== undefined
+          ? { instructionsColor: normalizeTaskInstructionsColor(instructionsColor) }
+          : {}),
         instructionVideoUrl: instructionVideoUrl || null,
         type,
         status: status || existingTask.status,

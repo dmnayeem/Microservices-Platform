@@ -9,6 +9,7 @@ import {
   sanitizeInstructionsHtml,
 } from "@/lib/task-instructions";
 import { OFFER_RICHTEXT_CLASS } from "@/lib/offers";
+import { taskInstructionsHex } from "@/lib/task-instructions-color";
 
 /**
  * The instructions block, wherever a task is shown.
@@ -40,7 +41,7 @@ const COLLAPSE_AFTER_STEPS = 6;
 const COLLAPSE_HTML_CHARS = 900;
 
 /**
- * The default surround: its own colour (the admin-picked --task-ins, lib/task-instructions-color — never the accent, which the
+ * The default surround: its own colour (the task's own, picked by the admin — lib/task-instructions-color — never the accent, which the
  * page's buttons and cards already use) and a left bar, so the instructions
  * read as THE thing to read before starting, not one more grey card
  * (owner, 2026-10-05).
@@ -52,8 +53,11 @@ export function TaskInstructions({
   value,
   title = "Instructions",
   className,
+  color,
 }: {
   value: string | null | undefined;
+  /** Task.instructionsColor — the admin's pick for this task; null = orange. */
+  color?: string | null;
   /** null: no header (the caller has its own). */
   title?: string | null;
   /**
@@ -82,8 +86,7 @@ export function TaskInstructions({
   return (
     <div
       className={framed ? INSTRUCTIONS_CARD : className}
-      // The admin-picked colour from the (main) layout; orange anywhere else.
-      style={{ "--task-ins": "var(--task-ins-pick, #f97316)" } as CSSProperties}
+      style={{ "--task-ins": taskInstructionsHex(color) } as CSSProperties}
     >
       {framed && <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-(--task-ins)" />}
       {title && (

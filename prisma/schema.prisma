@@ -2380,6 +2380,8 @@ model Task {
   title               String
   description         String           @db.Text
   instructions        String?          @db.Text
+  // Instructions block colour on the task page (lib/task-instructions-color key); null = orange.
+  instructionsColor   String?
   instructionVideoUrl String?
   type                TaskType
   status              TaskStatus       @default(ACTIVE)

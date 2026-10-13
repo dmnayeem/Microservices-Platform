@@ -40,6 +40,7 @@ interface CustomTask {
   thumbnailUrl?: string | null;
   duration?: number | null;
   instructions?: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl?: string | null;
   customConfig?: CustomConfig | null;
 }
@@ -333,7 +334,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
 
       {/* The admin's steps were stored but never shown here, so users had only
           the title to go on. Same renderer as every other task surface. */}
-      <TaskInstructions value={task.instructions} />
+      <TaskInstructions value={task.instructions} color={task.instructionsColor} />
 
       {task.instructionVideoUrl && (
         <section className="space-y-2">

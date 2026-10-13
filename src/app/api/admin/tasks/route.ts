@@ -24,6 +24,7 @@ import {
 import { resolveTaskThumbnail } from "@/lib/task-thumbnail";
 import { taskCompletabilityError } from "@/lib/task-completability";
 import { isGeminiConfigured } from "@/lib/gemini";
+import { normalizeTaskInstructionsColor } from "@/lib/task-instructions-color";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
       title,
       description,
       instructions,
+      instructionsColor,
       instructionVideoUrl,
       type,
       status,
@@ -218,6 +220,7 @@ export async function POST(request: NextRequest) {
         title,
         description,
         instructions: instructions || null,
+        instructionsColor: normalizeTaskInstructionsColor(instructionsColor),
         instructionVideoUrl: instructionVideoUrl || null,
         type,
         status: status || "ACTIVE",

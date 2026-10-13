@@ -176,6 +176,7 @@ export async function listTasksForUser(
         title: true,
         description: true,
         instructions: true,
+        instructionsColor: true,
         instructionVideoUrl: true,
         type: true,
         pointsReward: true,
@@ -321,6 +322,7 @@ export async function listTasksForUser(
       thumbnailUrl: task.thumbnailUrl,
       duration: task.duration,
       instructions: task.instructions,
+      instructionsColor: task.instructionsColor,
       instructionVideoUrl: task.instructionVideoUrl,
       contentUrl: task.contentUrl,
       // The proof key (`uniqueKey`) never leaves the server — every other path strips it.

@@ -49,6 +49,7 @@ interface ArticleTask {
   thumbnailUrl?: string | null;
   duration?: number | null;
   instructions?: string | null;
+  instructionsColor?: string | null;
   instructionVideoUrl?: string | null;
   articleConfig?: ArticleConfig | null;
 }
@@ -395,6 +396,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
       <TaskInstructions
         value={task.instructions}
+        color={task.instructionsColor}
       />
 
       {task.instructionVideoUrl && (
