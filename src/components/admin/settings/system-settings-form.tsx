@@ -160,6 +160,7 @@ const DEFAULTS: SettingsBag = {
   "celebrate.achievement_min_points": 200,
   // Integrations
   gemini_api_key: "",
+  gemini_api_keys_backup: "",
   openai_api_key: "",
   magnific_api_key: "",
   magnific_webhook_secret: "",
@@ -1156,6 +1157,23 @@ export function SystemSettingsForm({
           placeholder="AIza…"
           extra={<TestKeyButton provider="GEMINI" disabled={!canEdit} />}
         />
+      </Row>
+    ),
+    gemini_api_keys_backup: () => (
+      <Row settingKey="gemini_api_keys_backup">
+        <textarea
+          rows={4}
+          value={String(values.gemini_api_keys_backup ?? "")}
+          onChange={(e) => set("gemini_api_keys_backup", e.target.value)}
+          disabled={!canEdit}
+          spellCheck={false}
+          autoComplete="off"
+          className={`${inp} font-mono text-xs`}
+          placeholder={"AIza… (one key per line)\nAIza…"}
+        />
+        <p className="mt-1 text-[11px] text-slate-500">
+          Press &ldquo;Test saved key&rdquo; on the main key above to check every key, backups included.
+        </p>
       </Row>
     ),
     openai_api_key: () => (

@@ -14,9 +14,10 @@
  * screen has to take effect without a redeploy, which a module-scope constant
  * can never do.
  */
-import { getSecret } from "@/lib/system-settings";
+import { geminiFetch, hasGeminiKey } from "@/lib/gemini-keys";
 
-const geminiKey = () => getSecret("GEMINI_API_KEY", "gemini_api_key");
+// Keys: lib/gemini-keys — the main key, then the backups, each request
+// moving on when one is out of quota.
 // Model is configurable via GEMINI_MODEL. Default is a current, free-tier model
 // (the old gemini-1.5-flash was retired by Google and now 404s).
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
@@ -50,7 +51,7 @@ interface ValidateAnswerOptions {
  * Check if Gemini is configured
  */
 export async function isGeminiConfigured(): Promise<boolean> {
-  return !!(await geminiKey());
+  return !!(await hasGeminiKey());
 }
 
 /**
@@ -61,10 +62,10 @@ export async function isGeminiConfigured(): Promise<boolean> {
 export async function generateText(
   prompt: string
 ): Promise<{ success: boolean; text?: string; error?: string }> {
-  if (!(await geminiKey()))
+  if (!(await hasGeminiKey()))
     return { success: false, error: "GEMINI_API_KEY not set" };
   try {
-    const res = await fetch(`${GEMINI_API_URL}?key=${await geminiKey()}`, {
+    const res = await geminiFetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
@@ -118,7 +119,7 @@ export interface ExtractedId {
 export async function extractIdData(
   images: { base64: string; mime: string }[]
 ): Promise<{ success: boolean; data?: ExtractedId; error?: string }> {
-  if (!(await geminiKey()))
+  if (!(await hasGeminiKey()))
     return { success: false, error: "GEMINI_API_KEY not set" };
   if (!images.length) return { success: false, error: "No images" };
 
@@ -149,7 +150,7 @@ export async function extractIdData(
     "Do not invent values — use null when a field is not visible.";
 
   try {
-    const res = await fetch(`${GEMINI_API_URL}?key=${await geminiKey()}`, {
+    const res = await geminiFetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -211,10 +212,10 @@ export async function generateJson(
   prompt: string,
   opts?: { temperature?: number }
 ): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
-  if (!(await geminiKey()))
+  if (!(await hasGeminiKey()))
     return { success: false, error: "GEMINI_API_KEY not set" };
   try {
-    const res = await fetch(`${GEMINI_API_URL}?key=${await geminiKey()}`, {
+    const res = await geminiFetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -270,11 +271,11 @@ export async function generateImage(
   prompt: string,
   opts: { aspectRatio?: string } = {}
 ): Promise<{ success: boolean; imageBase64?: string; mimeType?: string; error?: string }> {
-  if (!(await geminiKey()))
+  if (!(await hasGeminiKey()))
     return { success: false, error: "GEMINI_API_KEY not set" };
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${await geminiKey()}`;
-    const res = await fetch(url, {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`;
+    const res = await geminiFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -359,7 +360,7 @@ Important:
 - Ensure valid JSON formatting`;
 
   try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${await geminiKey()}`, {
+    const response = await geminiFetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -449,7 +450,7 @@ Provide a brief evaluation in JSON format:
 Only return the JSON, no additional text.`;
 
   try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${await geminiKey()}`, {
+    const response = await geminiFetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -550,7 +551,7 @@ Return the response in JSON format only:
 }`;
 
   try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${await geminiKey()}`, {
+    const response = await geminiFetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

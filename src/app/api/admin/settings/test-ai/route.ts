@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { getSecret } from "@/lib/system-settings";
+import { geminiKeyStatus, maskKey } from "@/lib/gemini-keys";
 import { z } from "zod";
 
 /**
@@ -35,26 +36,46 @@ export async function POST(request: NextRequest) {
   }
 
   const provider = v.data.provider;
-  const envName =
-    provider === "GEMINI"
-      ? "GEMINI_API_KEY"
-      : provider === "OPENAI"
-        ? "OPENAI_API_KEY"
-        : "MAGNIFIC_API_KEY";
+
+  // Gemini: every key in the pool (main + backups), each with a read-only call,
+  // plus whether it is benched for a used-up quota right now.
+  if (provider === "GEMINI") {
+    const keys = await geminiKeyStatus();
+    if (!keys.length) {
+      return NextResponse.json({ error: "No Gemini key saved. Paste one and press Save first." }, { status: 400 });
+    }
+    const lines = await Promise.all(
+      keys.map(async ({ key, benched }, i) => {
+        const name = `${i === 0 ? "Main" : `Backup ${i}`} (${maskKey(key)})`;
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
+            { cache: "no-store" }
+          );
+          if (!res.ok) {
+            const b = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+            return { ok: false, line: `${name}: rejected — ${b.error?.message ?? `HTTP ${res.status}`}` };
+          }
+          return { ok: true, line: `${name}: works${benched ? ` · ${benched}` : ""}` };
+        } catch {
+          return { ok: false, line: `${name}: could not reach Google` };
+        }
+      })
+    );
+    const good = lines.filter((l) => l.ok).length;
+    const text = lines.map((l) => l.line).join(" | ");
+    return good > 0
+      ? NextResponse.json({ ok: true, message: `${good}/${lines.length} Gemini keys work. ${text}` })
+      : NextResponse.json({ error: `No Gemini key works. ${text}` }, { status: 400 });
+  }
+  const envName = provider === "OPENAI" ? "OPENAI_API_KEY" : "MAGNIFIC_API_KEY";
   // getSecret prefers the env var. Say so, or a passing test reads as "the key
   // I just pasted works" while that key is not the one in use.
   const fromEnv = !!process.env[envName]?.trim();
   const source = fromEnv
     ? ` (tested the ${envName} environment variable, which is used instead of the key saved here)`
     : "";
-  const key = await getSecret(
-    envName,
-    provider === "GEMINI"
-      ? "gemini_api_key"
-      : provider === "OPENAI"
-        ? "openai_api_key"
-        : "magnific_api_key"
-  );
+  const key = await getSecret(envName, provider === "OPENAI" ? "openai_api_key" : "magnific_api_key");
 
   if (!key) {
     return NextResponse.json(
@@ -65,12 +86,7 @@ export async function POST(request: NextRequest) {
 
   try {
     let res: Response;
-    if (provider === "GEMINI") {
-      res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
-        { cache: "no-store" }
-      );
-    } else if (provider === "OPENAI") {
+    if (provider === "OPENAI") {
       res = await fetch("https://api.openai.com/v1/models", {
         headers: { Authorization: `Bearer ${key}` },
         cache: "no-store",
