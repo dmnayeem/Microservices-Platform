@@ -10,6 +10,7 @@ import { SiteTracking, CustomCode } from "@/components/providers/site-tracking";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { FirstTouchCapture } from "@/components/providers/first-touch";
 import { JsonLd } from "@/components/seo/json-ld";
+import { CHUNK_RETRY_SCRIPT } from "@/lib/chunk-retry";
 import { siteShareImage } from "@/lib/seo/page-meta";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -196,6 +197,10 @@ export default async function RootLayout({
               "(function(){if(typeof Node!=='function'||!Node.prototype)return;var r=Node.prototype.removeChild;Node.prototype.removeChild=function(c){if(c.parentNode!==this)return c;return r.apply(this,arguments)};var i=Node.prototype.insertBefore;Node.prototype.insertBefore=function(n,b){if(b&&b.parentNode!==this)return n;return i.apply(this,arguments)}})();",
           }}
         />
+        {/* Patient retries for JS/CSS chunk downloads on flaky mobile data —
+            see lib/chunk-retry.ts. Must run before the runtime loads its
+            first dynamic chunk. */}
+        <script dangerouslySetInnerHTML={{ __html: CHUNK_RETRY_SCRIPT }} />
         {/* Site-wide structured data (Organization + WebSite w/ SearchAction) —
             sitelinks search box, entity/E-E-A-T + GEO signals. */}
         <JsonLd
