@@ -13,6 +13,12 @@ export interface BannerSlide {
   ctaLabel?: string;
   ctaHref?: string;
   bgGradient?: string;
+  /**
+   * false = the picture alone: no dark shade, no title, no button — for
+   * artwork that already carries its own text. The whole slide still opens
+   * `ctaHref` (Admin → Banners → "Show title & button", owner 2026-10-14).
+   */
+  showText?: boolean;
 }
 
 interface BannerSliderProps {
@@ -119,10 +125,14 @@ export function BannerSlider({
             i === active ? "opacity-100" : "opacity-0 pointer-events-none"
           );
           const hasVideo = !!s.videoUrl;
+          // Text needs the shade to be readable; the picture alone does not.
+          const clean = s.showText === false && (!!s.imageUrl || hasVideo);
           const style =
             !hasVideo && s.imageUrl
               ? {
-                  backgroundImage: `linear-gradient(to right, rgba(15,23,42,.7), rgba(15,23,42,.3)), url(${s.imageUrl})`,
+                  backgroundImage: clean
+                    ? `url(${s.imageUrl})`
+                    : `linear-gradient(to right, rgba(15,23,42,.7), rgba(15,23,42,.3)), url(${s.imageUrl})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }
@@ -139,9 +149,10 @@ export function BannerSlider({
                     playsInline
                     className="absolute inset-0 w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-linear-to-r from-black/70 to-black/30" />
+                  {!clean && <div className="absolute inset-0 bg-linear-to-r from-black/70 to-black/30" />}
                 </>
               )}
+              {!clean && (
               <div className="relative z-10 text-white max-w-[70%]">
                 {s.title && (
                   <p className="text-lg sm:text-xl font-bold leading-tight break-words">
@@ -159,6 +170,7 @@ export function BannerSlider({
                   </span>
                 )}
               </div>
+              )}
             </>
           );
           if (s.ctaHref) {
@@ -168,6 +180,8 @@ export function BannerSlider({
                 href={s.ctaHref}
                 className={cls}
                 style={style}
+                // A clean picture has no visible text — name the link anyway.
+                aria-label={clean ? s.title || "Open" : undefined}
                 aria-hidden={i === active ? undefined : true}
                 tabIndex={i === active ? 0 : -1}
               >

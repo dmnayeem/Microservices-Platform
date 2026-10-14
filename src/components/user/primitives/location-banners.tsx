@@ -26,6 +26,7 @@ export async function LocationBanners({
     ctaLabel: b.linkUrl ? "Open" : undefined,
     ctaHref: b.linkUrl ?? undefined,
     bgGradient: b.bgGradient ?? undefined,
+    showText: b.showText,
   }));
   return <BannerSlider slides={slides} className={className ?? "mb-4"} />;
 }

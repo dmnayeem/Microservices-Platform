@@ -16,6 +16,7 @@ const schema = z.object({
   iconEmoji: z.string().max(8).optional().nullable(),
   bgGradient: z.string().max(80).optional().nullable(),
   linkUrl: z.string().url().optional().nullable().or(z.literal("")),
+  showText: z.boolean().default(true),
   location: z
     .enum(["HOME", "EARN_HUB", "MARKETPLACE", "DASHBOARD", "ALL"])
     .default("HOME"),
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
       iconEmoji: data.iconEmoji ?? null,
       bgGradient: data.bgGradient ?? null,
       linkUrl: data.linkUrl || null,
+      showText: data.showText,
       location: data.location,
       order: data.order,
       isActive: data.isActive,
