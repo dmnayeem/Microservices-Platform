@@ -23,6 +23,7 @@ import { isGeminiConfigured } from "@/lib/gemini";
 import { writeAudit } from "@/lib/audit";
 import { taskSnapshot } from "@/lib/task-audit";
 import { normalizeTaskInstructionsColor } from "@/lib/task-instructions-color";
+import { normalizeRepeat } from "@/lib/task-repeat";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -112,6 +113,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       description,
       instructions,
       instructionsColor,
+      repeat,
       instructionVideoUrl,
       type,
       status,
@@ -250,6 +252,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         description,
         instructions: instructions || null,
         // Left alone when the caller does not send it (bulk/status edits).
+        ...(repeat !== undefined ? { repeat: normalizeRepeat(repeat) } : {}),
         ...(instructionsColor !== undefined
           ? { instructionsColor: normalizeTaskInstructionsColor(instructionsColor) }
           : {}),
@@ -304,6 +307,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         // "Installed app only" / "notifications on" (lib/task-device-gate.ts).
         ...(typeof body.requireApp === "boolean" ? { requireApp: body.requireApp } : {}),
         ...(typeof body.requirePush === "boolean" ? { requirePush: body.requirePush } : {}),
+        ...(typeof body.requireProfile === "boolean" ? { requireProfile: body.requireProfile } : {}),
+        ...(typeof body.requireKyc === "boolean" ? { requireKyc: body.requireKyc } : {}),
         boardId: boardId || null,
         // Surveys: always manual review, and once per user — enforced per user
         // in /api/tasks/[id]/start, NOT via `totalLimit`.

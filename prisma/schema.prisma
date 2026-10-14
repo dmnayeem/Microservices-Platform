@@ -2397,6 +2397,10 @@ model Task {
   board               TaskBoard?       @relation(fields: [boardId], references: [id], onDelete: SetNull)
   dailyLimit          Int?
   totalLimit          Int?
+  /// "DAILY" = opens again at the member's local midnight (dailyLimit per day);
+  /// "ONCE" = each member does it once, ever. Null = the type's default
+  /// (SOCIAL and SURVEY once, the rest daily) — see src/lib/task-repeat.ts.
+  repeat              String?
   completedCount      Int              @default(0)
   minLevel            Int              @default(1)
   requiredAccessLevel Int              @default(0)
@@ -2443,6 +2447,10 @@ model Task {
   // installed app / with notifications on. Off = an ordinary task.
   requireApp          Boolean          @default(false)
   requirePush         Boolean          @default(false)
+  /// Can't be started until the member's profile is 100% complete / their KYC
+  /// is approved (src/lib/task-device-gate.ts, owner 2026-10-15).
+  requireProfile      Boolean          @default(false)
+  requireKyc          Boolean          @default(false)
   // When users were told about this task (src/lib/task-announce.ts) — once only.
   announcedAt         DateTime?
   // Device targeting (src/lib/device-target.ts). Empty = any device.

@@ -13,7 +13,45 @@ const CACHE = "revtype-shell-" + BUILD;
 const RUNTIME = "revtype-runtime-" + BUILD;
 // Soft cap so the runtime cache can't grow unbounded on a long session.
 const RUNTIME_MAX_ENTRIES = 160;
-const OFFLINE_URL = "/";
+// When a page can't be reached we used to show the cached LANDING page for
+// every URL, so a member on a mobile network whose DNS can't find revtype.com
+// (DNS_PROBE_FINISHED_NXDOMAIN) saw the landing page, tapped Log in, and got
+// the landing page again — "it just reloads" (owner, 2026-10-15). Now they get
+// this page, built here so it needs no network at all, saying what is wrong
+// and how to fix it on their phone.
+const OFFLINE_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RevType — can't connect</title>
+<style>
+body{margin:0;background:#0b1210;color:#e8f2ee;font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:480px;margin:0 auto;padding:28px 18px 40px}
+h1{font-size:20px;margin:0 0 6px}h2{font-size:15px;margin:22px 0 6px;color:#3ee6a4}
+p{margin:6px 0;color:#c4d4cd}ol{margin:6px 0;padding-left:20px;color:#c4d4cd}li{margin:3px 0}
+b{color:#fff}code{background:#14211c;border:1px solid #23362e;border-radius:6px;padding:1px 6px;color:#3ee6a4}
+.card{background:#111c18;border:1px solid #1f302a;border-radius:14px;padding:14px 16px;margin-top:14px}
+button{margin-top:18px;width:100%;min-height:48px;border:0;border-radius:12px;background:#3ee6a4;color:#04140d;font-weight:800;font-size:16px}
+</style></head><body><main>
+<h1>Can't reach RevType</h1>
+<p>Your current network (often mobile data) can't find <b>revtype.com</b> right now. The site works on Wi-Fi. Do one of these and it will work on mobile data too:</p>
+<div class="card"><h2>Android — Private DNS (easiest)</h2><ol>
+<li>Open <b>Settings</b> → <b>Connections</b> / <b>Network &amp; internet</b></li>
+<li><b>Private DNS</b> → <b>Private DNS provider hostname</b></li>
+<li>Type <code>dns.google</code> → <b>Save</b></li></ol></div>
+<div class="card"><h2>Chrome — Secure DNS</h2><ol>
+<li>In Chrome tap <b>⋮</b> → <b>Settings</b> → <b>Privacy and security</b></li>
+<li>Turn on <b>Use secure DNS</b> → choose <b>Google (Public DNS)</b></li></ol></div>
+<div class="card"><h2>iPhone</h2><ol>
+<li>Install the <b>1.1.1.1</b> app (by Cloudflare) from the App Store</li>
+<li>Open it and switch it on</li></ol></div>
+<button onclick="location.reload()">Try again</button>
+</main></body></html>`;
+
+function offlineResponse() {
+  return new Response(OFFLINE_HTML, {
+    status: 503,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
 
 // Precache the app shell for an offline navigation fallback. We intentionally do
 // NOT call skipWaiting() here: on first install there is no controller so this SW
@@ -21,12 +59,8 @@ const OFFLINE_URL = "/";
 // client applies it at a safe moment (pull-to-refresh / reopen) — see the
 // SKIP_WAITING message below. This prevents surprise mid-use reloads.
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.add(OFFLINE_URL))
-      .catch(() => {})
-  );
+  // The offline page is built in this file (OFFLINE_HTML) — nothing to fetch.
+  event.waitUntil(caches.open(CACHE).catch(() => {}));
 });
 
 // The page tells a waiting SW to take over (after pull-to-refresh / reopen). The
@@ -170,9 +204,7 @@ self.addEventListener("fetch", (event) => {
 
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req).catch(() =>
-        caches.match(OFFLINE_URL).then((res) => res || Response.error())
-      )
+      fetch(req).catch(() => offlineResponse())
     );
     return;
   }

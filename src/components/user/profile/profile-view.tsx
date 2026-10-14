@@ -100,6 +100,51 @@ export function ProfileView() {
     });
   };
 
+  // Where a completion item is edited. Each item says so, and it is not always
+  // a tab: the photos and the tags live in modals on this page, and email /
+  // phone verification lives on its own route. The old handler read only
+  // `?tab=` and sent everything to the personal form — so "Profile photo"
+  // opened a form with no photo control.
+  const jumpTo = (href: string | undefined) => {
+    if (!href) return;
+    if (href.startsWith("/")) {
+      router.push(href);
+      return;
+    }
+    const params = new URLSearchParams(href.replace(/^\?/, ""));
+    const modal = params.get("modal");
+    if (modal === "photo") {
+      setPhotoTarget(params.get("which") === "coverPhoto" ? "coverPhoto" : "avatar");
+      return;
+    }
+    if (modal === "tags") {
+      setTagModalOpen(true);
+      return;
+    }
+    const t = params.get("tab") as EditTab | null;
+    openEdit(t ?? "personal", params.get("field") ?? undefined);
+  };
+
+  // Links from outside this page (a task's "complete your profile" list, the
+  // profile lock screen) arrive as /profile?modal=…, ?tab=…&field=… — they
+  // opened nothing, because only the ring's own buttons read them (owner,
+  // 2026-10-15). Open the right place once the profile has loaded, then drop
+  // the query so a reload doesn't reopen it.
+  const deepLinked = useRef(false);
+  useEffect(() => {
+    if (!data || deepLinked.current) return;
+    const q = window.location.search;
+    if (!/[?&](modal|tab|field)=/.test(q)) return;
+    const t = window.setTimeout(() => {
+      deepLinked.current = true;
+      jumpTo(q);
+      window.history.replaceState(null, "", window.location.pathname);
+    }, 0);
+    return () => window.clearTimeout(t);
+    // jumpTo is recreated each render; this runs once, after the first load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -524,32 +569,7 @@ export function ProfileView() {
           editTab={editTab}
           setEditTab={setEditTab}
           openEdit={openEdit}
-          onJumpCompletion={(href) => {
-            if (!href) return;
-            // Each item now says where it is genuinely edited, which is not
-            // always a tab: the photos and the tags live in modals on this
-            // page, and email/phone verification lives on its own route. The
-            // old handler read only `?tab=` and sent everything to the personal
-            // form — so "Profile photo" opened a form with no photo control.
-            if (href.startsWith("/")) {
-              router.push(href);
-              return;
-            }
-            const params = new URLSearchParams(href.replace(/^\?/, ""));
-            const modal = params.get("modal");
-            if (modal === "photo") {
-              setPhotoTarget(
-                params.get("which") === "coverPhoto" ? "coverPhoto" : "avatar"
-              );
-              return;
-            }
-            if (modal === "tags") {
-              setTagModalOpen(true);
-              return;
-            }
-            const t = params.get("tab") as EditTab | null;
-            openEdit(t ?? "personal", params.get("field") ?? undefined);
-          }}
+          onJumpCompletion={jumpTo}
           onConnectSocial={(p) => setConnectPlatform(p)}
           onDisconnectSocial={disconnectSocial}
         />

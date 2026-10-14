@@ -104,6 +104,10 @@ export function changedTargetingFields(
     const b = patch[f];
     const norm = (v: unknown) =>
       v instanceof Date ? v.getTime() : v === "" ? null : (v ?? null);
+    // Filling a blank in for the first time is not a change. Counting it was
+    // how saving gender + DOB, then the address, hit the 7-day lock — a new
+    // member could not finish their profile (owner, 2026-10-15).
+    if (norm(a) === null) continue;
     if (norm(a) !== norm(b)) out.push(f);
   }
   return out;

@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { AlertTriangle, Copy, ExternalLink, Link2, Scissors } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { VISIT_KIND_LABEL, visitDestinationPath, type VisitConfig, type VisitKind } from "@/lib/visit-tasks";
+import { NumberInput } from "@/components/admin/number-input";
 
 /**
  * Admin builder for VISIT tasks (lib/visit-tasks.ts): a direct / smart link
@@ -67,8 +68,7 @@ export function VisitTaskBuilder({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">Stay time (seconds)</label>
-            <input
-              type="number"
+            <NumberInput
               min={5}
               max={600}
               value={value.staySeconds}
@@ -113,8 +113,7 @@ export function VisitTaskBuilder({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">Fastest real pass (seconds)</label>
-              <input
-                type="number"
+              <NumberInput
                 min={0}
                 max={600}
                 value={value.minSeconds}

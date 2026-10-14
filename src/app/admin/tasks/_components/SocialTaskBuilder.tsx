@@ -44,6 +44,7 @@ import {
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { actionTakesCaption, composeCaption } from "@/lib/social-caption";
+import { NumberInput } from "@/components/admin/number-input";
 
 /**
  * How the user gets their post content.
@@ -514,8 +515,7 @@ function SocialActionCard({
           <label className="block text-sm font-medium text-gray-400 mb-1.5">
             Watch / Listen duration (seconds)
           </label>
-          <input
-            type="number"
+          <NumberInput
             min={0}
             value={item.watchSeconds ?? 0}
             onChange={(e) => {
@@ -768,8 +768,7 @@ function PointsStepper({
         >
           <Minus className="w-4 h-4" />
         </button>
-        <input
-          type="number"
+        <NumberInput
           min={0}
           value={value}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
@@ -1035,8 +1034,7 @@ function FieldEditor({
     return (
       <div>
         {labelEl}
-        <input
-          type="number"
+        <NumberInput
           required={field.required}
           value={value}
           onChange={(e) => onChange(e.target.value)}

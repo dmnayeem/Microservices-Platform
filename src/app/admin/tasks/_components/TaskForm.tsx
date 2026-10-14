@@ -51,6 +51,9 @@ import {
 import { AppInstallTaskBuilder } from "./AppInstallTaskBuilder";
 import { DateField } from "@/components/ui/date-field";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { NumberInput } from "@/components/admin/number-input";
+import { FieldHelp } from "@/components/admin/field-help";
+import { defaultRepeat } from "@/lib/task-repeat";
 import {
   DEFAULT_TASK_INSTRUCTIONS_COLOR,
   TASK_INSTRUCTIONS_COLORS,
@@ -112,6 +115,7 @@ interface TaskFormProps {
     pointsReward: number;
     xpReward: number;
     dailyLimit: number | null;
+    repeat?: string | null;
     totalLimit: number | null;
     minLevel: number;
     requiredAccessLevel: number;
@@ -150,6 +154,8 @@ interface TaskFormProps {
     boardId?: string | null;
     requireApp?: boolean;
     requirePush?: boolean;
+    requireProfile?: boolean;
+    requireKyc?: boolean;
     deviceTypes?: string[];
     deviceOses?: string[];
     deviceBrands?: string[];
@@ -204,6 +210,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     pointsReward: task?.pointsReward || 0,
     xpReward: task?.xpReward || 0,
     dailyLimit: task?.dailyLimit || "",
+    // "" = the type's default (lib/task-repeat).
+    repeat: task?.repeat ?? "",
     totalLimit: task?.totalLimit || "",
     minLevel: task?.minLevel || 1,
     requiredAccessLevel: task?.requiredAccessLevel ?? 0,
@@ -233,6 +241,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     boardId: task?.boardId ?? defaultBoardId ?? "",
     requireApp: task?.requireApp ?? false,
     requirePush: task?.requirePush ?? false,
+    requireProfile: task?.requireProfile ?? false,
+    requireKyc: task?.requireKyc ?? false,
   });
   // "Tell users about this task" — nothing ticked = nothing is sent. Hidden
   // once the task has been announced (it is sent once per task).
@@ -616,6 +626,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           : instructionsHtml,
         instructionsColor: formData.instructionsColor,
         dailyLimit: formData.dailyLimit ? parseInt(formData.dailyLimit.toString()) : null,
+        repeat: formData.repeat || null,
         totalLimit: formData.totalLimit ? parseInt(formData.totalLimit.toString()) : null,
         order: parseInt((formData.order ?? 0).toString()) || 0,
         startsAt: formData.startsAt ? new Date(formData.startsAt).toISOString() : null,
@@ -869,7 +880,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Title <span className="text-red-400">*</span>
-            </label>
+            <FieldHelp text="The task's name — what members see in the list. Keep it short and clear (e.g. &quot;Follow our Facebook page&quot;)." /></label>
             <input
               type="text"
               required
@@ -883,7 +894,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Description <span className="text-red-400">*</span>
-            </label>
+            <FieldHelp text="One or two lines on what to do and why. Shown on the task card and at the top of the task page." /></label>
             <textarea
               required
               rows={3}
@@ -898,7 +909,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Thumbnail
-              </label>
+              <FieldHelp text="The task card's picture. Empty = a standard icon for the task type." /></label>
               <div className="space-y-3">
                 {formData.thumbnailUrl ? (
                   <div className="relative inline-block">
@@ -1103,7 +1114,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Target URL <span className="text-red-400">*</span>
-              </label>
+              <FieldHelp text="The link the member opens to do the task. Use the full link, with https://." /></label>
               <input
                 type="url"
                 required
@@ -1117,7 +1128,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Proxy Instructions
-              </label>
+              <FieldHelp text="For a proxy task: which proxy or settings the member must use." /></label>
               <textarea
                 rows={3}
                 value={formData.proxyInstructions}
@@ -1179,7 +1190,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
                   <label className="block text-sm text-gray-400 mb-2">
                     <ImageIcon className="w-4 h-4 inline mr-1" />
                     Question Image (Optional)
-                  </label>
+                  <FieldHelp text="A picture shown with the question. Optional — without it only the text shows." /></label>
                   <div className="flex items-center gap-3">
                     {q.imageUrl ? (
                       <div className="relative">
@@ -1239,7 +1250,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
                     Explanation (shown after answer)
-                  </label>
+                  <FieldHelp text="Shown to the member after they answer — why the correct answer is correct." /></label>
                   <input
                     type="text"
                     value={q.explanation}
@@ -1262,11 +1273,10 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Points Reward <span className="text-red-400">*</span>
-            </label>
+            <FieldHelp text="Points the member earns when the task is approved. This is their pay for the task." /></label>
             {formData.type === "SOCIAL" ? (
               <>
-                <input
-                  type="number"
+                <NumberInput
                   readOnly
                   value={bundleTotalPoints(socialConfig.items)}
                   className="w-full px-4 py-2.5 bg-gray-800/60 border border-gray-700 rounded-lg text-gray-300 cursor-not-allowed focus:outline-none"
@@ -1276,8 +1286,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
                 </p>
               </>
             ) : (
-              <input
-                type="number"
+              <NumberInput
                 required
                 min="0"
                 value={formData.pointsReward}
@@ -1292,9 +1301,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               XP Reward
-            </label>
-            <input
-              type="number"
+            <FieldHelp text="XP (level progress) earned on approval. Not money; 0 = no XP." /></label>
+            <NumberInput
               min="0"
               value={formData.xpReward}
               onChange={(e) =>
@@ -1307,9 +1315,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Duration (seconds)
-            </label>
-            <input
-              type="number"
+            <FieldHelp text="How many seconds the member must spend (e.g. watching). They can't submit before that." /></label>
+            <NumberInput
               min="0"
               value={formData.duration}
               onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
@@ -1328,9 +1335,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Minimum Level
-            </label>
-            <input
-              type="number"
+            <FieldHelp text="Members below this level don't see the task at all. 1 = everyone." /></label>
+            <NumberInput
               min="1"
               value={formData.minLevel}
               onChange={(e) =>
@@ -1343,9 +1349,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Required Access Level
-            </label>
-            <input
-              type="number"
+            <FieldHelp text="The plan needed to open the task. Members on a lower plan see an upgrade offer. 0 = every plan." /></label>
+            <NumberInput
               min={0}
               max={1000}
               value={formData.requiredAccessLevel}
@@ -1365,9 +1370,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Sequence Order
-            </label>
-            <input
-              type="number"
+            <FieldHelp text="Where the task sits in the list — lower numbers first. In a category, tasks unlock in this order." /></label>
+            <NumberInput
               min={0}
               value={formData.order}
               onChange={(e) =>
@@ -1383,9 +1387,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Cooldown (minutes)
-            </label>
-            <input
-              type="number"
+            <FieldHelp text="Minutes a member must wait before starting this task again. 0 = no wait." /></label>
+            <NumberInput
               min="0"
               value={formData.cooldownMinutes}
               onChange={(e) =>
@@ -1409,7 +1412,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               <span className="text-sm font-medium text-gray-300">
                 Hide from users
               </span>
-            </label>
+            <FieldHelp text="Hides the task from members without deleting it. Untick to show it again." /></label>
             <p className="text-[11px] text-gray-500 mt-1 ml-6.5">
               Hard-hide this task from every user-facing list regardless of level
               / plan gating. Admin-only visibility control.
@@ -1491,23 +1494,37 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Daily Limit per User
-            </label>
-            <input
-              type="number"
+            <FieldHelp text="How many times one member may do this task per day. Empty = once a day. With Repeat = Every day it opens again after the member's local midnight." /></label>
+            <NumberInput
               min="0"
               value={formData.dailyLimit}
               onChange={(e) => setFormData({ ...formData, dailyLimit: e.target.value })}
-              placeholder="Blank = unlimited"
+              placeholder="Blank = once a day"
               className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-red-500"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
-              Total Slots
+              Repeat
+              <FieldHelp text="Every day: once a member has done it today it closes until their local midnight, then opens again (how many times a day = Daily Limit). Once per member: each member can do it once, ever. Default: social and survey tasks once, every other type every day." />
             </label>
-            <input
-              type="number"
+            <select
+              value={formData.repeat}
+              onChange={(e) => setFormData({ ...formData, repeat: e.target.value })}
+              className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-red-500"
+            >
+              <option value="">Default ({defaultRepeat(formData.type || "CUSTOM") === "ONCE" ? "once per member" : "every day"})</option>
+              <option value="DAILY">Every day — opens again after midnight</option>
+              <option value="ONCE">Once per member — never again</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">
+              Total Slots
+            <FieldHelp text="How many times the task can be done in total, by all members together (e.g. 100). When full it closes for everyone. Empty = no limit." /></label>
+            <NumberInput
               min="0"
               value={formData.totalLimit}
               onChange={(e) => setFormData({ ...formData, totalLimit: e.target.value })}
@@ -1526,7 +1543,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             />
             <label htmlFor="autoApprove" className="text-sm text-gray-400">
               Auto-approve submissions
-            </label>
+            <FieldHelp text="On: a submission is approved and paid immediately, with no admin review. Off: it goes to the review queue." /></label>
           </div>
 
           <div className="flex items-center gap-3">
@@ -1539,7 +1556,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             />
             <label htmlFor="blockVpn" className="text-sm text-gray-400">
               No VPN — members on a VPN / proxy can&apos;t start or submit this task
-            </label>
+            <FieldHelp text="On: members on a VPN or proxy can't start or submit this task — stops fake work." /></label>
           </div>
         </div>
       </div>
@@ -1575,6 +1592,36 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               <span>
                 <span className="block text-sm text-white">Notifications must be on</span>
                 <span className="block text-xs text-gray-500">The user must allow notifications before starting.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/40">
+              <input
+                type="checkbox"
+                checked={formData.requireProfile}
+                onChange={(e) => setFormData({ ...formData, requireProfile: e.target.checked })}
+                className="mt-0.5 w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500"
+              />
+              <span>
+                <span className="block text-sm text-white">
+                  Profile must be 100% complete
+                  <FieldHelp text="On: members whose profile isn't 100% complete can't open the task. They are shown their percentage and every missing item, each with a link." />
+                </span>
+                <span className="block text-xs text-gray-500">Members below 100% see what is missing, with links.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/40">
+              <input
+                type="checkbox"
+                checked={formData.requireKyc}
+                onChange={(e) => setFormData({ ...formData, requireKyc: e.target.checked })}
+                className="mt-0.5 w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500"
+              />
+              <span>
+                <span className="block text-sm text-white">
+                  KYC must be verified
+                  <FieldHelp text="On: members whose KYC (ID verification) isn't approved can't open the task. Without KYC they get a link to the KYC page; while it's in review they're told so; if it was rejected they're asked to send it again." />
+                </span>
+                <span className="block text-xs text-gray-500">Only members whose ID is approved can start it.</span>
               </span>
             </label>
           </div>
@@ -1644,7 +1691,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <label className="block text-sm font-medium text-gray-400 mb-2">
             <Video className="w-4 h-4 inline mr-1" />
             Video Instructions (Optional)
-          </label>
+          <FieldHelp text="A how-to video (YouTube or upload), shown above the instructions on the task page." /></label>
           <ImageUploadField
             value={formData.instructionVideoUrl}
             onChange={(url) => setFormData({ ...formData, instructionVideoUrl: url })}
@@ -1713,7 +1760,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <label className="text-sm font-medium text-gray-400">
               <FileText className="w-4 h-4 inline mr-1" />
               Text Instructions (Optional)
-            </label>
+            <FieldHelp text="Step-by-step written instructions, shown in the coloured Instructions box on the task page." /></label>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -1769,7 +1816,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Start Date & Time
-            </label>
+            <FieldHelp text="Nobody sees the task before this time. Empty = live now." /></label>
             <DateField
               type="datetime-local"
               value={formData.startsAt}
@@ -1781,7 +1828,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               End Date & Time
-            </label>
+            <FieldHelp text="The task closes by itself after this time. Empty = no end." /></label>
             <DateField
               type="datetime-local"
               value={formData.expiresAt}

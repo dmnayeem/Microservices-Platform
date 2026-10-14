@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Download, Plus, Trash2, Store } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { NumberInput } from "@/components/admin/number-input";
 import {
   detectStore,
   proofItemPreset,
@@ -260,8 +261,7 @@ export function AppInstallTaskBuilder({
                     ))}
                   </select>
                   {needsTarget(it.kind) && (
-                    <input
-                      type="number"
+                    <NumberInput
                       min={1}
                       value={it.target ?? 1}
                       onChange={(e) =>
