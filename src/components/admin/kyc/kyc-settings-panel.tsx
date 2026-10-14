@@ -21,6 +21,7 @@ const DEFAULTS: SettingsBag = {
   "kyc.faceMinSimilarity": 88,
   "kyc.ocrMinConfidence": 0.7,
   "kyc.ocrRejectBelow": 0.2,
+  "kyc.mismatch_action": "ban",
 };
 
 export function KycSettingsPanel({
@@ -77,6 +78,19 @@ export function KycSettingsPanel({
           disabled={!canEdit}
           className={inp}
         />
+      </Field>
+
+      <Field settingKey="kyc.mismatch_action">
+        <select
+          value={String(values["kyc.mismatch_action"] ?? "ban")}
+          onChange={(e) => set("kyc.mismatch_action", e.target.value)}
+          disabled={!canEdit}
+          className={inp}
+        >
+          <option value="ban">Ban the account</option>
+          <option value="flag">Flag only (audit log)</option>
+          <option value="off">Off — don&apos;t check</option>
+        </select>
       </Field>
 
       <SaveBar canEdit={canEdit} busy={busy} dirty={dirty} onSave={save} />

@@ -17,6 +17,7 @@ import { resolveCountryCode } from "@/lib/country-codes";
 import { checkUsername, USERNAME_RULE_MESSAGE } from "@/lib/username";
 import { screenLinks } from "@/lib/link-safety";
 import { getUserDayContext } from "@/lib/user-day";
+import { enforceKycProfileMatch, mismatchSentence, type IdentityProfile } from "@/lib/kyc/profile-match";
 import {
   BIO_CHAR_LIMIT,
   BIO_WORD_LIMIT,
@@ -768,6 +769,27 @@ export async function PATCH(request: NextRequest) {
         );
       }
       updateData.targetingChangedAt = new Date();
+    }
+
+    // With approved KYC, the identity fields must keep matching the verified
+    // ID (lib/kyc/profile-match). Checked before saving: a mismatch saves
+    // nothing and bans the account (owner, 2026-10-15).
+    {
+      const identityKeys = ["name", "firstName", "lastName", "dateOfBirth", "nidNumber"] as const;
+      const touched = identityKeys.filter((k) => updateData[k] !== undefined);
+      if (touched.length > 0) {
+        const attempted = Object.fromEntries(touched.map((k) => [k, updateData[k]])) as IdentityProfile;
+        const match = await enforceKycProfileMatch(session.user.id, "profile_edit", attempted);
+        if (match.banned) {
+          return NextResponse.json(
+            {
+              error: `These details (${mismatchSentence(match.mismatches)}) don't match your verified ID. Accounts with false details are banned.`,
+              code: "KYC_PROFILE_MISMATCH",
+            },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Phishing / malware links in the public profile text (bio, name,

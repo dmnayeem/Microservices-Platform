@@ -27,6 +27,10 @@ export interface AutoKycResult {
 }
 
 /** Normalize a name for comparison: lowercase, strip punctuation, collapse spaces. */
+export function normName(s: string): string {
+  return norm(s);
+}
+
 function norm(s: string): string {
   return s
     .toLowerCase()
@@ -37,7 +41,7 @@ function norm(s: string): string {
 }
 
 /** True if the two names plausibly match (token subset either direction). */
-function nameMatches(profile: string, ocr: string): boolean {
+export function nameMatches(profile: string, ocr: string): boolean {
   const a = new Set(norm(profile).split(" ").filter((t) => t.length > 1));
   const b = new Set(norm(ocr).split(" ").filter((t) => t.length > 1));
   if (a.size === 0 || b.size === 0) return false;

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getSetting } from "@/lib/system-settings";
 import { runAutoKyc } from "@/lib/kyc/auto-verify";
 import { deliverToUser } from "@/lib/notify";
+import { enforceKycProfileMatch, mismatchSentence } from "@/lib/kyc/profile-match";
 
 /**
  * Automated ("Persona-like") KYC. Runs Gemini OCR on the ID + AWS Rekognition
@@ -197,6 +198,18 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+    // The profile must say what the ID says — NID number included, which
+    // the automatic check above does not compare (lib/kyc/profile-match).
+    const match = await enforceKycProfileMatch(userId, "kyc_approved");
+    if (match.banned) {
+      return NextResponse.json(
+        {
+          error: `Your profile details (${mismatchSentence(match.mismatches)}) don't match your ID. Accounts with false details are banned.`,
+          code: "KYC_PROFILE_MISMATCH",
+        },
+        { status: 403 }
+      );
+    }
     void deliverToUser({ category: "account_review",
       userId,
       title: "KYC verified ✅",
