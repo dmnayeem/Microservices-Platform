@@ -19,6 +19,22 @@ export interface Metric {
   hint?: string;
   href?: string;
   tone?: MetricTone;
+  /**
+   * The sub-heading this figure sits under ("Sign-ups", "Account status" …).
+   * Figures with a group are laid out in labelled rows, so fifteen numbers
+   * read as four short lists instead of one wall (owner, 2026-10-15).
+   */
+  group?: string;
+}
+
+/** The figures in their groups, in the order the groups first appear. */
+function grouped(metrics: Metric[]): { name: string | null; items: Metric[] }[] {
+  const by = new Map<string | null, Metric[]>();
+  for (const m of metrics) {
+    const name = m.group ?? null;
+    by.set(name, [...(by.get(name) ?? []), m]);
+  }
+  return [...by.entries()].map(([name, items]) => ({ name, items }));
 }
 
 const TONE: Record<MetricTone, string> = {
@@ -77,28 +93,41 @@ export function MetricPanel({
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {metrics.map((m) => {
-          const body = (
-            <>
-              <p className={cn("text-lg font-bold tabular-nums truncate", TONE[m.tone ?? "default"])}>
-                {typeof m.value === "number" ? m.value.toLocaleString() : m.value}
+      <div className="space-y-3">
+        {grouped(metrics).map((g, gi) => (
+          <div key={g.name ?? `g${gi}`}>
+            {g.name && (
+              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                {g.name}
+                <span className="h-px flex-1 bg-slate-800" />
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 truncate">{m.label}</p>
-              {m.hint && <p className="text-[10px] text-slate-600 truncate">{m.hint}</p>}
-            </>
-          );
-          const box = "rounded-lg border border-slate-800 bg-slate-950/40 px-2.5 py-2 min-w-0 flex flex-col";
-          return m.href ? (
-            <Link key={m.label} href={m.href} className={cn(box, "hover:border-slate-600 transition-colors")}>
-              {body}
-            </Link>
-          ) : (
-            <div key={m.label} className={box}>
-              {body}
+            )}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {g.items.map((m) => {
+                const body = (
+                  <>
+                    <p className={cn("text-xl font-bold leading-tight tabular-nums", TONE[m.tone ?? "default"])}>
+                      {typeof m.value === "number" ? m.value.toLocaleString() : m.value}
+                    </p>
+                    {/* Whole label, wrapping — a cut-off "AWAITING REVI…" said nothing. */}
+                    <p className="mt-0.5 text-xs font-medium leading-snug text-slate-300">{m.label}</p>
+                    {m.hint && <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{m.hint}</p>}
+                  </>
+                );
+                const box = "rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2.5 min-w-0 flex flex-col";
+                return m.href ? (
+                  <Link key={m.label} href={m.href} className={cn(box, "hover:border-slate-600 transition-colors")}>
+                    {body}
+                  </Link>
+                ) : (
+                  <div key={m.label} className={box}>
+                    {body}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </section>
   );

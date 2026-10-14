@@ -550,38 +550,38 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
   const pend = (key: string) => pendingBy.get(key);
 
   const userMetrics: Metric[] = [
-    { label: "Total users", value: totalUsers, href: "/admin/users" },
-    { label: "New today", value: newUsersToday, tone: newUsersToday > 0 ? "good" : "default" },
-    { label: "New · 7 days", value: newUsers7d },
-    { label: "New · 30 days", value: newUsers30d },
-    { label: "Online now", value: realtimeActive5m, hint: `${activeUsers24h.toLocaleString()} signed in · 24h` },
-    { label: "Active today", value: active.today, hint: "members, UTC day", href: "/admin/users/returning" },
-    { label: "Active · 7 days", value: active.d7, href: "/admin/users/returning" },
-    { label: "Active · 30 days", value: active.d30, href: "/admin/users/returning" },
-    { label: "Unverified", value: userStatus.get("PENDING_VERIFICATION") ?? 0, tone: "muted", href: "/admin/users?status=PENDING_VERIFICATION" },
-    { label: "Suspended", value: userStatus.get("SUSPENDED") ?? 0, tone: (userStatus.get("SUSPENDED") ?? 0) > 0 ? "warn" : "default", href: "/admin/users?status=SUSPENDED" },
-    { label: "Banned", value: userStatus.get("BANNED") ?? 0, tone: (userStatus.get("BANNED") ?? 0) > 0 ? "bad" : "default", href: "/admin/users?status=BANNED" },
-    { label: "KYC verified", value: verifiedKycCount, tone: "good", href: "/admin/users?kyc=APPROVED" },
+    { group: "Sign-ups", label: "Total users", value: totalUsers, href: "/admin/users" },
+    { group: "Sign-ups", label: "New today", value: newUsersToday, tone: newUsersToday > 0 ? "good" : "default" },
+    { group: "Sign-ups", label: "New · 7 days", value: newUsers7d },
+    { group: "Sign-ups", label: "New · 30 days", value: newUsers30d },
+    { group: "Activity", label: "Online now", value: realtimeActive5m, hint: `${activeUsers24h.toLocaleString()} signed in · 24h` },
+    { group: "Activity", label: "Active today", value: active.today, hint: "members, UTC day", href: "/admin/users/returning" },
+    { group: "Activity", label: "Active · 7 days", value: active.d7, href: "/admin/users/returning" },
+    { group: "Activity", label: "Active · 30 days", value: active.d30, href: "/admin/users/returning" },
+    { group: "Account status", label: "Unverified", value: userStatus.get("PENDING_VERIFICATION") ?? 0, tone: "muted", href: "/admin/users?status=PENDING_VERIFICATION" },
+    { group: "Account status", label: "Suspended", value: userStatus.get("SUSPENDED") ?? 0, tone: (userStatus.get("SUSPENDED") ?? 0) > 0 ? "warn" : "default", href: "/admin/users?status=SUSPENDED" },
+    { group: "Account status", label: "Banned", value: userStatus.get("BANNED") ?? 0, tone: (userStatus.get("BANNED") ?? 0) > 0 ? "bad" : "default", href: "/admin/users?status=BANNED" },
+    { group: "Verification & requests", label: "KYC verified", value: verifiedKycCount, tone: "good", href: "/admin/users?kyc=APPROVED" },
   ];
   if (pend("kyc") !== undefined)
-    userMetrics.push({ label: "KYC pending", value: pend("kyc")!, tone: pend("kyc")! > 0 ? "warn" : "default", href: "/admin/users/kyc" });
+    userMetrics.push({ group: "Verification & requests", label: "KYC pending", value: pend("kyc")!, tone: pend("kyc")! > 0 ? "warn" : "default", href: "/admin/users/kyc" });
   if (pend("creatorApps") !== undefined)
-    userMetrics.push({ label: "Creator apps", value: pend("creatorApps")!, tone: pend("creatorApps")! > 0 ? "warn" : "default", href: "/admin/creators" });
+    userMetrics.push({ group: "Verification & requests", label: "Creator apps", value: pend("creatorApps")!, tone: pend("creatorApps")! > 0 ? "warn" : "default", href: "/admin/creators" });
 
   const approvedSubs = (subStatus.get("APPROVED") ?? 0) + (subStatus.get("AUTO_APPROVED") ?? 0);
   const taskMetrics: Metric[] = [
-    { label: "Listed tasks", value: totalTasks, href: "/admin/tasks" },
-    { label: "Active", value: taskStatus.get("ACTIVE") ?? 0, tone: "good", href: "/admin/tasks?status=ACTIVE" },
-    { label: "Paused", value: taskStatus.get("PAUSED") ?? 0, tone: "muted", href: "/admin/tasks?status=PAUSED" },
-    { label: "Completed", value: taskStatus.get("COMPLETED") ?? 0, href: "/admin/tasks?status=COMPLETED" },
-    { label: "Expired", value: taskStatus.get("EXPIRED") ?? 0, tone: "muted", href: "/admin/tasks?status=EXPIRED" },
-    { label: "Buyer tasks to approve", value: taskStatus.get("PENDING_REVIEW") ?? 0, tone: (taskStatus.get("PENDING_REVIEW") ?? 0) > 0 ? "warn" : "default", href: "/admin/tasks?status=PENDING_REVIEW" },
-    { label: "Awaiting review", value: pendingApprovalsCount, tone: pendingApprovalsCount > 0 ? "warn" : "default", hint: "submitted, not reviewed", href: "/admin/submissions?status=PENDING" },
-    { label: "In progress", value: inProgressCount, tone: "muted", hint: "opened, not sent in" },
-    { label: "Approved", value: approvedSubs, tone: "good", hint: "all time, incl. auto", href: "/admin/submissions?status=APPROVED_ANY" },
-    { label: "Rejected", value: subStatus.get("REJECTED") ?? 0, tone: "bad", href: "/admin/submissions?status=REJECTED" },
-    { label: "Revision asked", value: subStatus.get("REVISION_REQUESTED") ?? 0, tone: "muted", href: "/admin/submissions?status=REVISION_REQUESTED" },
-    { label: "Completed today", value: completionsToday, hint: `${completionsMonth.toLocaleString()} this month` },
+    { group: "Tasks", label: "Listed tasks", value: totalTasks, href: "/admin/tasks" },
+    { group: "Tasks", label: "Active", value: taskStatus.get("ACTIVE") ?? 0, tone: "good", href: "/admin/tasks?status=ACTIVE" },
+    { group: "Tasks", label: "Paused", value: taskStatus.get("PAUSED") ?? 0, tone: "muted", href: "/admin/tasks?status=PAUSED" },
+    { group: "Tasks", label: "Completed", value: taskStatus.get("COMPLETED") ?? 0, href: "/admin/tasks?status=COMPLETED" },
+    { group: "Tasks", label: "Expired", value: taskStatus.get("EXPIRED") ?? 0, tone: "muted", href: "/admin/tasks?status=EXPIRED" },
+    { group: "Tasks", label: "Buyer tasks to approve", value: taskStatus.get("PENDING_REVIEW") ?? 0, tone: (taskStatus.get("PENDING_REVIEW") ?? 0) > 0 ? "warn" : "default", href: "/admin/tasks?status=PENDING_REVIEW" },
+    { group: "Submissions", label: "Awaiting review", value: pendingApprovalsCount, tone: pendingApprovalsCount > 0 ? "warn" : "default", hint: "submitted, not reviewed", href: "/admin/submissions?status=PENDING" },
+    { group: "Submissions", label: "In progress", value: inProgressCount, tone: "muted", hint: "opened, not sent in" },
+    { group: "Submissions", label: "Approved", value: approvedSubs, tone: "good", hint: "all time, incl. auto", href: "/admin/submissions?status=APPROVED_ANY" },
+    { group: "Submissions", label: "Rejected", value: subStatus.get("REJECTED") ?? 0, tone: "bad", href: "/admin/submissions?status=REJECTED" },
+    { group: "Submissions", label: "Revision asked", value: subStatus.get("REVISION_REQUESTED") ?? 0, tone: "muted", href: "/admin/submissions?status=REVISION_REQUESTED" },
+    { group: "Completions", label: "Completed today", value: completionsToday, hint: `${completionsMonth.toLocaleString()} this month` },
   ];
 
   const withdrawalMetrics: Metric[] = seesMoney
