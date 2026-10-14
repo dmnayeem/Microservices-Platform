@@ -360,6 +360,9 @@ model Banner {
   iconEmoji   String?
   bgGradient  String? // e.g. "from-blue-600 to-purple-600"
   linkUrl     String?
+  /// Title, subtitle, button and the dark shade over the picture. Off = the
+  /// picture alone, clean; the whole banner still opens linkUrl.
+  showText    Boolean        @default(true)
   location    BannerLocation @default(HOME)
   order       Int            @default(0)
   isActive    Boolean        @default(true)

@@ -36,6 +36,7 @@ interface Banner {
   iconEmoji: string | null;
   bgGradient: string | null;
   linkUrl: string | null;
+  showText?: boolean;
   location: string;
   order: number;
   isActive: boolean;
@@ -346,6 +347,7 @@ function EditBannerModal({
     videoUrl: banner.videoUrl ?? "",
     bgGradient: banner.bgGradient ?? gradients[0],
     linkUrl: banner.linkUrl ?? "",
+    showText: banner.showText !== false,
     location: banner.location,
     order: banner.order,
     isActive: banner.isActive,
@@ -481,6 +483,23 @@ function EditBannerModal({
               ))}
             </div>
           </Field>
+          {/* Off = the picture alone (artwork that has its own text): no dark
+              shade, no title, no button; tapping anywhere opens the link. */}
+          <label className="flex items-start gap-2 rounded-lg border border-gray-700 bg-gray-900/60 p-3 text-sm text-gray-200">
+            <input
+              type="checkbox"
+              checked={form.showText}
+              onChange={(e) => setForm({ ...form, showText: e.target.checked })}
+              className="mt-0.5"
+            />
+            <span>
+              Show title &amp; button over the picture
+              <span className="block text-xs text-gray-500">
+                Untick when the picture already has its own text — it then shows clean, with no dark shade, and
+                tapping anywhere on it opens the link.
+              </span>
+            </span>
+          </label>
           <Field label="Link URL (internal path or full URL)">
             <input
               value={form.linkUrl}
@@ -575,6 +594,7 @@ function CreateBannerModal({
     videoUrl: "",
     bgGradient: gradients[0],
     linkUrl: "",
+    showText: true,
     location: "HOME",
     order: 0,
     isActive: true,
@@ -687,6 +707,23 @@ function CreateBannerModal({
               ))}
             </div>
           </Field>
+          {/* Off = the picture alone (artwork that has its own text): no dark
+              shade, no title, no button; tapping anywhere opens the link. */}
+          <label className="flex items-start gap-2 rounded-lg border border-gray-700 bg-gray-900/60 p-3 text-sm text-gray-200">
+            <input
+              type="checkbox"
+              checked={form.showText}
+              onChange={(e) => setForm({ ...form, showText: e.target.checked })}
+              className="mt-0.5"
+            />
+            <span>
+              Show title &amp; button over the picture
+              <span className="block text-xs text-gray-500">
+                Untick when the picture already has its own text — it then shows clean, with no dark shade, and
+                tapping anywhere on it opens the link.
+              </span>
+            </span>
+          </label>
           <Field label="Link URL (internal path or full URL)">
             <input
               value={form.linkUrl}

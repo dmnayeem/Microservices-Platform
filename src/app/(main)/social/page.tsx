@@ -255,6 +255,7 @@ export default async function SocialPage() {
     ctaLabel: b.linkUrl ? "Open" : undefined,
     ctaHref: b.linkUrl ?? undefined,
     bgGradient: b.bgGradient ?? undefined,
+    showText: b.showText,
   }));
 
   return (

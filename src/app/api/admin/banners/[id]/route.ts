@@ -28,6 +28,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.videoUrl !== undefined) data.videoUrl = body.videoUrl || null;
   if (body.bgGradient !== undefined) data.bgGradient = body.bgGradient ?? null;
   if (body.linkUrl !== undefined) data.linkUrl = body.linkUrl ?? null;
+  if (body.showText !== undefined) data.showText = body.showText !== false;
   if (body.location !== undefined) data.location = body.location;
   if (body.order !== undefined) data.order = parseInt(body.order);
   if (body.isActive !== undefined) data.isActive = !!body.isActive;
