@@ -119,10 +119,6 @@ export function PersonalTab({
           Your name, date of birth, gender, NID number and address are checked against your KYC (ID verification).
           <b className="text-(--app-ink)"> If the details are fake or don&apos;t match your KYC, your account will be banned</b>.
         </p>
-        <p className="mt-1 text-xs">
-          আপনার নাম, জন্মতারিখ, লিঙ্গ, NID নম্বর ও ঠিকানা KYC-র সাথে মিলিয়ে দেখা হয়।{" "}
-          <b className="text-(--app-ink)">ভুয়া তথ্য দিলে বা KYC-র সাথে না মিললে আপনার ID ban হবে</b>।
-        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="First Name" anchor="firstName">

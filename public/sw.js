@@ -19,7 +19,7 @@ const RUNTIME_MAX_ENTRIES = 160;
 // the landing page again — "it just reloads" (owner, 2026-10-15). Now they get
 // this page, built here so it needs no network at all, saying what is wrong
 // and how to fix it on their phone.
-const OFFLINE_HTML = `<!doctype html><html lang="bn"><head><meta charset="utf-8">
+const OFFLINE_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RevType — can't connect</title>
 <style>
@@ -31,20 +31,19 @@ b{color:#fff}code{background:#14211c;border:1px solid #23362e;border-radius:6px;
 .card{background:#111c18;border:1px solid #1f302a;border-radius:14px;padding:14px 16px;margin-top:14px}
 button{margin-top:18px;width:100%;min-height:48px;border:0;border-radius:12px;background:#3ee6a4;color:#04140d;font-weight:800;font-size:16px}
 </style></head><body><main>
-<h1>RevType-এ পৌঁছানো যাচ্ছে না</h1>
-<p>আপনার এই নেটওয়ার্ক (মোবাইল ডাটা) এখন <b>revtype.com</b> খুঁজে পাচ্ছে না। Wi-Fi-তে সাইট ঠিকমতো চলে। নিচের যেকোনো একটা করলেই মোবাইল ডাটাতেও চলবে:</p>
-<div class="card"><h2>Android — Private DNS (সবচেয়ে সহজ)</h2><ol>
-<li><b>Settings</b> খুলুন → <b>Connections</b> / <b>Network &amp; internet</b></li>
+<h1>Can't reach RevType</h1>
+<p>Your current network (often mobile data) can't find <b>revtype.com</b> right now. The site works on Wi-Fi. Do one of these and it will work on mobile data too:</p>
+<div class="card"><h2>Android — Private DNS (easiest)</h2><ol>
+<li>Open <b>Settings</b> → <b>Connections</b> / <b>Network &amp; internet</b></li>
 <li><b>Private DNS</b> → <b>Private DNS provider hostname</b></li>
-<li>লিখুন <code>dns.google</code> → <b>Save</b></li></ol></div>
+<li>Type <code>dns.google</code> → <b>Save</b></li></ol></div>
 <div class="card"><h2>Chrome — Secure DNS</h2><ol>
-<li>Chrome-এ <b>⋮</b> → <b>Settings</b> → <b>Privacy and security</b></li>
-<li><b>Use secure DNS</b> চালু করুন → <b>Google (Public DNS)</b> বাছুন</li></ol></div>
+<li>In Chrome tap <b>⋮</b> → <b>Settings</b> → <b>Privacy and security</b></li>
+<li>Turn on <b>Use secure DNS</b> → choose <b>Google (Public DNS)</b></li></ol></div>
 <div class="card"><h2>iPhone</h2><ol>
-<li>App Store থেকে <b>1.1.1.1</b> (Cloudflare) অ্যাপ নিন</li>
-<li>অ্যাপ খুলে বড় বোতামটা চালু করুন</li></ol></div>
-<p style="margin-top:16px">Can't reach RevType on this network. Use Wi-Fi, or set Private DNS to <code>dns.google</code> (Android) / turn on Secure DNS in Chrome / use the 1.1.1.1 app (iPhone), then tap Try again.</p>
-<button onclick="location.reload()">আবার চেষ্টা করুন · Try again</button>
+<li>Install the <b>1.1.1.1</b> app (by Cloudflare) from the App Store</li>
+<li>Open it and switch it on</li></ol></div>
+<button onclick="location.reload()">Try again</button>
 </main></body></html>`;
 
 function offlineResponse() {

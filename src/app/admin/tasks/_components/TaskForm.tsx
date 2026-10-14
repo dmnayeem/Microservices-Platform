@@ -880,7 +880,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Title <span className="text-red-400">*</span>
-            <FieldHelp text="Task-এর নাম — member তালিকায় এটাই দেখে। ছোট ও পরিষ্কার লিখুন (যেমন &quot;Facebook page follow করুন&quot;)।" /></label>
+            <FieldHelp text="The task's name — what members see in the list. Keep it short and clear (e.g. &quot;Follow our Facebook page&quot;)." /></label>
             <input
               type="text"
               required
@@ -894,7 +894,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Description <span className="text-red-400">*</span>
-            <FieldHelp text="Task সম্পর্কে ১–২ লাইন: কী করতে হবে, কেন। Task কার্ড ও task পেজের উপরে দেখায়।" /></label>
+            <FieldHelp text="One or two lines on what to do and why. Shown on the task card and at the top of the task page." /></label>
             <textarea
               required
               rows={3}
@@ -909,7 +909,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Thumbnail
-              <FieldHelp text="Task কার্ডের ছবি। খালি রাখলে task-এর ধরন অনুযায়ী সাধারণ icon দেখায়।" /></label>
+              <FieldHelp text="The task card's picture. Empty = a standard icon for the task type." /></label>
               <div className="space-y-3">
                 {formData.thumbnailUrl ? (
                   <div className="relative inline-block">
@@ -1114,7 +1114,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Target URL <span className="text-red-400">*</span>
-              <FieldHelp text="Member যে লিংকে গিয়ে কাজ করবে। পুরো লিংক দিন (https:// সহ)।" /></label>
+              <FieldHelp text="The link the member opens to do the task. Use the full link, with https://." /></label>
               <input
                 type="url"
                 required
@@ -1128,7 +1128,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Proxy Instructions
-              <FieldHelp text="Proxy task-এ member-কে কোন proxy/সেটিং ব্যবহার করতে হবে তার নির্দেশনা।" /></label>
+              <FieldHelp text="For a proxy task: which proxy or settings the member must use." /></label>
               <textarea
                 rows={3}
                 value={formData.proxyInstructions}
@@ -1190,7 +1190,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
                   <label className="block text-sm text-gray-400 mb-2">
                     <ImageIcon className="w-4 h-4 inline mr-1" />
                     Question Image (Optional)
-                  <FieldHelp text="প্রশ্নের সাথে ছবি দেখাতে চাইলে দিন; না দিলে শুধু লেখা দেখায়।" /></label>
+                  <FieldHelp text="A picture shown with the question. Optional — without it only the text shows." /></label>
                   <div className="flex items-center gap-3">
                     {q.imageUrl ? (
                       <div className="relative">
@@ -1250,7 +1250,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
                     Explanation (shown after answer)
-                  <FieldHelp text="উত্তর দেওয়ার পর member-কে সঠিক উত্তরের ব্যাখ্যা দেখানো হয়।" /></label>
+                  <FieldHelp text="Shown to the member after they answer — why the correct answer is correct." /></label>
                   <input
                     type="text"
                     value={q.explanation}
@@ -1273,7 +1273,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Points Reward <span className="text-red-400">*</span>
-            <FieldHelp text="Task approve হলে member কত point পাবে। এটাই member-এর আয়।" /></label>
+            <FieldHelp text="Points the member earns when the task is approved. This is their pay for the task." /></label>
             {formData.type === "SOCIAL" ? (
               <>
                 <NumberInput
@@ -1301,7 +1301,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               XP Reward
-            <FieldHelp text="Approve হলে কত XP (level-এর অগ্রগতি) পাবে। টাকার সাথে সম্পর্ক নেই; 0 রাখলে XP দেয় না।" /></label>
+            <FieldHelp text="XP (level progress) earned on approval. Not money; 0 = no XP." /></label>
             <NumberInput
               min="0"
               value={formData.xpReward}
@@ -1315,7 +1315,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Duration (seconds)
-            <FieldHelp text="কত সেকেন্ড ধরে কাজটা করতে/দেখতে হবে (যেমন ভিডিও দেখার সময়)। এর আগে জমা দেওয়া যায় না।" /></label>
+            <FieldHelp text="How many seconds the member must spend (e.g. watching). They can't submit before that." /></label>
             <NumberInput
               min="0"
               value={formData.duration}
@@ -1335,7 +1335,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Minimum Level
-            <FieldHelp text="এই level-এর নিচের member task দেখতেই পাবে না। 1 = সবাই।" /></label>
+            <FieldHelp text="Members below this level don't see the task at all. 1 = everyone." /></label>
             <NumberInput
               min="1"
               value={formData.minLevel}
@@ -1349,7 +1349,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Required Access Level
-            <FieldHelp text="কোন plan থেকে task খোলা যাবে। নিচের plan-এর member &quot;upgrade&quot; বার্তা দেখবে। 0 = সব plan।" /></label>
+            <FieldHelp text="The plan needed to open the task. Members on a lower plan see an upgrade offer. 0 = every plan." /></label>
             <NumberInput
               min={0}
               max={1000}
@@ -1370,7 +1370,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Sequence Order
-            <FieldHelp text="তালিকায় কোন task আগে আসবে। ছোট সংখ্যা আগে। একই category-তে ক্রম অনুযায়ী একটার পর একটা খোলে।" /></label>
+            <FieldHelp text="Where the task sits in the list — lower numbers first. In a category, tasks unlock in this order." /></label>
             <NumberInput
               min={0}
               value={formData.order}
@@ -1387,7 +1387,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Cooldown (minutes)
-            <FieldHelp text="একবার করার পর আবার শুরু করতে কত মিনিট অপেক্ষা করতে হবে। 0 = অপেক্ষা নেই।" /></label>
+            <FieldHelp text="Minutes a member must wait before starting this task again. 0 = no wait." /></label>
             <NumberInput
               min="0"
               value={formData.cooldownMinutes}
@@ -1412,7 +1412,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               <span className="text-sm font-medium text-gray-300">
                 Hide from users
               </span>
-            <FieldHelp text="চালু করলে task member-দের কাছে লুকানো থাকে (মুছে যায় না)। পরে আবার খুলে দিতে পারবেন।" /></label>
+            <FieldHelp text="Hides the task from members without deleting it. Untick to show it again." /></label>
             <p className="text-[11px] text-gray-500 mt-1 ml-6.5">
               Hard-hide this task from every user-facing list regardless of level
               / plan gating. Admin-only visibility control.
@@ -1494,7 +1494,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Daily Limit per User
-            <FieldHelp text="একজন member দিনে কতবার এই task করতে পারবে। খালি রাখলে দিনে ১ বার। Repeat &quot;Every day&quot; হলে প্রতিদিন member-এর রাত ১২টায় আবার খোলে।" /></label>
+            <FieldHelp text="How many times one member may do this task per day. Empty = once a day. With Repeat = Every day it opens again after the member's local midnight." /></label>
             <NumberInput
               min="0"
               value={formData.dailyLimit}
@@ -1507,7 +1507,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Repeat
-              <FieldHelp text="Every day: member আজ করলে আজকের মতো বন্ধ, তার রাত ১২টার পর আবার খোলে (দিনে কতবার — Daily Limit)। Once per member: একজন member জীবনে একবারই করতে পারবে, তারপর আর কখনো খুলবে না। Default: Social ও Survey task একবার, বাকি সব প্রতিদিন।" />
+              <FieldHelp text="Every day: once a member has done it today it closes until their local midnight, then opens again (how many times a day = Daily Limit). Once per member: each member can do it once, ever. Default: social and survey tasks once, every other type every day." />
             </label>
             <select
               value={formData.repeat}
@@ -1523,7 +1523,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Total Slots
-            <FieldHelp text="সব member মিলিয়ে মোট কতবার task করা যাবে (যেমন 100 জন)। পূর্ণ হলে সবার জন্য বন্ধ হয়। খালি = সীমা নেই।" /></label>
+            <FieldHelp text="How many times the task can be done in total, by all members together (e.g. 100). When full it closes for everyone. Empty = no limit." /></label>
             <NumberInput
               min="0"
               value={formData.totalLimit}
@@ -1543,7 +1543,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             />
             <label htmlFor="autoApprove" className="text-sm text-gray-400">
               Auto-approve submissions
-            <FieldHelp text="চালু করলে জমা দেওয়ার সাথে সাথে approve হয়ে point পায়, admin-কে দেখতে হয় না। বন্ধ থাকলে review-তে যায়।" /></label>
+            <FieldHelp text="On: a submission is approved and paid immediately, with no admin review. Off: it goes to the review queue." /></label>
           </div>
 
           <div className="flex items-center gap-3">
@@ -1556,7 +1556,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             />
             <label htmlFor="blockVpn" className="text-sm text-gray-400">
               No VPN — members on a VPN / proxy can&apos;t start or submit this task
-            <FieldHelp text="চালু করলে VPN/proxy ব্যবহারকারী member task শুরু বা জমা দিতে পারবে না — ভুয়া কাজ ঠেকাতে।" /></label>
+            <FieldHelp text="On: members on a VPN or proxy can't start or submit this task — stops fake work." /></label>
           </div>
         </div>
       </div>
@@ -1604,7 +1604,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               <span>
                 <span className="block text-sm text-white">
                   Profile must be 100% complete
-                  <FieldHelp text="চালু করলে যার profile ১০০% পূরণ হয়নি সে task খুলতে পারবে না। তাকে দেখানো হবে কত % হয়েছে আর কোন ঘরগুলো বাকি, প্রতিটার link সহ।" />
+                  <FieldHelp text="On: members whose profile isn't 100% complete can't open the task. They are shown their percentage and every missing item, each with a link." />
                 </span>
                 <span className="block text-xs text-gray-500">Members below 100% see what is missing, with links.</span>
               </span>
@@ -1619,7 +1619,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               <span>
                 <span className="block text-sm text-white">
                   KYC must be verified
-                  <FieldHelp text="চালু করলে যার KYC (ID যাচাই) approve হয়নি সে task খুলতে পারবে না। KYC না দিলে KYC পেজের link পায়; জমা দেওয়া থাকলে “review চলছে” দেখে; reject হলে আবার জমা দিতে বলা হয়।" />
+                  <FieldHelp text="On: members whose KYC (ID verification) isn't approved can't open the task. Without KYC they get a link to the KYC page; while it's in review they're told so; if it was rejected they're asked to send it again." />
                 </span>
                 <span className="block text-xs text-gray-500">Only members whose ID is approved can start it.</span>
               </span>
@@ -1691,7 +1691,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <label className="block text-sm font-medium text-gray-400 mb-2">
             <Video className="w-4 h-4 inline mr-1" />
             Video Instructions (Optional)
-          <FieldHelp text="কীভাবে task করতে হয় তার ভিডিও (YouTube বা আপলোড)। task পেজে নির্দেশনার উপরে দেখায়।" /></label>
+          <FieldHelp text="A how-to video (YouTube or upload), shown above the instructions on the task page." /></label>
           <ImageUploadField
             value={formData.instructionVideoUrl}
             onChange={(url) => setFormData({ ...formData, instructionVideoUrl: url })}
@@ -1760,7 +1760,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <label className="text-sm font-medium text-gray-400">
               <FileText className="w-4 h-4 inline mr-1" />
               Text Instructions (Optional)
-            <FieldHelp text="ধাপে ধাপে লেখা নির্দেশনা। task পেজে রঙিন &quot;Instructions&quot; বাক্সে দেখায়।" /></label>
+            <FieldHelp text="Step-by-step written instructions, shown in the coloured Instructions box on the task page." /></label>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -1816,7 +1816,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Start Date & Time
-            <FieldHelp text="এই সময়ের আগে task কেউ দেখবে না। খালি = এখনই চালু।" /></label>
+            <FieldHelp text="Nobody sees the task before this time. Empty = live now." /></label>
             <DateField
               type="datetime-local"
               value={formData.startsAt}
@@ -1828,7 +1828,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               End Date & Time
-            <FieldHelp text="এই সময়ের পরে task নিজে থেকে বন্ধ হয়ে যায়। খালি = শেষ নেই।" /></label>
+            <FieldHelp text="The task closes by itself after this time. Empty = no end." /></label>
             <DateField
               type="datetime-local"
               value={formData.expiresAt}
