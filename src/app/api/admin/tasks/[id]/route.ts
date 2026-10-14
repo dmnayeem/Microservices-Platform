@@ -307,6 +307,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         // "Installed app only" / "notifications on" (lib/task-device-gate.ts).
         ...(typeof body.requireApp === "boolean" ? { requireApp: body.requireApp } : {}),
         ...(typeof body.requirePush === "boolean" ? { requirePush: body.requirePush } : {}),
+        ...(typeof body.requireProfile === "boolean" ? { requireProfile: body.requireProfile } : {}),
+        ...(typeof body.requireKyc === "boolean" ? { requireKyc: body.requireKyc } : {}),
         boardId: boardId || null,
         // Surveys: always manual review, and once per user — enforced per user
         // in /api/tasks/[id]/start, NOT via `totalLimit`.

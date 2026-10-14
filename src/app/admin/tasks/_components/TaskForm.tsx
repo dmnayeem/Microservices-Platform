@@ -154,6 +154,8 @@ interface TaskFormProps {
     boardId?: string | null;
     requireApp?: boolean;
     requirePush?: boolean;
+    requireProfile?: boolean;
+    requireKyc?: boolean;
     deviceTypes?: string[];
     deviceOses?: string[];
     deviceBrands?: string[];
@@ -239,6 +241,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     boardId: task?.boardId ?? defaultBoardId ?? "",
     requireApp: task?.requireApp ?? false,
     requirePush: task?.requirePush ?? false,
+    requireProfile: task?.requireProfile ?? false,
+    requireKyc: task?.requireKyc ?? false,
   });
   // "Tell users about this task" — nothing ticked = nothing is sent. Hidden
   // once the task has been announced (it is sent once per task).
@@ -1588,6 +1592,36 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               <span>
                 <span className="block text-sm text-white">Notifications must be on</span>
                 <span className="block text-xs text-gray-500">The user must allow notifications before starting.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/40">
+              <input
+                type="checkbox"
+                checked={formData.requireProfile}
+                onChange={(e) => setFormData({ ...formData, requireProfile: e.target.checked })}
+                className="mt-0.5 w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500"
+              />
+              <span>
+                <span className="block text-sm text-white">
+                  Profile must be 100% complete
+                  <FieldHelp text="চালু করলে যার profile ১০০% পূরণ হয়নি সে task খুলতে পারবে না। তাকে দেখানো হবে কত % হয়েছে আর কোন ঘরগুলো বাকি, প্রতিটার link সহ।" />
+                </span>
+                <span className="block text-xs text-gray-500">Members below 100% see what is missing, with links.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/40">
+              <input
+                type="checkbox"
+                checked={formData.requireKyc}
+                onChange={(e) => setFormData({ ...formData, requireKyc: e.target.checked })}
+                className="mt-0.5 w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500"
+              />
+              <span>
+                <span className="block text-sm text-white">
+                  KYC must be verified
+                  <FieldHelp text="চালু করলে যার KYC (ID যাচাই) approve হয়নি সে task খুলতে পারবে না। KYC না দিলে KYC পেজের link পায়; জমা দেওয়া থাকলে “review চলছে” দেখে; reject হলে আবার জমা দিতে বলা হয়।" />
+                </span>
+                <span className="block text-xs text-gray-500">Only members whose ID is approved can start it.</span>
               </span>
             </label>
           </div>

@@ -98,6 +98,8 @@ export async function GET(request: NextRequest) {
           description: t.description ?? undefined,
           requireApp: t.requireApp,
           requirePush: t.requirePush,
+          requireProfile: t.requireProfile,
+          requireKyc: t.requireKyc,
           difficulty: (t.difficulty as string) || "BEGINNER",
           questionCount: coerceQuizQuestions(t.questions)?.length ?? 0,
           timeLimit: 0,

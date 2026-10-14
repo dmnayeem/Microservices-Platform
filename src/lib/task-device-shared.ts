@@ -10,4 +10,5 @@ export const TASK_REQUIREMENTS_CODE = "TASK_REQUIREMENTS";
 /** Window event that opens the "do this first" popup; detail = { needs }. */
 export const TASK_REQUIREMENTS_EVENT = "rt:task-requirements";
 
-export type TaskNeed = "app" | "push";
+/** `profile` = 100% profile, `kyc` = approved KYC (Task.requireProfile / requireKyc). */
+export type TaskNeed = "app" | "push" | "profile" | "kyc";

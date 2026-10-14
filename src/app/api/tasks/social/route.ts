@@ -178,6 +178,8 @@ export async function GET(request: NextRequest) {
         ...mapSocialTaskRow(t),
         requireApp: t.requireApp,
         requirePush: t.requirePush,
+        requireProfile: t.requireProfile,
+        requireKyc: t.requireKyc,
         completedCount: t.completedCount,
         totalLimit: t.totalLimit,
         planLock:

@@ -2447,6 +2447,10 @@ model Task {
   // installed app / with notifications on. Off = an ordinary task.
   requireApp          Boolean          @default(false)
   requirePush         Boolean          @default(false)
+  /// Can't be started until the member's profile is 100% complete / their KYC
+  /// is approved (src/lib/task-device-gate.ts, owner 2026-10-15).
+  requireProfile      Boolean          @default(false)
+  requireKyc          Boolean          @default(false)
   // When users were told about this task (src/lib/task-announce.ts) — once only.
   announcedAt         DateTime?
   // Device targeting (src/lib/device-target.ts). Empty = any device.

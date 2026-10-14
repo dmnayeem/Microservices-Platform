@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BellRing, Check, Loader2, MoreVertical, Plus, Share, Smartphone, X } from "lucide-react";
+import Link from "next/link";
+import { BadgeCheck, BellRing, Check, Loader2, MoreVertical, Plus, Share, Smartphone, UserRound, X } from "lucide-react";
 import { isStandaloneApp } from "@/lib/standalone";
 import { subscribeToPush } from "@/lib/push-client";
 import { TASK_REQUIREMENTS_EVENT, type TaskNeed } from "@/lib/task-device-shared";
@@ -20,16 +21,22 @@ const isIos = () =>
 
 export function TaskRequirementsGate() {
   const [needs, setNeeds] = useState<TaskNeed[] | null>(null);
+  // For a "profile" need: how far along it is and what is still missing.
+  const [profile, setProfile] = useState<{ percentage: number; missing: { label: string; href: string }[] } | null>(null);
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
   const [pushState, setPushState] = useState<"idle" | "working" | "on" | "denied" | "failed">("idle");
   const [canInstall, setCanInstall] = useState(false);
 
   useEffect(() => {
     const open = (e: Event) => {
-      const n = ((e as CustomEvent<{ needs?: string[] }>).detail?.needs ?? []).filter(
-        (x): x is TaskNeed => x === "app" || x === "push"
+      const detail = (e as CustomEvent<{ needs?: string[]; profile?: unknown; kycStatus?: string }>).detail;
+      const n = (detail?.needs ?? []).filter(
+        (x): x is TaskNeed => x === "app" || x === "push" || x === "profile" || x === "kyc"
       );
       if (n.length === 0) return;
       setNeeds(n);
+      setProfile((detail?.profile as typeof profile) ?? null);
+      setKycStatus(detail?.kycStatus ?? null);
       setPushState("idle");
       setCanInstall(!!window.__egBip);
     };
@@ -41,6 +48,8 @@ export function TaskRequirementsGate() {
 
   const needApp = needs.includes("app");
   const needPush = needs.includes("push");
+  const needProfile = needs.includes("profile");
+  const needKyc = needs.includes("kyc");
   // In the browser the push step is pointless before the app step: the app is
   // its own device and asks for permission on its own.
   const inApp = isStandaloneApp();
@@ -79,7 +88,14 @@ export function TaskRequirementsGate() {
   };
 
   const step = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink) font-semibold";
-  const done = (!needApp || inApp) && (!needPush || pushState === "on");
+  // Profile and KYC are finished on their own pages, not in this popup.
+  const done = (!needApp || inApp) && (!needPush || pushState === "on") && !needProfile && !needKyc;
+  const asked = [
+    needApp && "in the RevType app",
+    needPush && "with notifications turned on",
+    needProfile && "with a 100% complete profile",
+    needKyc && "after your ID (KYC) is verified",
+  ].filter(Boolean) as string[];
 
   return (
     <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/60 p-3" role="dialog" aria-modal="true">
@@ -88,10 +104,7 @@ export function TaskRequirementsGate() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white">Before you start this task</p>
             <p className="text-xs text-(--app-ink-2) mt-0.5">
-              This task is only available {needApp && "in the RevType app"}
-              {needApp && needPush && " with "}
-              {!needApp && needPush && "with "}
-              {needPush && "notifications turned on"}.
+              This task is only available {asked.join(", ")}.
             </p>
           </div>
           <button
@@ -160,6 +173,61 @@ export function TaskRequirementsGate() {
                     <p className="mt-2 text-xs text-rose-300">Couldn&apos;t turn them on. Try again in a moment.</p>
                   )}
                 </>
+              )}
+            </li>
+          )}
+          {needProfile && (
+            <li className="rounded-xl bg-(--app-surface-2)/60 p-3">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                <UserRound className="w-4 h-4 text-emerald-400" /> Complete your profile to 100%
+              </p>
+              {profile && (
+                <>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/30">
+                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${profile.percentage}%` }} />
+                  </div>
+                  <p className="mt-1 text-xs text-(--app-ink-2)">Now {profile.percentage}%. Still to do:</p>
+                  <ul className="mt-1 space-y-1">
+                    {profile.missing.slice(0, 6).map((m) => (
+                      <li key={m.label}>
+                        <Link href={m.href} onClick={() => setNeeds(null)} className="text-xs font-semibold text-(--app-accent-ink) hover:underline">
+                          + {m.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <Link
+                href="/profile"
+                onClick={() => setNeeds(null)}
+                className="mt-2 block w-full rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) py-2 text-center text-xs font-bold text-white hover:opacity-90"
+              >
+                Open my profile
+              </Link>
+            </li>
+          )}
+
+          {needKyc && (
+            <li className="rounded-xl bg-(--app-surface-2)/60 p-3">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                <BadgeCheck className="w-4 h-4 text-sky-400" /> Verify your ID (KYC)
+              </p>
+              <p className="mt-1 text-xs text-(--app-ink-2)">
+                {kycStatus === "PENDING"
+                  ? "Your ID is being checked. You can start this task as soon as it is approved."
+                  : kycStatus === "REJECTED"
+                    ? "Your last ID check was not approved. Send it again with clear photos and details that match your profile."
+                    : "Send your ID once. The details must match your profile exactly."}
+              </p>
+              {kycStatus !== "PENDING" && (
+                <Link
+                  href="/kyc"
+                  onClick={() => setNeeds(null)}
+                  className="mt-2 block w-full rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) py-2 text-center text-xs font-bold text-white hover:opacity-90"
+                >
+                  Verify my ID
+                </Link>
               )}
             </li>
           )}

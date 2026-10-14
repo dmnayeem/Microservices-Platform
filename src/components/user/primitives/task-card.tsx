@@ -123,7 +123,12 @@ export function SlotsBar({ completed, total }: { completed: number; total: numbe
 }
 
 /** Shape of the two switches on a task row; anything else on it is ignored. */
-export type TaskDeviceNeeds = { requireApp?: boolean | null; requirePush?: boolean | null };
+export type TaskDeviceNeeds = {
+  requireApp?: boolean | null;
+  requirePush?: boolean | null;
+  requireProfile?: boolean | null;
+  requireKyc?: boolean | null;
+};
 
 /**
  * "📱 App only" / "🔔 Notifications on" — shown on a task card BEFORE the
@@ -131,7 +136,7 @@ export type TaskDeviceNeeds = { requireApp?: boolean | null; requirePush?: boole
  * nothing for an ordinary task.
  */
 export function TaskDeviceChips({ needs }: { needs?: TaskDeviceNeeds | null }) {
-  if (!needs?.requireApp && !needs?.requirePush) return null;
+  if (!needs?.requireApp && !needs?.requirePush && !needs?.requireProfile && !needs?.requireKyc) return null;
   return (
     <>
       {needs.requireApp && (
@@ -142,6 +147,16 @@ export function TaskDeviceChips({ needs }: { needs?: TaskDeviceNeeds | null }) {
       {needs.requirePush && (
         <span className="app-chip" title="Notifications must be turned on">
           🔔 Notifications on
+        </span>
+      )}
+      {needs.requireProfile && (
+        <span className="app-chip" title="Your profile must be 100% complete">
+          👤 Profile 100%
+        </span>
+      )}
+      {needs.requireKyc && (
+        <span className="app-chip" title="Your ID (KYC) must be verified">
+          🪪 KYC verified
         </span>
       )}
     </>

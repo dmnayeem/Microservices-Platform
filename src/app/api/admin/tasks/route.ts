@@ -277,6 +277,8 @@ export async function POST(request: NextRequest) {
         // "Installed app only" / "notifications on" (lib/task-device-gate.ts).
         ...(typeof body.requireApp === "boolean" ? { requireApp: body.requireApp } : {}),
         ...(typeof body.requirePush === "boolean" ? { requirePush: body.requirePush } : {}),
+        ...(typeof body.requireProfile === "boolean" ? { requireProfile: body.requireProfile } : {}),
+        ...(typeof body.requireKyc === "boolean" ? { requireKyc: body.requireKyc } : {}),
         boardId: boardId || null,
         createdById: session.user.id,
         // Surveys: always manual review, and once per user — enforced per user

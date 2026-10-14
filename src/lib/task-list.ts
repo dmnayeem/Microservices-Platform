@@ -198,6 +198,8 @@ export async function listTasksForUser(
         repeat: true,
         requireApp: true,
         requirePush: true,
+        requireProfile: true,
+        requireKyc: true,
       },
     }),
     prisma.task.count({ where }),
@@ -358,6 +360,8 @@ export async function listTasksForUser(
       // can say so before the member opens the task.
       requireApp: task.requireApp,
       requirePush: task.requirePush,
+      requireProfile: task.requireProfile,
+      requireKyc: task.requireKyc,
       // `completedCount` is the CREDITED count the slot limit is enforced
       // against (Task.completedCount). The number of attempts is a different
       // thing and now ships under its own name — shipping attempts as

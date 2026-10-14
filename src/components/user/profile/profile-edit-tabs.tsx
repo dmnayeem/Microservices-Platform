@@ -111,6 +111,19 @@ export function PersonalTab({
 
   return (
     <Card title="Personal Info">
+      {/* Identity data is checked against the member's KYC; say what happens
+          when it doesn't match before they type it (owner, 2026-10-15). */}
+      <div role="note" className="mb-3 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-(--app-ink-2)">
+        <p className="font-bold text-rose-300">⚠️ Use your real details — exactly as on your ID</p>
+        <p className="mt-1">
+          Your name, date of birth, gender, NID number and address are checked against your KYC (ID verification).
+          <b className="text-(--app-ink)"> If the details are fake or don&apos;t match your KYC, your account will be banned</b>.
+        </p>
+        <p className="mt-1 text-xs">
+          আপনার নাম, জন্মতারিখ, লিঙ্গ, NID নম্বর ও ঠিকানা KYC-র সাথে মিলিয়ে দেখা হয়।{" "}
+          <b className="text-(--app-ink)">ভুয়া তথ্য দিলে বা KYC-র সাথে না মিললে আপনার ID ban হবে</b>।
+        </p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="First Name" anchor="firstName">
           <input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className={inp} />

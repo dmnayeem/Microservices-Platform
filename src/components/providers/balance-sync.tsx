@@ -108,9 +108,13 @@ export function BalanceSync() {
         res
           .clone()
           .json()
-          .then((d: { code?: string; needs?: string[] }) => {
+          .then((d: { code?: string; needs?: string[]; profile?: unknown; kycStatus?: string }) => {
             if (d?.code === TASK_REQUIREMENTS_CODE) {
-              window.dispatchEvent(new CustomEvent(TASK_REQUIREMENTS_EVENT, { detail: { needs: d.needs ?? [] } }));
+              window.dispatchEvent(
+                new CustomEvent(TASK_REQUIREMENTS_EVENT, {
+                  detail: { needs: d.needs ?? [], profile: d.profile, kycStatus: d.kycStatus },
+                })
+              );
             }
           })
           .catch(() => {});
