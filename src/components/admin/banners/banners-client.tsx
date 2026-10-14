@@ -99,6 +99,10 @@ export function BannersClient({ initial, canManage, packages = [] }: Props) {
     setBanners([...initial].sort((a, b) => a.order - b.order));
   }, [initial]);
 
+  // Up / down: move the banner in the list, then number the WHOLE list 0, 1,
+  // 2 … and save every row whose number changed. Swapping just the two
+  // numbers did nothing when they were equal — several banners shared an
+  // order (1, 1, 2, 2), so the arrows looked dead (owner, 2026-10-14).
   const move = async (id: string, direction: -1 | 1) => {
     const idx = banners.findIndex((b) => b.id === id);
     if (idx < 0) return;
@@ -106,34 +110,26 @@ export function BannersClient({ initial, canManage, packages = [] }: Props) {
     if (swapIdx < 0 || swapIdx >= banners.length) return;
     setMovingId(id);
 
-    const a = banners[idx];
-    const b = banners[swapIdx];
-    // Optimistic local swap (also swap their order numbers so UI sort stays stable)
-    const next = [...banners];
-    next[idx] = { ...b, order: a.order };
-    next[swapIdx] = { ...a, order: b.order };
-    next.sort((x, y) => x.order - y.order);
-    setBanners(next);
+    const list = [...banners];
+    [list[idx], list[swapIdx]] = [list[swapIdx], list[idx]];
+    const renumbered = list.map((b, i) => ({ ...b, order: i }));
+    const changed = renumbered.filter((b) => banners.find((x) => x.id === b.id)?.order !== b.order);
+    setBanners(renumbered);
 
     try {
-      // Persist both orders in parallel
-      const [r1, r2] = await Promise.all([
-        fetch(`/api/admin/banners/${a.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order: b.order }),
-        }),
-        fetch(`/api/admin/banners/${b.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order: a.order }),
-        }),
-      ]);
-      if (!r1.ok || !r2.ok) throw new Error("Failed");
+      const results = await Promise.all(
+        changed.map((b) =>
+          fetch(`/api/admin/banners/${b.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order: b.order }),
+          })
+        )
+      );
+      if (results.some((r) => !r.ok)) throw new Error("Failed");
       toast.success(direction === -1 ? "Moved up" : "Moved down");
       router.refresh();
     } catch {
-      // Revert
       setBanners([...initial].sort((x, y) => x.order - y.order));
       toast.error("Couldn't reorder");
     } finally {
@@ -197,10 +193,22 @@ export function BannersClient({ initial, canManage, packages = [] }: Props) {
               key={b.id}
               className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden"
             >
+              {b.imageUrl && (
+                <div className="relative bg-slate-950">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={b.imageUrl} alt="" className="block max-h-56 w-full object-contain" />
+                  {b.showText === false && (
+                    <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      Picture only
+                    </span>
+                  )}
+                </div>
+              )}
               <div
                 className={cn(
                   "p-6 bg-linear-to-r",
-                  b.bgGradient ?? "from-slate-700 to-slate-800"
+                  b.bgGradient ?? "from-slate-700 to-slate-800",
+                  b.imageUrl && b.showText === false && "hidden"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -375,8 +383,9 @@ function EditBannerModal({
   });
 
   const submit = async () => {
-    if (!form.title.trim()) {
-      toast.error("Title required");
+    // A title, or a picture / video — a picture banner needs no text.
+    if (!form.title.trim() && !form.imageUrl && !form.videoUrl) {
+      toast.error("Add a title or a picture");
       return;
     }
     setBusy(true);
@@ -416,7 +425,7 @@ function EditBannerModal({
           </button>
         </div>
         <div className="p-6 overflow-y-auto space-y-4">
-          <Field label="Title *">
+          <Field label="Title (optional with a picture)">
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -602,8 +611,9 @@ function CreateBannerModal({
   });
 
   const submit = async () => {
-    if (!form.title.trim()) {
-      toast.error("Title required");
+    // A title, or a picture / video — a picture banner needs no text.
+    if (!form.title.trim() && !form.imageUrl && !form.videoUrl) {
+      toast.error("Add a title or a picture");
       return;
     }
     setBusy(true);
@@ -639,7 +649,7 @@ function CreateBannerModal({
           </button>
         </div>
         <div className="p-6 overflow-y-auto space-y-4">
-          <Field label="Title *">
+          <Field label="Title (optional with a picture)">
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
