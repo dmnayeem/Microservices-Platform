@@ -74,6 +74,14 @@ export function BannerSlider({
   if (slides.length === 0) return null;
 
   const isClean = (s: BannerSlide) => s.showText === false && !!s.imageUrl && !s.videoUrl;
+  // Follow the picture's own shape, kept between square and 5:1 so a tall
+  // phone screenshot or a thin strip can't make the banner huge or a sliver.
+  const noteRatio = (id: string, el: HTMLImageElement) => {
+    const { naturalWidth: w, naturalHeight: h } = el;
+    if (!(w > 0 && h > 0)) return;
+    const ratio = Math.min(5, Math.max(1, w / h));
+    setRatios((p) => (p[id] === ratio ? p : { ...p, [id]: ratio }));
+  };
   const activeSlide = slides[active];
   const activeRatio = activeSlide && isClean(activeSlide) ? ratios[activeSlide.id] : undefined;
 
@@ -125,20 +133,20 @@ export function BannerSlider({
         {slides.map((s, i) => {
           const grad =
             s.bgGradient ?? FALLBACK_GRADIENTS[i % FALLBACK_GRADIENTS.length];
+          const hasVideo = !!s.videoUrl;
+          // Text needs the shade to be readable; the picture alone does not.
+          const clean = s.showText === false && (!!s.imageUrl || hasVideo);
           const cls = cn(
             // `on-media`: this slide is ALWAYS a colour gradient, a photo or a
             // video — never the page surface. Without it, light mode's
             // `.text-white → ink` rule turned every banner headline black on a
             // blue gradient, because that rule is written for neutral surfaces
             // and cannot tell that this one does not flip with the theme.
-            "on-media absolute inset-0 transition-opacity duration-700 flex items-center px-5",
-            "bg-linear-to-br",
-            grad,
+            "on-media absolute inset-0 transition-opacity duration-700 flex items-center",
+            // A picture-only slide has no colour behind it — the picture is it.
+            clean ? "bg-black" : cn("px-5 bg-linear-to-br", grad),
             i === active ? "opacity-100" : "opacity-0 pointer-events-none"
           );
-          const hasVideo = !!s.videoUrl;
-          // Text needs the shade to be readable; the picture alone does not.
-          const clean = s.showText === false && (!!s.imageUrl || hasVideo);
           const style =
             !hasVideo && s.imageUrl && !clean
               ? {
@@ -152,16 +160,30 @@ export function BannerSlider({
           const inner = (
             <>
               {clean && !hasVideo && s.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={s.imageUrl}
-                  alt={s.title || ""}
-                  className="absolute inset-0 h-full w-full object-contain"
-                  onLoad={(e) => {
-                    const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
-                    if (w > 0 && h > 0) setRatios((p) => (p[s.id] ? p : { ...p, [s.id]: w / h }));
-                  }}
-                />
+                <>
+                  {/* Only for a picture outside 1:1 … 5:1, where the slider
+                      stops following its shape: the gaps are filled with a
+                      blurred copy of the same picture, never a colour. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={s.imageUrl}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-xl"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={s.imageUrl}
+                    alt={s.title || ""}
+                    className="absolute inset-0 h-full w-full object-contain"
+                    // The picture is usually loaded before React hydrates, so
+                    // onLoad never fires — read the size from the ref too.
+                    ref={(el) => {
+                      if (el?.complete) noteRatio(s.id, el);
+                    }}
+                    onLoad={(e) => noteRatio(s.id, e.currentTarget)}
+                  />
+                </>
               )}
               {hasVideo && (
                 <>
