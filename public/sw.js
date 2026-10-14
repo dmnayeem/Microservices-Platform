@@ -21,29 +21,42 @@ const RUNTIME_MAX_ENTRIES = 160;
 // and how to fix it on their phone.
 const OFFLINE_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RevType — can't connect</title>
+<title>RevType</title>
 <style>
 body{margin:0;background:#0b1210;color:#e8f2ee;font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-main{max-width:480px;margin:0 auto;padding:28px 18px 40px}
-h1{font-size:20px;margin:0 0 6px}h2{font-size:15px;margin:22px 0 6px;color:#3ee6a4}
-p{margin:6px 0;color:#c4d4cd}ol{margin:6px 0;padding-left:20px;color:#c4d4cd}li{margin:3px 0}
-b{color:#fff}code{background:#14211c;border:1px solid #23362e;border-radius:6px;padding:1px 6px;color:#3ee6a4}
-.card{background:#111c18;border:1px solid #1f302a;border-radius:14px;padding:14px 16px;margin-top:14px}
-button{margin-top:18px;width:100%;min-height:48px;border:0;border-radius:12px;background:#3ee6a4;color:#04140d;font-weight:800;font-size:16px}
+main{max-width:440px;margin:0 auto;padding:18vh 20px 40px;text-align:center}
+.spin{width:38px;height:38px;margin:0 auto 18px;border:3px solid #1f302a;border-top-color:#3ee6a4;border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+h1{font-size:19px;margin:0 0 6px}p{margin:6px 0;color:#9fb3ab}
+#help{display:none;text-align:left;margin-top:26px}
+.card{background:#111c18;border:1px solid #1f302a;border-radius:14px;padding:12px 14px;margin-top:10px}
+.card b{color:#fff}code{background:#14211c;border:1px solid #23362e;border-radius:6px;padding:1px 6px;color:#3ee6a4}
+button{margin-top:18px;width:100%;min-height:46px;border:0;border-radius:12px;background:#3ee6a4;color:#04140d;font-weight:800;font-size:15px}
 </style></head><body><main>
-<h1>Can't reach RevType</h1>
-<p>Your current network (often mobile data) can't find <b>revtype.com</b> right now. The site works on Wi-Fi. Do one of these and it will work on mobile data too:</p>
-<div class="card"><h2>Android — Private DNS (easiest)</h2><ol>
-<li>Open <b>Settings</b> → <b>Connections</b> / <b>Network &amp; internet</b></li>
-<li><b>Private DNS</b> → <b>Private DNS provider hostname</b></li>
-<li>Type <code>dns.google</code> → <b>Save</b></li></ol></div>
-<div class="card"><h2>Chrome — Secure DNS</h2><ol>
-<li>In Chrome tap <b>⋮</b> → <b>Settings</b> → <b>Privacy and security</b></li>
-<li>Turn on <b>Use secure DNS</b> → choose <b>Google (Public DNS)</b></li></ol></div>
-<div class="card"><h2>iPhone</h2><ol>
-<li>Install the <b>1.1.1.1</b> app (by Cloudflare) from the App Store</li>
-<li>Open it and switch it on</li></ol></div>
+<div class="spin"></div>
+<h1>Reconnecting to RevType…</h1>
+<p id="msg">Your connection dropped for a moment. This page opens by itself as soon as you're back online.</p>
+<div id="help">
+<p>Still not loading? Your mobile network may be having trouble. Wi-Fi works, or switch your phone to a public DNS once:</p>
+<div class="card"><b>Android:</b> Settings → Private DNS → <code>dns.google</code> → Save</div>
+<div class="card"><b>Chrome:</b> Settings → Privacy and security → Use secure DNS → Google</div>
+<div class="card"><b>iPhone:</b> the free <b>1.1.1.1</b> app → switch it on</div>
 <button onclick="location.reload()">Try again</button>
+</div>
+<script>
+// Keep trying quietly; open the page the moment RevType answers again.
+var tries=0;
+function check(){
+  fetch("/api/health",{cache:"no-store"}).then(function(r){ if(r.ok){ location.reload(); } else { next(); } }).catch(next);
+}
+function next(){
+  tries++;
+  if(tries===3){ document.getElementById("help").style.display="block"; }
+  setTimeout(check, tries<3?3000:6000);
+}
+setTimeout(check, 2500);
+window.addEventListener("online", check);
+</script>
 </main></body></html>`;
 
 function offlineResponse() {
@@ -204,7 +217,12 @@ self.addEventListener("fetch", (event) => {
 
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req).catch(() => offlineResponse())
+      // A failed load is often a blip on mobile data — try twice more before
+      // showing anything; the page then keeps retrying by itself.
+      fetch(req)
+        .catch(() => new Promise((r) => setTimeout(r, 700)).then(() => fetch(req)))
+        .catch(() => new Promise((r) => setTimeout(r, 1500)).then(() => fetch(req)))
+        .catch(() => offlineResponse())
     );
     return;
   }

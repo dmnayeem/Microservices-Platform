@@ -222,7 +222,7 @@ console.log("1. Every path resolves to a real Response");
     "the navigation fallback is guarded as well",
     // Always a real Response: the built-in "can't connect" page (2026-10-15)
     // replaced the cached landing page, which every failed URL used to get.
-    /fetch\(req\)\.catch\(\(\) => offlineResponse\(\)\)/.test(swSource) &&
+    /\.catch\(\(\) => offlineResponse\(\)\)/.test(swSource) &&
       /function offlineResponse\(\)[\s\S]*?return new Response\(OFFLINE_HTML/.test(swSource)
   );
   check(
