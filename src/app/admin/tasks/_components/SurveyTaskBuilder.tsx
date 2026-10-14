@@ -3,6 +3,7 @@
 import { confirmDialog } from "@/lib/confirm";
 
 import { useState } from "react";
+import { NumberInput } from "@/components/admin/number-input";
 import {
   Plus,
   X,
@@ -367,8 +368,7 @@ function QuestionRow({
             {q.type === "RATING" && (
               <label className="inline-flex items-center gap-1.5 text-xs text-gray-300">
                 Scale (1 to)
-                <input
-                  type="number"
+                <NumberInput
                   min={2}
                   max={10}
                   value={q.scale ?? 5}
@@ -383,8 +383,7 @@ function QuestionRow({
             {(q.type === "SHORT_TEXT" || q.type === "LONG_TEXT") && (
               <label className="inline-flex items-center gap-1.5 text-xs text-gray-300">
                 Max length
-                <input
-                  type="number"
+                <NumberInput
                   min={10}
                   max={5000}
                   value={q.maxLength ?? (q.type === "SHORT_TEXT" ? 200 : 1000)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NumberInput } from "@/components/admin/number-input";
 import {
   Plus,
   X,
@@ -370,8 +371,7 @@ export function CustomTaskBuilder({ value, onChange }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800">
                   {(f.type === "TEXT" || f.type === "TEXTAREA") && (
                     <Field label="Max length (chars)">
-                      <input
-                        type="number"
+                      <NumberInput
                         min={1}
                         max={5000}
                         value={f.maxLength ?? ""}
@@ -388,8 +388,7 @@ export function CustomTaskBuilder({ value, onChange }: Props) {
                   {f.type === "NUMBER" && (
                     <>
                       <Field label="Min">
-                        <input
-                          type="number"
+                        <NumberInput
                           value={f.min ?? ""}
                           onChange={(e) =>
                             updateField(f.id, {
@@ -402,8 +401,7 @@ export function CustomTaskBuilder({ value, onChange }: Props) {
                         />
                       </Field>
                       <Field label="Max">
-                        <input
-                          type="number"
+                        <NumberInput
                           value={f.max ?? ""}
                           onChange={(e) =>
                             updateField(f.id, {
@@ -424,8 +422,7 @@ export function CustomTaskBuilder({ value, onChange }: Props) {
                     f.type === "VIDEO") && (
                     <>
                       <Field label="Max file size (MB)">
-                        <input
-                          type="number"
+                        <NumberInput
                           min={1}
                           max={100}
                           value={f.maxSizeMb ?? ""}
@@ -454,8 +451,7 @@ export function CustomTaskBuilder({ value, onChange }: Props) {
 
                   {f.type === "IMAGES" && (
                     <Field label="Max images">
-                      <input
-                        type="number"
+                      <NumberInput
                         min={1}
                         max={20}
                         value={f.maxImages ?? 5}

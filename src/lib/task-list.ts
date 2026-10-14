@@ -7,6 +7,7 @@ import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
 import { TASK_TYPE_FEATURE, visibleTaskWhere } from "@/lib/task-visibility";
 import { stripUniqueKey } from "@/lib/task-player-view";
+import { effectiveRepeat } from "@/lib/task-repeat";
 
 export interface TaskListParams {
   type?: TaskType | null;
@@ -194,6 +195,7 @@ export async function listTasksForUser(
         completedCount: true,
         dailyLimit: true,
         totalLimit: true,
+        repeat: true,
         requireApp: true,
         requirePush: true,
       },
@@ -239,7 +241,7 @@ export async function listTasksForUser(
 
   const taskIds = tasks.map((t) => t.id);
   // Round 3 — categories and per-task submission totals for this page.
-  const [taskCategories, submissionCountRows] = await Promise.all([
+  const [taskCategories, submissionCountRows, everDoneRows] = await Promise.all([
     prisma.taskCategory.findMany({
       where: {
         tasks: { some: { id: { in: taskIds } } },
@@ -258,7 +260,22 @@ export async function listTasksForUser(
       where: { taskId: { in: taskIds } },
       _count: { _all: true },
     }) as unknown as Promise<{ taskId: string; _count: { _all: number } }[]>,
+    // Tasks this member has ever finished (paid, or sent in) — closes a
+    // once-per-member task for good (lib/task-repeat).
+    prisma.taskSubmission.findMany({
+      where: {
+        userId,
+        taskId: { in: taskIds },
+        OR: [
+          { status: { in: ["APPROVED", "AUTO_APPROVED"] } },
+          { status: "PENDING", submittedAt: { not: null } },
+        ],
+      },
+      distinct: ["taskId"],
+      select: { taskId: true },
+    }),
   ]);
+  const everDone = new Set(everDoneRows.map((r) => r.taskId));
 
   const taskCategoryMap = new Map<
     string,
@@ -301,7 +318,10 @@ export async function listTasksForUser(
     const needPlan = task.requiredAccessLevel > accessLevel ? planFor(task.requiredAccessLevel) : null;
     const planLock = needPlan ? { name: needPlan.name, slug: needPlan.slug } : null;
 
-    const canStart = !planLock && (hasPending || (!dailyLimitReached && !reachedTotalLimit));
+    // Once per member and already done: closed for good, whatever the day.
+    const doneForGood = effectiveRepeat(task) === "ONCE" && everDone.has(task.id);
+    const canStart =
+      !planLock && (hasPending || (!dailyLimitReached && !reachedTotalLimit && !doneForGood));
 
     const completedToday = !canStart && !planLock;
 

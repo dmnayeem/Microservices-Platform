@@ -1,6 +1,8 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
 import { currentDevice } from "@/lib/device-current";
 import { NextRequest, NextResponse } from "next/server";
+import { effectiveRepeat } from "@/lib/task-repeat";
+import { getUserDayContext } from "@/lib/user-day";
 import { syncCountryMode } from "@/lib/country-mode";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -120,13 +122,35 @@ export async function GET(request: NextRequest) {
       task: { type: TaskType.SOCIAL },
       status: { in: ["PENDING", "APPROVED", "AUTO_APPROVED"] },
     },
-    select: { taskId: true, status: true, submittedAt: true },
-  });
+    select: {
+      taskId: true,
+      status: true,
+      submittedAt: true,
+      createdAt: true,
+      task: { select: { type: true, repeat: true } },
+    },
+  }) as unknown as {
+    taskId: string;
+    status: string;
+    submittedAt: Date | null;
+    createdAt: Date;
+    task: { type: string; repeat: string | null } | null;
+  }[];
   const inProgressIds = new Set(
     actedSubs.filter((s) => s.status === "PENDING" && s.submittedAt === null).map((s) => s.taskId)
   );
+  // A once-per-member task stays gone; a daily one only for the member's
+  // today — it is back after their midnight (owner, 2026-10-15).
+  const { startOfDayUtc } = await getUserDayContext(user.id);
   const excludeTaskIds = [
-    ...new Set(actedSubs.filter((s) => !inProgressIds.has(s.taskId)).map((s) => s.taskId)),
+    ...new Set(
+      actedSubs
+        .filter((s) => !inProgressIds.has(s.taskId))
+        .filter((s) =>
+          s.task && effectiveRepeat(s.task) === "DAILY" ? s.createdAt >= startOfDayUtc : true
+        )
+        .map((s) => s.taskId)
+    ),
   ];
 
   const tasks = await prisma.task.findMany({

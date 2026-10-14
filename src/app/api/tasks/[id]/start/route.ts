@@ -4,6 +4,7 @@ import { currentDevice } from "@/lib/device-current";
 import { taskDeviceGate } from "@/lib/task-device-gate";
 import { taskTypePage } from "@/lib/page-visibility";
 import { NextRequest, NextResponse } from "next/server";
+import { effectiveRepeat } from "@/lib/task-repeat";
 import { openSubmission, OpenSubmissionBlocked } from "@/lib/open-submission";
 import { taskStartFraudGate, taskStartPlanGate } from "@/lib/task-start-gates";
 import { syncCountryMode } from "@/lib/country-mode";
@@ -246,30 +247,35 @@ export async function POST(
       );
     }
 
-    // A survey is answered once per PERSON, for the lifetime of the task —
-    // asking the same respondent twice would corrupt the results.
+    // Once per member (owner, 2026-10-15): Task.repeat, or the type's default
+    // — SOCIAL and SURVEY once, the rest daily (lib/task-repeat). A survey
+    // asked twice would corrupt its results; a follow can't be done twice.
+    // Its old rule lived only here and only for surveys; `totalLimit` is the
+    // global counter and could not express it.
     //
-    // The admin routes used to express this as `totalLimit: 1`, but that is a
-    // global counter, so the first approval closed the survey for everyone.
-    // The rule belongs here, per user.
-    if (task.type === TaskType.SURVEY) {
-      const alreadyAnswered = await prisma.taskSubmission.findFirst({
+    // An attempt still in progress is not "done" — resuming it is allowed
+    // below; one sent in for review or already paid is.
+    if (effectiveRepeat(task) === "ONCE") {
+      const alreadyDone = await prisma.taskSubmission.findFirst({
         where: {
           taskId: id,
           userId: session.user.id,
-          status: {
-            in: [
-              SubmissionStatus.PENDING,
-              SubmissionStatus.APPROVED,
-              SubmissionStatus.AUTO_APPROVED,
-            ],
-          },
+          OR: [
+            { status: { in: [SubmissionStatus.APPROVED, SubmissionStatus.AUTO_APPROVED] } },
+            { status: SubmissionStatus.PENDING, submittedAt: { not: null } },
+          ],
         },
         select: { id: true },
       });
-      if (alreadyAnswered) {
+      if (alreadyDone) {
         return NextResponse.json(
-          { error: "You've already answered this survey." },
+          {
+            error:
+              task.type === TaskType.SURVEY
+                ? "You've already answered this survey."
+                : "You've already done this task — it can be done once.",
+            code: "TASK_DONE_ONCE",
+          },
           { status: 400 }
         );
       }

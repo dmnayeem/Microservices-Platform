@@ -29,6 +29,7 @@ import {
   formatDuration,
 } from "@/lib/video-tasks";
 import { BrandIcon } from "@/components/ui/brand-icon";
+import { NumberInput } from "@/components/admin/number-input";
 
 interface Props {
   value: VideoConfig;
@@ -132,8 +133,7 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
               Watch Time <span className="text-red-400">*</span>
             </label>
           </div>
-          <input
-            type="number"
+          <NumberInput
             min={1}
             value={value.watchSeconds}
             onChange={(e) =>
@@ -155,8 +155,7 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
             <Hourglass className="w-4 h-4 text-amber-400" />
             <label className="text-sm font-bold text-white">Warmup Time</label>
           </div>
-          <input
-            type="number"
+          <NumberInput
             min={0}
             max={30}
             value={value.warmupSeconds}

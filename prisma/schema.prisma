@@ -2397,6 +2397,10 @@ model Task {
   board               TaskBoard?       @relation(fields: [boardId], references: [id], onDelete: SetNull)
   dailyLimit          Int?
   totalLimit          Int?
+  /// "DAILY" = opens again at the member's local midnight (dailyLimit per day);
+  /// "ONCE" = each member does it once, ever. Null = the type's default
+  /// (SOCIAL and SURVEY once, the rest daily) — see src/lib/task-repeat.ts.
+  repeat              String?
   completedCount      Int              @default(0)
   minLevel            Int              @default(1)
   requiredAccessLevel Int              @default(0)

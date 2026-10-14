@@ -2,6 +2,7 @@ import { isPostCreationAction, mapSocialTaskRow, type SocialTaskRow } from "@/li
 import { prisma } from "@/lib/prisma";
 import { getUserDayContext } from "@/lib/user-day";
 import { getSetting } from "@/lib/system-settings";
+import { effectiveRepeat } from "@/lib/task-repeat";
 import {
   getTaskViewerContext,
   publishedQuizWhere,
@@ -108,7 +109,7 @@ export async function computeTaskSummary(userId: string): Promise<TaskSummaryDat
       },
       select: {
         taskId: true,
-        task: { select: { type: true, isBoardOnly: true, boardId: true } },
+        task: { select: { type: true, isBoardOnly: true, boardId: true, repeat: true } },
       },
     }) as unknown as Promise<
       {
@@ -117,6 +118,7 @@ export async function computeTaskSummary(userId: string): Promise<TaskSummaryDat
           type: string;
           isBoardOnly: boolean;
           boardId: string | null;
+          repeat: string | null;
         } | null;
       }[]
     >,
@@ -134,7 +136,7 @@ export async function computeTaskSummary(userId: string): Promise<TaskSummaryDat
       distinct: ["taskId"],
       select: {
         taskId: true,
-        task: { select: { type: true, isBoardOnly: true, boardId: true } },
+        task: { select: { type: true, isBoardOnly: true, boardId: true, repeat: true } },
       },
     }) as unknown as Promise<
       {
@@ -143,6 +145,7 @@ export async function computeTaskSummary(userId: string): Promise<TaskSummaryDat
           type: string;
           isBoardOnly: boolean;
           boardId: string | null;
+          repeat: string | null;
         } | null;
       }[]
     >,
@@ -180,9 +183,17 @@ export async function computeTaskSummary(userId: string): Promise<TaskSummaryDat
     if (s.task && (s.task.isBoardOnly || s.task.boardId)) boardCompletedToday += 1;
   }
 
+  // "Done" = not open to this member right now: a once-per-member task done
+  // ever, a daily task done today — it opens again after their midnight
+  // (lib/task-repeat, owner 2026-10-15). Counting every task ever done made a
+  // daily task look used up for good.
+  const todayIds = new Set(doneToday.map((d) => d.taskId));
+  const closedNow = doneEver.filter(
+    (s) => s.task && (effectiveRepeat(s.task) === "ONCE" || todayIds.has(s.taskId))
+  );
   const doneByType = new Map<string, number>();
   let boardDone = 0;
-  for (const s of doneEver) {
+  for (const s of closedNow) {
     const t = s.task?.type;
     if (t) doneByType.set(t, (doneByType.get(t) ?? 0) + 1);
     if (s.task && (s.task.isBoardOnly || s.task.boardId)) boardDone += 1;
@@ -203,7 +214,7 @@ export async function computeTaskSummary(userId: string): Promise<TaskSummaryDat
   // (api/tasks/social `matchesKind`), so a tile never promises a task its
   // list does not show. A task mixing both kinds is in both lists, and so
   // in both tiles.
-  const doneEverIds = new Set(doneEver.map((d) => d.taskId));
+  const doneEverIds = new Set(closedNow.map((d) => d.taskId));
   const doneTodayIds = doneToday.map((d) => d.taskId);
   const socialSet = (keep: (actions: string[]) => boolean) => {
     // mapSocialTaskRow, not the raw config: older tasks keep their one

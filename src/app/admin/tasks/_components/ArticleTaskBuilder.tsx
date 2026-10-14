@@ -40,6 +40,7 @@ import {
   buildTaggedLandingUrl,
 } from "@/lib/article-tasks";
 import { toast } from "@/lib/toast";
+import { NumberInput } from "@/components/admin/number-input";
 
 interface Props {
   value: ArticleConfig;
@@ -542,8 +543,7 @@ function PagesStep({
                 <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
                   Scroll Required (%)
                 </span>
-                <input
-                  type="number"
+                <NumberInput
                   min={0}
                   max={100}
                   value={p.minScrollPercent ?? 60}
@@ -560,8 +560,7 @@ function PagesStep({
                 <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
                   Popup Interval (sec)
                 </span>
-                <input
-                  type="number"
+                <NumberInput
                   min={3}
                   max={600}
                   value={p.popupIntervalSeconds ?? 15}
@@ -582,8 +581,7 @@ function PagesStep({
                 <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
                   Total Clicks Needed
                 </span>
-                <input
-                  type="number"
+                <NumberInput
                   min={1}
                   max={50}
                   value={
@@ -1106,8 +1104,7 @@ function PopupTextsEditor({
               <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
                 Visible After (sec)
               </span>
-              <input
-                type="number"
+              <NumberInput
                 min={0}
                 max={600}
                 placeholder="default"
@@ -1279,8 +1276,7 @@ function PopupStep({
                 <Clock className="w-3 h-3" />
                 Wait Seconds
               </label>
-              <input
-                type="number"
+              <NumberInput
                 min={0}
                 max={60}
                 value={value.popupDelaySeconds ?? 5}
@@ -2012,8 +2008,7 @@ function KeyPoolManager({
       <div className="rounded-md bg-gray-900 border border-gray-800 p-3 space-y-2">
         <p className="text-xs font-semibold text-gray-300">Add keys</p>
         <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={data?.limits.maxGeneratePerAction ?? 5_000_000}
             value={genCount}
@@ -2041,8 +2036,7 @@ function KeyPoolManager({
           <div className="grid sm:grid-cols-2 gap-2">
             <label className="text-[11px] text-gray-400 space-y-1">
               <span>Keys kept ready ({fmt(data!.limits.minBuffer)}–{fmt(data!.limits.maxBuffer)})</span>
-              <input
-                type="number"
+              <NumberInput
                 value={bufferDraft}
                 onChange={(e) => setBufferDraft(e.target.value)}
                 className="w-full px-2 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white tabular-nums"
@@ -2050,8 +2044,7 @@ function KeyPoolManager({
             </label>
             <label className="text-[11px] text-gray-400 space-y-1">
               <span>Auto-purge days after the task ends (0 = off)</span>
-              <input
-                type="number"
+              <NumberInput
                 value={purgeDaysDraft}
                 onChange={(e) => setPurgeDaysDraft(e.target.value)}
                 className="w-full px-2 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white tabular-nums"
