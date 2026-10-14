@@ -47,6 +47,10 @@ export function BannerSlider({
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+  // Width / height of each picture-only slide's image, once loaded — the
+  // slider takes that shape so the WHOLE picture shows, nothing cropped
+  // (owner, 2026-10-14). Text slides keep the fixed banner height.
+  const [ratios, setRatios] = useState<Record<string, number>>({});
   const touchStartX = useRef<number | null>(null);
   const touchDeltaX = useRef(0);
 
@@ -68,6 +72,10 @@ export function BannerSlider({
   }, [slides.length, autoMs, paused, interacted, reducedMotion]);
 
   if (slides.length === 0) return null;
+
+  const isClean = (s: BannerSlide) => s.showText === false && !!s.imageUrl && !s.videoUrl;
+  const activeSlide = slides[active];
+  const activeRatio = activeSlide && isClean(activeSlide) ? ratios[activeSlide.id] : undefined;
 
   const goTo = (i: number) => {
     setInteracted(true);
@@ -102,7 +110,11 @@ export function BannerSlider({
       onBlur={() => setPaused(false)}
     >
       <div
-        className="relative h-44 sm:h-52 lg:h-56 overflow-hidden rounded-2xl touch-pan-y"
+        className={cn(
+          "relative overflow-hidden rounded-2xl touch-pan-y transition-[aspect-ratio,height] duration-500",
+          !activeRatio && "h-44 sm:h-52 lg:h-56"
+        )}
+        style={activeRatio ? { aspectRatio: String(activeRatio) } : undefined}
         role="region"
         aria-roledescription="carousel"
         aria-label="Announcements"
@@ -128,7 +140,7 @@ export function BannerSlider({
           // Text needs the shade to be readable; the picture alone does not.
           const clean = s.showText === false && (!!s.imageUrl || hasVideo);
           const style =
-            !hasVideo && s.imageUrl
+            !hasVideo && s.imageUrl && !clean
               ? {
                   backgroundImage: clean
                     ? `url(${s.imageUrl})`
@@ -139,6 +151,18 @@ export function BannerSlider({
               : undefined;
           const inner = (
             <>
+              {clean && !hasVideo && s.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={s.imageUrl}
+                  alt={s.title || ""}
+                  className="absolute inset-0 h-full w-full object-contain"
+                  onLoad={(e) => {
+                    const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+                    if (w > 0 && h > 0) setRatios((p) => (p[s.id] ? p : { ...p, [s.id]: w / h }));
+                  }}
+                />
+              )}
               {hasVideo && (
                 <>
                   <video

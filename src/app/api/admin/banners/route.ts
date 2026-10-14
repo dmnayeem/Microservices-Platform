@@ -9,7 +9,8 @@ import { sanitizeTaskAudience } from "@/lib/task-targeting";
 import { sanitizeKycAudience } from "@/lib/banner-audience";
 
 const schema = z.object({
-  title: z.string().min(2).max(120),
+  // Optional: a picture-only banner needs no text.
+  title: z.string().max(120).default(""),
   subtitle: z.string().max(240).optional().nullable(),
   imageUrl: z.string().url().optional().nullable().or(z.literal("")),
   videoUrl: z.string().url().optional().nullable().or(z.literal("")),
