@@ -5,7 +5,8 @@ import { withIdempotency } from "@/lib/idempotency";
 import { resolvePromoPackage } from "@/lib/promotion";
 import { z } from "zod";
 import { getAdPointsPerUsd } from "@/lib/ad-wallet";
-import { PlatformPayError, chargePlatform, getSpendBalances, insufficientError } from "@/lib/platform-pay";
+import { PlatformPayError, getSpendBalances, insufficientError } from "@/lib/platform-pay";
+import { requestPromotion } from "@/lib/promotion-review";
 import { defaultPaySourceForQuote, quotePlatformPrice } from "@/lib/pay-source";
 
 const schema = z.object({
@@ -16,7 +17,7 @@ const schema = z.object({
 });
 
 // POST /api/courses/:id/promote — tutor pays (Ad Points | Ad Fund) to feature
-// their own published course for the package's duration.
+// their own published course. Paid now, featured once an admin approves.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,7 +38,7 @@ export async function POST(
 
     const course = await prisma.course.findUnique({
       where: { id },
-      select: { tutorId: true, status: true, featuredUntil: true, title: true },
+      select: { tutorId: true, status: true, title: true },
     });
     if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (course.tutorId !== userId) {
@@ -63,31 +64,31 @@ export async function POST(
       const e = await insufficientError(userId, quote.adPoints, null, `/courses/${id}`, rate);
       return NextResponse.json({ error: e.userMessage, addFund: e.addFund }, { status: 402 });
     }
-    const now = Date.now();
-    const base =
-      course.featuredUntil && course.featuredUntil.getTime() > now
-        ? course.featuredUntil.getTime()
-        : now;
-    const until = new Date(base + pkg.days * 86_400_000);
+    // A PENDING request already paid for — don't take a second payment for
+    // the same item while the first one is still waiting.
+    const waiting = await prisma.promotionRequest.count({
+      where: { courseId: id, status: "PENDING" },
+    });
+    if (waiting > 0) {
+      return NextResponse.json(
+        { error: "This course already has a promotion waiting for review." },
+        { status: 409 }
+      );
+    }
 
+    // Paid now; featured only when an admin approves (the clock starts then).
+    // See src/lib/promotion-review.ts.
+    let result;
     try {
-      await prisma.$transaction(async (tx) => {
-        // CAS debit + its ledger row (adpts_/adfund_promo_course_*) first;
-        // a short balance throws and rolls the feature back.
-        await chargePlatform(tx, {
-          userId,
-          quote,
-          from,
-          description: `Promotion — ${pkg.label} · "${course.title}"`,
-          reference: `promo_course_${id}_${now}`,
-          purpose: "promotion",
-          metadata: { courseId: id, packageId: pkg.id, days: pkg.days },
-          returnTo: `/courses/${id}`,
-        });
-        await tx.course.update({
-          where: { id },
-          data: { isFeatured: true, featuredUntil: until },
-        });
+      result = await requestPromotion({
+        kind: "COURSE",
+        itemId: id,
+        itemTitle: course.title,
+        userId,
+        pkg,
+        quote,
+        from,
+        returnTo: `/courses/${id}`,
       });
     } catch (err) {
       if (err instanceof PlatformPayError) {
@@ -96,6 +97,11 @@ export async function POST(
       throw err;
     }
 
-    return NextResponse.json({ success: true, featuredUntil: until.toISOString() });
+    return NextResponse.json({
+      success: true,
+      requestId: result.id,
+      status: result.status,
+      featuredUntil: result.featuredUntil?.toISOString() ?? null,
+    });
   });
 }

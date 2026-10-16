@@ -194,6 +194,7 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "bkash.usdToBdtRate", group: "financial", label: "bKash rate", unit: "BDT per $1", description: "bKash settles in taka; a USD deposit made through bKash is charged at this rate." },
   { key: "vat_enabled", group: "financial", label: "Charge VAT on deposits", description: "Adds VAT on top of the deposit amount, shown as its own line on the deposit page.", effect: "Off = no VAT is added to deposits." },
   { key: "plans.auto_renew_enabled", group: "financial", label: "Allow plan auto-renew", description: "Lets members turn on auto-renew for their paid plan; at expiry the plan is renewed from their Ad Fund, else their Ad Points (never Cash or Earn Points), at the plan's current price for the same term length.", effect: "Off = no plan is renewed automatically (and the toggle is hidden) — every plan simply ends at its expiry date." },
+  { key: "promotions.require_review", group: "financial", label: "Review paid promotions", description: "A member who pays to feature their own course or marketplace listing waits for an admin to approve it on the Promotions page; the featured period starts at approval, and a rejection refunds the payment in full to the balance it came from.", effect: "Off = a paid promotion is approved automatically the moment it is paid." },
   { key: "vat_pct", group: "financial", label: "VAT rate", unit: "%", description: "Applied to the deposit amount plus the payment-method charge, while VAT is switched on." },
   { key: "buyer.enabled", group: "financial", label: "Allow buyers to fund tasks", description: "Lets accounts with the buyer permission create and fund their own tasks.", effect: "Off closes the create-task API for everyone, even accounts that already hold the permission." },
   { key: "buyer.fee_percent", group: "financial", label: "Platform fee on buyer tasks", unit: "%", description: "The platform's cut when a buyer funds a task — charged on top of the points they buy.", effect: "0 = buyers pay only the rewards and the platform earns nothing on task funding." },
@@ -457,6 +458,12 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         title: "Plans",
         blurb: "Paid plan renewals.",
         keys: ["plans.auto_renew_enabled"],
+      },
+      {
+        id: "promotions",
+        title: "Course & listing promotions",
+        blurb: "Members paying to feature their own course or listing.",
+        keys: ["promotions.require_review"],
       },
       {
         id: "marketplace-fee",

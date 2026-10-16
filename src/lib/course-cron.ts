@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationType, LiveClassStatus } from "@/generated/prisma";
+import { cancelWithdrawnPromotions } from "@/lib/promotion-review";
 
 /**
  * Send an in-app reminder to students who haven't touched their enrolment in
@@ -78,12 +79,18 @@ export async function runCourseReminders(): Promise<{
  * every GET of /api/courses — a write on a read path, from every visitor at
  * once. Once every 15 minutes is plenty for a "featured until" flag.
  */
-export async function runFeaturedExpiry(): Promise<{ cleared: number }> {
+export async function runFeaturedExpiry(): Promise<{ cleared: number; promotionsCancelled: number }> {
   const res = await prisma.course.updateMany({
     where: { isFeatured: true, featuredUntil: { lt: new Date() } },
     data: { isFeatured: false },
   });
-  return { cleared: res.count };
+  // Paid promotions still waiting for review whose course / listing has since
+  // left sale are cancelled and refunded here (src/lib/promotion-review.ts).
+  const promos = await cancelWithdrawnPromotions().catch((e) => {
+    console.error("[course-cron] cancelWithdrawnPromotions failed", e);
+    return { cancelled: 0 };
+  });
+  return { cleared: res.count, promotionsCancelled: promos.cancelled };
 }
 
 export async function runLiveClassTransitions(): Promise<{

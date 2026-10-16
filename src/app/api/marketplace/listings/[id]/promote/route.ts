@@ -5,7 +5,8 @@ import { withIdempotency } from "@/lib/idempotency";
 import { resolvePromoPackage } from "@/lib/promotion";
 import { z } from "zod";
 import { getAdPointsPerUsd } from "@/lib/ad-wallet";
-import { PlatformPayError, chargePlatform, getSpendBalances, insufficientError } from "@/lib/platform-pay";
+import { PlatformPayError, getSpendBalances, insufficientError } from "@/lib/platform-pay";
+import { requestPromotion } from "@/lib/promotion-review";
 import { defaultPaySourceForQuote, quotePlatformPrice } from "@/lib/pay-source";
 
 const schema = z.object({
@@ -16,7 +17,7 @@ const schema = z.object({
 });
 
 // POST /api/marketplace/listings/:id/promote — owner pays (Ad Points | Ad Fund)
-// to feature their own listing for the package's duration.
+// to feature their own listing. Paid now, featured once an admin approves.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,7 +38,7 @@ export async function POST(
 
     const listing = await prisma.marketplaceListing.findUnique({
       where: { id },
-      select: { sellerId: true, status: true, featuredUntil: true, title: true },
+      select: { sellerId: true, status: true, title: true },
     });
     if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (listing.sellerId !== userId) {
@@ -63,31 +64,31 @@ export async function POST(
       const e = await insufficientError(userId, quote.adPoints, null, `/marketplace/${id}`, rate);
       return NextResponse.json({ error: e.userMessage, addFund: e.addFund }, { status: 402 });
     }
-    const now = Date.now();
-    const base =
-      listing.featuredUntil && listing.featuredUntil.getTime() > now
-        ? listing.featuredUntil.getTime()
-        : now;
-    const until = new Date(base + pkg.days * 86_400_000);
+    // A PENDING request already paid for — don't take a second payment for
+    // the same item while the first one is still waiting.
+    const waiting = await prisma.promotionRequest.count({
+      where: { listingId: id, status: "PENDING" },
+    });
+    if (waiting > 0) {
+      return NextResponse.json(
+        { error: "This listing already has a promotion waiting for review." },
+        { status: 409 }
+      );
+    }
 
+    // Paid now; featured only when an admin approves (the clock starts then).
+    // See src/lib/promotion-review.ts.
+    let result;
     try {
-      await prisma.$transaction(async (tx) => {
-        // CAS debit + its ledger row (adpts_/adfund_promo_marketplace_*) first;
-        // a short balance throws and rolls the feature back.
-        await chargePlatform(tx, {
-          userId,
-          quote,
-          from,
-          description: `Promotion — ${pkg.label} · "${listing.title}"`,
-          reference: `promo_marketplace_${id}_${now}`,
-          purpose: "promotion",
-          metadata: { listingId: id, packageId: pkg.id, days: pkg.days },
-          returnTo: `/marketplace/${id}`,
-        });
-        await tx.marketplaceListing.update({
-          where: { id },
-          data: { isFeatured: true, featuredUntil: until },
-        });
+      result = await requestPromotion({
+        kind: "LISTING",
+        itemId: id,
+        itemTitle: listing.title,
+        userId,
+        pkg,
+        quote,
+        from,
+        returnTo: `/marketplace/${id}`,
       });
     } catch (err) {
       if (err instanceof PlatformPayError) {
@@ -96,6 +97,11 @@ export async function POST(
       throw err;
     }
 
-    return NextResponse.json({ success: true, featuredUntil: until.toISOString() });
+    return NextResponse.json({
+      success: true,
+      requestId: result.id,
+      status: result.status,
+      featuredUntil: result.featuredUntil?.toISOString() ?? null,
+    });
   });
 }

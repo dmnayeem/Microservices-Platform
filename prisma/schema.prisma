@@ -2003,6 +2003,7 @@ model User {
   // Per-viewer boosted-post impression caps (feed boost frequency cap).
   postBoostViews                    PostBoostView[]
   boostCampaigns                    BoostCampaign[]
+  promotionRequests                 PromotionRequest[]
   // Extended profile fields (admin_oo.md §5.02)
   gender                            String?
   dateOfBirth                       DateTime?
@@ -3528,6 +3529,7 @@ model Course {
   certificates             CourseCertificate[]
   refundRequests           CourseRefundRequest[]
   views                    CourseListingView[]
+  promotionRequests        PromotionRequest[]
 
   @@index([status])
   @@index([category])
@@ -6501,4 +6503,41 @@ model BoostEvent {
   createdAt  DateTime      @default(now())
 
   @@index([campaignId, createdAt])
+}
+
+/// A member's paid request to feature their own course or marketplace listing.
+/// Paid at creation (Ad Points | Ad Fund, ledger reference
+/// `promo_course_<id>` / `promo_marketplace_<id>`); the item is featured only
+/// when an admin approves, and the clock starts then. Reject / withdrawn item
+/// refunds the payment in full. See src/lib/promotion-review.ts.
+model PromotionRequest {
+  id           String    @id @default(cuid())
+  /// COURSE | LISTING
+  kind         String
+  courseId     String?
+  course       Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  /// Raw id, no FK — the request (and the payment it records) must outlive
+  /// the listing.
+  listingId    String?
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageId    String
+  packageLabel String
+  days         Int
+  /// Item title at request time, so the queue still reads after a delete.
+  itemTitle    String
+  /// PENDING | APPROVED | REJECTED | CANCELLED
+  status       String    @default("PENDING")
+  rejectReason String?   @db.Text
+  reviewedById String?
+  reviewedAt   DateTime?
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([courseId])
+  @@index([listingId])
+  @@index([userId])
 }

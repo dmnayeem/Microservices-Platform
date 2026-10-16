@@ -1569,6 +1569,15 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "COMMERCE",
   },
   {
+    // Members' paid course / listing promotions: approve to feature, reject to
+    // refund. Same guard as the page and its API (ads.manage).
+    name: "Promotions",
+    href: "/admin/promotions",
+    icon: "Rocket",
+    permissions: ["ads.manage"],
+    category: "COMMERCE",
+  },
+  {
     // Every application in one place — seller, services, buyer, advertiser,
     // tutor, ambassador, blue badge — with the requirements per program.
     name: "Applications",

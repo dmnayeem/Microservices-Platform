@@ -111,6 +111,7 @@ const DEFAULTS: SettingsBag = {
   vat_enabled: false,
   vat_pct: 15,
   "plans.auto_renew_enabled": true,
+  "promotions.require_review": true,
   // Buyer & task funding
   "buyer.enabled": true,
   "buyer.fee_percent": 0,
@@ -597,6 +598,13 @@ export function SystemSettingsForm({
       <SwitchRow settingKey="plans.auto_renew_enabled"
         checked={values["plans.auto_renew_enabled"] !== false}
         onChange={(v) => set("plans.auto_renew_enabled", v)}
+        disabled={!canEdit}
+      />
+    ),
+    "promotions.require_review": () => (
+      <SwitchRow settingKey="promotions.require_review"
+        checked={values["promotions.require_review"] !== false}
+        onChange={(v) => set("promotions.require_review", v)}
         disabled={!canEdit}
       />
     ),
