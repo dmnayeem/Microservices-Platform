@@ -225,7 +225,9 @@ export default async function EditUserPage({
             ))}
           </div>
         )}
-        {await can(session.user.id, "users.edit") && (
+        {/* users.adjust_followers, the same permission the boost page and its
+            APIs check — users.edit showed it to admins who were denied it. */}
+        {await can(session.user.id, "users.adjust_followers") && (
           <Link
             href={`/admin/users/${id}/boost-followers`}
             className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:text-white"
@@ -239,6 +241,7 @@ export default async function EditUserPage({
         user={user}
         isSuperAdmin={isSuperAdmin}
         adjust={{ points: canPoints, cash: canCash, level: canLevel, xp: canXp }}
+        canGrantBadge={await can(session.user.id, "users.grant_badge")}
         actorRole={adminRole}
         plans={plans}
         customRoles={customRolesRaw}

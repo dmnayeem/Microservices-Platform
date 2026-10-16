@@ -112,6 +112,8 @@ interface UserEditFormProps {
   /** Which values this admin may change by hand (users.adjust_*). A field
    *  they may not change is shown read-only instead of failing on save. */
   adjust?: { points: boolean; cash: boolean; level: boolean; xp: boolean };
+  /** users.grant_badge — super admin, or whoever they gave it to in the role matrix. */
+  canGrantBadge?: boolean;
   /**
    * The signed-in admin's role. Drives the role picker through the SAME
    * functions the API uses, so the dropdown offers exactly what the server
@@ -200,6 +202,7 @@ export function UserEditForm({
   user,
   isSuperAdmin,
   adjust = { points: true, cash: true, level: true, xp: true },
+  canGrantBadge = false,
   actorRole,
   plans,
   customRoles = [],
@@ -900,10 +903,13 @@ export function UserEditForm({
                     : "border-slate-700 bg-slate-900/50"
                 )}
               >
-                <label className="flex items-center gap-3 cursor-pointer">
+                {/* Only with users.grant_badge (owner, 2026-10-16): the box was
+                    shown to every editor and the save then failed. */}
+                <label className={cn("flex items-center gap-3", canGrantBadge ? "cursor-pointer" : "cursor-not-allowed opacity-70")}>
                   <input
                     type="checkbox"
                     checked={form.isBlueVerified}
+                    disabled={!canGrantBadge}
                     onChange={(e) => set("isBlueVerified", e.target.checked)}
                     className="w-5 h-5 rounded bg-slate-800 border-slate-600 text-sky-500 focus:ring-sky-500"
                   />
@@ -912,7 +918,9 @@ export function UserEditForm({
                       🔵 Blue Badge Verified
                     </p>
                     <p className="text-xs text-slate-400">
-                      Shows the blue checkmark next to the user&apos;s name across the platform.
+                      {canGrantBadge
+                        ? "Shows the blue checkmark next to the user's name across the platform."
+                        : "Only the super admin — or an admin they allow under Roles → “Grant blue badge” — can change this."}
                     </p>
                   </div>
                 </label>

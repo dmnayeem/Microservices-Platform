@@ -3,11 +3,10 @@
 import { lsGet, lsSet } from "@/lib/safe-storage";
 import { ENGAGED_EVENT } from "@/lib/header-data";
 import { useEffect, useState } from "react";
-import { detectPwaPlatform } from "@/lib/pwa-shared";
+import { detectPwaPlatform, PWA_PROMPT_DEFAULTS, type PwaPromptConfig, type PromptPlatform } from "@/lib/pwa-shared";
 import { Download, Share, Plus, X, MoreVertical } from "lucide-react";
 
 const SNOOZE_KEY = "pwa_install_snooze";
-const SNOOZE_MS = 24 * 60 * 60 * 1000; // re-prompt non-installers after ~1 day
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -60,6 +59,7 @@ export function PwaInstallPrompt({
   enabled = true,
   rewardPoints = 0,
   installedPlatform = null,
+  promptConfig = null,
 }: {
   enabled?: boolean;
   /** App-install bonus on offer to this user (0 = none) — see lib/pwa-install.ts. */
@@ -70,7 +70,17 @@ export function PwaInstallPrompt({
    * asked to install it again; a removal or 30 days unopened clears it.
    */
   installedPlatform?: string | null;
+  /**
+   * Per platform: off / bottom card / centre popup, and how many hours a
+   * dismissal lasts (Admin → Users → App installs). Null = the defaults.
+   */
+  promptConfig?: PwaPromptConfig | null;
 }) {
+  const cfg = promptConfig ?? PWA_PROMPT_DEFAULTS;
+  const SNOOZE_MS = cfg.snoozeHours * 60 * 60 * 1000;
+  // This device's kind, as the admin's switches name it.
+  const deviceKind = (): PromptPlatform => (isIos() ? "ios" : isAndroid() ? "android" : "desktop");
+  const modeHere = () => cfg.modes[deviceKind()];
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "other">("other");
@@ -95,6 +105,7 @@ export function PwaInstallPrompt({
   useEffect(() => {
     if (!enabled) return;
     if (typeof window === "undefined") return;
+    if (modeHere() === "off") return; // admin: no install prompt on this kind of device
     if (isStandalone()) return; // already installed
     if (hasAppHere()) return; // installed on this device, visiting in the browser
     if ((window.location.pathname || "").startsWith("/admin")) return;
@@ -148,7 +159,7 @@ export function PwaInstallPrompt({
     if (!enabled || typeof window === "undefined") return;
     let t: ReturnType<typeof setTimeout> | undefined;
     const onEngaged = () => {
-      if (isStandalone() || hasAppHere()) return;
+      if (modeHere() === "off" || isStandalone() || hasAppHere()) return;
       const snoozed = Number(lsGet(SNOOZE_KEY) ?? 0);
       if (Date.now() - snoozed < SNOOZE_MS) return;
       if (window.__egBip) setDeferred(window.__egBip);
@@ -195,9 +206,17 @@ export function PwaInstallPrompt({
 
   const step = "inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink) font-semibold";
 
+  const centre = modeHere() === "center";
   return (
-    <div className="fixed bottom-[calc(var(--bottom-nav-h,0px)+1rem)] md:bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-1.5rem)]">
-      <div className="rounded-2xl border border-(--app-accent-edge)/40 bg-(--app-surface) p-4 shadow-2xl">
+    <div
+      className={
+        centre
+          ? "fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          : "fixed bottom-[calc(var(--bottom-nav-h,0px)+1rem)] md:bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-1.5rem)]"
+      }
+      {...(centre ? { role: "dialog", "aria-modal": true, "aria-label": "Install RevType" } : {})}
+    >
+      <div className={`rounded-2xl border border-(--app-accent-edge)/40 bg-(--app-surface) p-4 shadow-2xl${centre ? " w-full max-w-sm sm:p-5" : ""}`}>
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

@@ -6,7 +6,7 @@ import { Smartphone, Users, Percent, CalendarDays, Gift, Globe, Search, Download
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import { parsePage } from "@/lib/paginate";
-import { getPwaRewardConfig } from "@/lib/pwa-install";
+import { getPwaPromptConfig, getPwaRewardConfig } from "@/lib/pwa-install";
 import { utcDay } from "@/lib/active-days";
 import { PWA_PLATFORMS, PWA_PLATFORM_LABEL, type PwaPlatform } from "@/lib/pwa-shared";
 import {
@@ -18,6 +18,7 @@ import {
   pwaInstallWhere,
 } from "@/lib/pwa-admin";
 import { PwaRewardSettings } from "@/components/admin/users/pwa-reward-settings";
+import { PwaPromptSettings } from "@/components/admin/users/pwa-prompt-settings";
 
 /**
  * Who installed the app (PWA) and who didn't. "Installed" = the app was opened
@@ -41,19 +42,27 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
   const page = parsePage(p.page);
   const where = pwaInstallWhere(f);
 
-  const [stats, cfg, canEdit, total, rows] = await Promise.all([
-    pwaInstallStats(),
-    getPwaRewardConfig(),
-    can(session.user.id, "settings.edit"),
-    prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      select: PWA_ROW_SELECT,
-      orderBy: f.status === "not" ? { createdAt: "desc" } : { pwaFirstSeenAt: "desc" },
-      take: PAGE_SIZE,
-      skip: (page - 1) * PAGE_SIZE,
-    }),
-  ]);
+  // Read once more on a failure before giving up — the page used to error
+  // now and then and come back on a reload (owner, 2026-10-16).
+  const load = () =>
+    Promise.all([
+      pwaInstallStats(),
+      getPwaRewardConfig(),
+      getPwaPromptConfig(),
+      can(session.user.id, "settings.edit"),
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        select: PWA_ROW_SELECT,
+        orderBy: f.status === "not" ? { createdAt: "desc" } : { pwaFirstSeenAt: "desc" },
+        take: PAGE_SIZE,
+        skip: (page - 1) * PAGE_SIZE,
+      }),
+    ]);
+  const [stats, cfg, promptCfg, canEdit, total, rows] = await load().catch(async () => {
+    await new Promise((r) => setTimeout(r, 500));
+    return load();
+  });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   // Same cutoff as the "Not opened in 30+ days" filter (lib/pwa-admin.ts).
   const dormantBefore = utcDay(DORMANT_DAYS - 1).getTime();
@@ -205,6 +214,7 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      <PwaPromptSettings initial={promptCfg} canEdit={canEdit} />
       <PwaRewardSettings initial={cfg} canEdit={canEdit} />
 
       <div className="space-y-3 rounded-xl border border-gray-800 bg-gray-900 p-4">
