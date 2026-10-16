@@ -13,7 +13,11 @@ import { resolveCommissionBps } from "@/lib/marketplace-commission";
 import {
   ASSET_TYPE_LABEL,
   MARKETPLACE_SECTIONS,
+  SERVICES_SECTION,
+  SERVICE_ASSET_TYPE,
   getFieldsFor,
+  getSection,
+  isServiceType,
 } from "@/lib/marketplace-categories";
 import { loadCourseLanding } from "@/lib/course-landing";
 import { CATALOG_ORIGIN, CATALOG_PAGE_SIZE } from "@/lib/public-catalog";
@@ -254,7 +258,7 @@ export interface ListingCard {
 }
 
 async function readListingPage(sectionSlug: string | null, brandSlug: string | null, page: number) {
-  const section = sectionSlug ? MARKETPLACE_SECTIONS.find((s) => s.slug === sectionSlug) : null;
+  const section = sectionSlug ? getSection(sectionSlug) : null;
   let brandId: string | null = null;
   if (brandSlug) {
     const b = await prisma.marketplaceBrand.findUnique({ where: { slug: brandSlug }, select: { id: true, isActive: true } });
@@ -264,7 +268,11 @@ async function readListingPage(sectionSlug: string | null, brandSlug: string | n
   const where = {
     status: "ACTIVE" as const,
     nsfw: false,
-    ...(section ? { assetType: { in: section.assetTypes as unknown as string[] } } : {}),
+    // No section = the marketplace front page, which is products only;
+    // services are listed on /services (section "services").
+    assetType: section
+      ? { in: section.assetTypes as unknown as string[] }
+      : { not: SERVICE_ASSET_TYPE },
     ...(brandId ? { brandId } : {}),
   };
   const [total, rows] = await Promise.all([
@@ -536,9 +544,18 @@ export async function guestCatalogStatus(
   pathname: string
 ): Promise<{ ok: true } | { ok: false } | { redirect: string }> {
   const parts = pathname.split("/").filter(Boolean);
-  if (parts.length === 1) return { ok: true }; // /marketplace, /courses
+  if (parts.length === 1) return { ok: true }; // /marketplace, /services, /courses
   const [area, a, b] = parts;
+  if (area === "services") {
+    if (a && !b) {
+      const l = await getPublicListing(a);
+      if (!l || !GUEST_LISTING_STATUSES.has(l.status)) return { ok: false };
+      return isServiceType(l.assetType) ? { ok: true } : { redirect: `/marketplace/${a}` };
+    }
+    return { ok: false };
+  }
   if (area === "marketplace") {
+    if (a === "section" && b === SERVICES_SECTION.slug) return { redirect: "/services" };
     if (a === "section" && b) return MARKETPLACE_SECTIONS.some((s) => s.slug === b) ? { ok: true } : { ok: false };
     if (a === "brand" && b) {
       const brand = await getPublicBrand(b);
@@ -546,7 +563,8 @@ export async function guestCatalogStatus(
     }
     if (a && !b) {
       const l = await getPublicListing(a);
-      return l && GUEST_LISTING_STATUSES.has(l.status) ? { ok: true } : { ok: false };
+      if (!l || !GUEST_LISTING_STATUSES.has(l.status)) return { ok: false };
+      return isServiceType(l.assetType) ? { redirect: `/services/${a}` } : { ok: true };
     }
     return { ok: false };
   }

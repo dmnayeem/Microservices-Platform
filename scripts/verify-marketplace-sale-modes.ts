@@ -95,10 +95,10 @@ async function main() {
   }
   check("no asset type appears in two sections", dupes === 0, `${dupes} duplicate(s)`);
   const uncovered = CATEGORIES.map((c) => c.assetType).filter(
-    (t) => t !== "OTHER" && !seen.has(t)
+    (t) => t !== "OTHER" && t !== "SERVICE" && !seen.has(t)
   );
   check(
-    "every category except OTHER has a section",
+    "every category except OTHER and SERVICE (own page) has a section",
     uncovered.length === 0,
     uncovered.join(", ") || "all covered"
   );
@@ -108,7 +108,7 @@ async function main() {
   check(
     "every repeatable category is in a repeat-sale section",
     CATEGORIES.filter((c) => c.repeatable).every((c) =>
-      ["stock", "products", "services"].includes(seen.get(c.assetType) ?? "")
+      ["stock", "products", "services"].includes(seen.get(c.assetType) ?? sectionForAssetType(c.assetType)?.slug ?? "")
     )
   );
   check(

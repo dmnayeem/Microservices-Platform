@@ -40,7 +40,7 @@ const PUBLIC_PAGES = [
   "/", "/microtask", "/advertise", "/referral", "/features/marketplace", "/features/courses",
   "/features/affiliate", "/about", "/careers", "/press", "/help", "/contact", "/blog", "/status",
   "/abuse", "/privacy", "/terms", "/refund", "/cookies",
-  "/marketplace", "/marketplace/section/services", "/marketplace/section/products",
+  "/marketplace", "/services", "/marketplace/section/products",
   "/marketplace/section/assets", "/marketplace/section/stock", "/courses",
 ];
 /** One sampled item of each kind, taken from the sitemap (none → skipped). */

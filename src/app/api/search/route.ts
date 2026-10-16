@@ -1,4 +1,5 @@
 import { usd } from "@/lib/utils";
+import { listingHref } from "@/lib/marketplace-categories";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
@@ -129,6 +130,7 @@ export async function GET(request: NextRequest) {
         category: true,
         price: true,
         images: true,
+        assetType: true,
       },
       take: limit,
     });
@@ -139,7 +141,7 @@ export async function GET(request: NextRequest) {
         title: l.title,
         subtitle: `${l.category} · ${usd(l.price)}`,
         imageUrl: l.images[0] ?? undefined,
-        href: `/marketplace/${l.id}`,
+        href: listingHref(l),
       });
     }
   }

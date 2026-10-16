@@ -59,7 +59,7 @@ export function GuestShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-(--app-line) bg-(--app-surface)">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-6 text-sm text-(--app-ink-3) sm:px-6 lg:px-8">
           <Link href="/marketplace" className="hover:text-(--app-ink)">Marketplace</Link>
-          <Link href="/marketplace/section/services" className="hover:text-(--app-ink)">Services</Link>
+          <Link href="/services" className="hover:text-(--app-ink)">Services</Link>
           <Link href="/courses" className="hover:text-(--app-ink)">Courses</Link>
           <Link href="/about" className="hover:text-(--app-ink)">About</Link>
           <Link href="/help" className="hover:text-(--app-ink)">Help</Link>

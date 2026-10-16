@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
 import { ChevronLeft } from "lucide-react";
@@ -8,14 +8,15 @@ import { getEffectiveFeatures } from "@/lib/packages";
 import { FeatureLock } from "@/components/user/primitives/feature-lock";
 import { JsonLd } from "@/components/seo/json-ld";
 import { ListingGrid, Pagination } from "@/components/public/catalog-lists";
-import { getSection, MARKETPLACE_SECTIONS } from "@/lib/marketplace-categories";
+import { getSection, MARKETPLACE_SECTIONS, SERVICES_SECTION } from "@/lib/marketplace-categories";
 import { indexPageSeo } from "@/lib/public-catalog";
 import { getPublicListingPage } from "@/lib/public-catalog-data";
 import { breadcrumbLd, itemListLd } from "@/lib/public-catalog-schema";
 
 /**
  * A marketplace category landing page (/marketplace/section/<slug>) — one of
- * the four trades in MARKETPLACE_SECTIONS. Public, server-rendered from a
+ * the trades in MARKETPLACE_SECTIONS. Services moved to /services; their old
+ * section address redirects there. Public, server-rendered from a
  * cached read; the same page for guests and signed-in users.
  */
 
@@ -38,14 +39,11 @@ const INTRO: Record<string, { title: string; body: string }> = {
     title: "Websites, Domains, Apps & Accounts for Sale",
     body: "Domains, websites, apps, SaaS products and accounts. Each one is sold once and transferred to the buyer, with the seller's figures, terms and what is included listed on the page.",
   },
-  services: {
-    title: "Freelance Services",
-    body: "Work delivered to order by sellers on RevType. Each service lists what is delivered, the turnaround and the included revisions; order it with your RevType wallet.",
-  },
 };
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (slug === SERVICES_SECTION.slug) permanentRedirect("/services");
   const section = getSection(slug);
   if (!section) notFound();
   const intro = INTRO[slug] ?? { title: section.label, body: section.tagline };
@@ -67,6 +65,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 export default async function MarketplaceSectionPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  if (slug === SERVICES_SECTION.slug) permanentRedirect("/services");
   const section = getSection(slug);
   if (!section) notFound();
 

@@ -59,10 +59,14 @@ interface Props {
   /** Money from completed sales still inside the platform's payout hold.
    *  Zero — and hidden — whenever the hold is switched off. */
   pendingPayout?: { amount: number; count: number; nextReleaseAt: string | null };
+  /** "services" = the freelancer's own services (/services/my). */
+  mode?: "products" | "services";
 }
 
-export function SellerDashboardView({ listings, pendingPayout }: Props) {
+export function SellerDashboardView({ listings, pendingPayout, mode = "products" }: Props) {
   const [filter, setFilter] = useState<FilterKey>("ALL");
+  const services = mode === "services";
+  const base = services ? "/services" : "/marketplace";
 
   const stats = useMemo(() => {
     const totalEarned = listings.reduce((sum, l) => sum + l.totalEarned, 0);
@@ -84,14 +88,16 @@ export function SellerDashboardView({ listings, pendingPayout }: Props) {
         <div>
           <h1 className="text-xl font-bold text-white inline-flex items-center gap-2">
             <Package className="w-5 h-5 text-(--app-accent-ink)" />
-            Seller Dashboard
+            {services ? "My services" : "Seller Dashboard"}
           </h1>
           <p className="text-xs text-(--app-ink-3) mt-0.5">
-            Manage your listings and track sales.
+            {services
+              ? "Manage the services you offer and track orders."
+              : "Manage your listings and track sales."}
           </p>
         </div>
         <Link
-          href="/marketplace/create"
+          href={`${base}/create`}
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold"
         >
           <Plus className="w-4 h-4" />
@@ -119,7 +125,7 @@ export function SellerDashboardView({ listings, pendingPayout }: Props) {
         )}
         <StatCard
           icon={ShoppingBag}
-          label="Sales"
+          label={services ? "Orders" : "Sales"}
           value={stats.totalSales.toLocaleString()}
           tone="indigo"
         />
@@ -154,15 +160,23 @@ export function SellerDashboardView({ listings, pendingPayout }: Props) {
       {filtered.length === 0 ? (
         <EmptyState
           icon={Package}
-          title={filter === "ALL" ? "No listings yet" : `No ${filter.toLowerCase()} listings`}
+          title={
+            filter === "ALL"
+              ? services ? "No services yet" : "No listings yet"
+              : `No ${filter.toLowerCase()} ${services ? "services" : "listings"}`
+          }
           description={
             filter === "ALL"
-              ? "Create your first listing to start selling."
+              ? services
+                ? "Offer your first service to start getting orders."
+                : "Create your first listing to start selling."
               : "Try a different filter."
           }
           action={
             filter === "ALL"
-              ? { label: "Create Listing", href: "/marketplace/create" }
+              ? services
+                ? { label: "Offer a service", href: "/services/create" }
+                : { label: "Create Listing", href: "/marketplace/create" }
               : undefined
           }
         />
@@ -171,7 +185,7 @@ export function SellerDashboardView({ listings, pendingPayout }: Props) {
           {filtered.map((l) => (
             <div key={l.id} className="space-y-1.5">
               <ListingCard
-                href={`/marketplace/${l.id}`}
+                href={`${base}/${l.id}`}
                 image={l.images[0]}
                 title={l.title}
                 price={l.price}
@@ -221,7 +235,7 @@ export function SellerDashboardView({ listings, pendingPayout }: Props) {
                   ) : (
                     <>
                       <Hourglass className="w-2.5 h-2.5" />
-                      No sales yet
+                      {services ? "No orders yet" : "No sales yet"}
                     </>
                   )}
                 </span>

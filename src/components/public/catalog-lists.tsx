@@ -4,6 +4,7 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 import { usd } from "@/lib/utils";
 import type { ListingCard, CourseCard } from "@/lib/public-catalog-data";
 import { CATALOG_PAGE_SIZE } from "@/lib/public-catalog";
+import { listingHref } from "@/lib/marketplace-categories";
 
 /**
  * Server-rendered catalog grids for the public index / category pages. Every
@@ -21,7 +22,7 @@ export function ListingGrid({ items, headingLevel = 2 }: { items: ListingCard[];
       {items.map((l) => (
         <li key={l.id} className="min-w-0">
           <Link
-            href={`/marketplace/${l.id}`}
+            href={listingHref(l)}
             className="glass rounded-xl overflow-hidden block h-full hover:ring-1 hover:ring-(--app-accent) transition"
           >
             <div className="relative aspect-square bg-black/30">

@@ -29,7 +29,7 @@ import { CreateListingButton } from "@/components/admin/marketplace-actions";
 import { DisputeResolveButton } from "@/components/admin/marketplace/dispute-resolve-button";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { cn } from "@/lib/utils";
-import { ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
+import { ASSET_TYPE_LABEL, SERVICE_ASSET_TYPE } from "@/lib/marketplace-categories";
 
 interface PageProps {
   searchParams: Promise<{
@@ -38,6 +38,7 @@ interface PageProps {
     status?: string;
     category?: string;
     assetType?: string;
+    kind?: string;
     search?: string;
   }>;
 }
@@ -130,6 +131,9 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
   const statusFilter = params.status || "";
   const categoryFilter = params.category || "";
   const assetTypeFilter = params.assetType || "";
+  // Products vs services (services live on /services for users).
+  const kindFilter =
+    params.kind === "products" || params.kind === "services" ? params.kind : "";
   const searchQuery = params.search || "";
 
   // Stats — always fetched for the top row
@@ -176,6 +180,9 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
       where: {
         ...(statusFilter && { status: statusFilter as never }),
         ...(categoryFilter && { category: categoryFilter }),
+        ...(kindFilter && {
+          assetType: kindFilter === "services" ? SERVICE_ASSET_TYPE : { not: SERVICE_ASSET_TYPE },
+        }),
         ...(assetTypeFilter && { assetType: assetTypeFilter }),
         ...(searchQuery && {
           OR: [
@@ -224,6 +231,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
     page?: number;
     status?: string;
     assetType?: string;
+    kind?: string;
   }) => {
     const sp = new URLSearchParams();
     sp.set("tab", next.tab ?? tab);
@@ -239,6 +247,11 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
       if (next.assetType) sp.set("assetType", next.assetType);
     } else if (assetTypeFilter && (next.tab ?? tab) === "listings") {
       sp.set("assetType", assetTypeFilter);
+    }
+    if (next.kind !== undefined) {
+      if (next.kind) sp.set("kind", next.kind);
+    } else if (kindFilter && (next.tab ?? tab) === "listings") {
+      sp.set("kind", kindFilter);
     }
     if (searchQuery && (next.tab ?? tab) === "listings")
       sp.set("search", searchQuery);
@@ -393,6 +406,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
                 {assetTypeFilter && (
                   <input type="hidden" name="assetType" value={assetTypeFilter} />
                 )}
+                {kindFilter && <input type="hidden" name="kind" value={kindFilter} />}
               </div>
             </form>
             <div className="flex flex-wrap gap-2">
@@ -420,6 +434,25 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
                 </Link>
               ))}
             </div>
+            <div className="flex flex-wrap gap-2">
+              {([
+                ["", "Products & services"],
+                ["products", "Products"],
+                ["services", "Services"],
+              ] as const).map(([k, label]) => (
+                <Link
+                  key={k || "all"}
+                  href={buildHref({ tab: "listings", page: 1, kind: k, assetType: "" })}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    kindFilter === k
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-1.5">
               <Link
                 href={buildHref({ tab: "listings", page: 1, assetType: "" })}
@@ -431,7 +464,15 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
               >
                 All types
               </Link>
-              {Object.entries(ASSET_TYPE_LABEL).map(([slug, label]) => (
+              {Object.entries(ASSET_TYPE_LABEL)
+                .filter(([slug]) =>
+                  kindFilter === "services"
+                    ? slug === SERVICE_ASSET_TYPE
+                    : kindFilter === "products"
+                      ? slug !== SERVICE_ASSET_TYPE
+                      : true
+                )
+                .map(([slug, label]) => (
                 <Link
                   key={slug}
                   href={buildHref({ tab: "listings", page: 1, assetType: slug })}

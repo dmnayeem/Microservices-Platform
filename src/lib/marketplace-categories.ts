@@ -167,6 +167,7 @@ export function resolveSaleMode(
  *
  * `OTHER` is deliberately absent from every section — it is the escape hatch,
  * and putting it in a storefront would make it look like a category.
+ * `SERVICE` is absent too: services have their own page (SERVICES_SECTION).
  */
 export interface MarketplaceSection {
   slug: string;
@@ -210,21 +211,44 @@ export const MARKETPLACE_SECTIONS: MarketplaceSection[] = [
       "PLATFORM",
     ],
   },
-  {
-    slug: "services",
-    label: "Services",
-    tagline: "Work delivered to order",
-    iconKey: "Wrench",
-    assetTypes: ["SERVICE"],
-  },
 ];
 
+/**
+ * Services live on their own page (/services), not in the marketplace. A
+ * freelancer hired to do work and a file sold off a shelf are different
+ * trades with different sellers (`sellServices` vs `sellMarketplace`), so the
+ * marketplace lists digital products only. The section object is kept so the
+ * listings API can still narrow by `section=services`.
+ */
+export const SERVICES_SECTION: MarketplaceSection = {
+  slug: "services",
+  label: "Services",
+  tagline: "Hire a freelancer — work delivered to order",
+  iconKey: "Briefcase",
+  assetTypes: ["SERVICE"],
+};
+
+export const SERVICE_ASSET_TYPE = "SERVICE";
+
+export function isServiceType(assetType: string | null | undefined): boolean {
+  return assetType === SERVICE_ASSET_TYPE;
+}
+
+/** Where a listing lives: services under /services, everything else under /marketplace. */
+export function listingHref(listing: { id: string; assetType: string | null | undefined }): string {
+  return isServiceType(listing.assetType)
+    ? `/services/${listing.id}`
+    : `/marketplace/${listing.id}`;
+}
+
 export function getSection(slug: string): MarketplaceSection | null {
+  if (slug === SERVICES_SECTION.slug) return SERVICES_SECTION;
   return MARKETPLACE_SECTIONS.find((s) => s.slug === slug) ?? null;
 }
 
 /** Which section an asset type belongs to, if any. */
 export function sectionForAssetType(assetType: string): MarketplaceSection | null {
+  if (isServiceType(assetType)) return SERVICES_SECTION;
   return (
     MARKETPLACE_SECTIONS.find((s) =>
       (s.assetTypes as string[]).includes(assetType)
@@ -734,10 +758,24 @@ export const CATEGORIES: CategoryConfig[] = [
     label: "Service",
     description: "Done-for-you service offering",
     iconKey: "Briefcase",
+    // A freelancer has no monthly revenue, asset age or handover method.
+    skipCommonFields: true,
+    // Service categories. Optional on older listings (subType null).
+    subTypes: [
+      { slug: "DESIGN", label: "Graphics & design" },
+      { slug: "WRITING", label: "Writing & translation" },
+      { slug: "DEVELOPMENT", label: "Programming & tech" },
+      { slug: "MARKETING", label: "Digital marketing" },
+      { slug: "VIDEO", label: "Video & animation" },
+      { slug: "AUDIO", label: "Music & audio" },
+      { slug: "BUSINESS", label: "Business & admin" },
+      { slug: "OTHER", label: "Other service" },
+    ],
     fields: [
       { key: "deliverable", type: "MULTILINE", label: "What's delivered?", required: true, maxLength: 500, group: "Service" },
-      { key: "turnaroundDays", type: "NUMBER", label: "Turnaround (days)", min: 0, group: "Service" },
+      { key: "turnaroundDays", type: "NUMBER", label: "Delivery time (days)", min: 0, group: "Service" },
       { key: "revisions", type: "NUMBER", label: "Included revisions", min: 0, group: "Service" },
+      { key: "niche", type: "TEXT", label: "Skills / tags", hint: "e.g. Logo design, WordPress, SEO", maxLength: 80, group: "Service" },
     ],
   },
   {

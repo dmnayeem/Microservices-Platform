@@ -1,4 +1,5 @@
 import { canonicalUrl, CATALOG_ORIGIN, plainSummary } from "./public-catalog";
+import { listingHref } from "./marketplace-categories";
 
 /**
  * schema.org builders for the public marketplace and course pages.
@@ -43,7 +44,7 @@ export interface ListingLdInput {
 }
 
 export function listingLd(l: ListingLdInput): Ld {
-  const url = canonicalUrl(`/marketplace/${l.id}`);
+  const url = canonicalUrl(listingHref(l));
   const offer: Ld = {
     "@type": "Offer",
     url,

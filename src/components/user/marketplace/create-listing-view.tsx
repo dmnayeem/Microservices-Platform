@@ -33,6 +33,8 @@ import {
   getDeliverableKind,
   canBeUnlimited,
   requiresDeliverable,
+  isServiceType,
+  SERVICE_ASSET_TYPE,
   type CategoryField,
 } from "@/lib/marketplace-categories";
 import { CategoryFieldInput } from "@/components/admin/marketplace/listing-form/CategoryFieldInput";
@@ -70,16 +72,23 @@ type Tier = { id: string; name: string; price: number; description?: string };
 const uploadListingScreenshot = (file: File) =>
   uploadUserFile(file, "marketplace", { purpose: "proof" });
 
+/** Digital product types — services are offered from /services/create. */
+const PRODUCT_CATEGORIES = CATEGORIES.filter((c) => !isServiceType(c.assetType));
+
 export function CreateListingView({
   licenseTiersEnabled = false,
   suggestedTiers = [],
+  mode = "products",
 }: {
   licenseTiersEnabled?: boolean;
   suggestedTiers?: Tier[];
+  /** "services" fixes the type to SERVICE and words the form for freelancers. */
+  mode?: "products" | "services";
 } = {}) {
   const router = useRouter();
+  const services = mode === "services";
 
-  const [assetType, setAssetType] = useState<string>("");
+  const [assetType, setAssetType] = useState<string>(services ? SERVICE_ASSET_TYPE : "");
   const [subType, setSubType] = useState<string>("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -157,7 +166,7 @@ export function CreateListingView({
       return toast.error("Add a title and a description (10+ chars)");
     if (price <= 0) return toast.error("Price must be greater than 0");
     if (cat?.subTypes?.length && !subType)
-      return toast.error("Choose a sub-type");
+      return toast.error(services ? "Choose a service category" : "Choose a sub-type");
     if (needsDeliverable && files.length === 0)
       return toast.error("Upload the file you're selling");
 
@@ -176,11 +185,11 @@ export function CreateListingView({
           price,
           currency: "USD",
           // Only meaningful for a repeatable category; the server clamps
-          // anything else back to ONE_OFF.
-          saleMode: repeatable && !exclusive ? "UNLIMITED" : "ONE_OFF",
+          // anything else back to ONE_OFF. A service takes any number of orders.
+          saleMode: services || (repeatable && !exclusive) ? "UNLIMITED" : "ONE_OFF",
           // Ignored by the server unless the admin has tiers switched on and
           // the category is one that can be sold repeatedly.
-          licenseTiers: tiers.length > 0 ? tiers : undefined,
+          licenseTiers: !services && tiers.length > 0 ? tiers : undefined,
           affiliateCommissionType: affType || null,
           affiliateCommissionValue: affType && affValue > 0 ? affValue : null,
           images,
@@ -198,7 +207,7 @@ export function CreateListingView({
       toast.success("Submitted for review", {
         description: "An admin will approve it before it goes live.",
       });
-      router.push("/marketplace/my");
+      router.push(services ? "/services/my" : "/marketplace/my");
     } catch (err) {
       toast.error("Failed to submit", {
         description: err instanceof Error ? err.message : "Try again",
@@ -210,49 +219,63 @@ export function CreateListingView({
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto pb-24">
-      <div>
-        <h1 className="text-xl font-bold text-white">Sell a digital asset</h1>
-        <p className="text-sm text-(--app-ink-3) mt-0.5">
-          Digital goods only — accounts, domains, websites, platforms, stock
-          photos/videos/music and more. New listings are reviewed before going
-          live.
-        </p>
-      </div>
-
-      {/* Step 1 — category */}
-      <section className="glass rounded-xl p-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3) mb-2">
-          1 · Category
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {CATEGORIES.map((c) => {
-            const Icon = ICONS[c.iconKey] ?? Box;
-            const active = c.assetType === assetType;
-            return (
-              <button
-                key={c.assetType}
-                type="button"
-                onClick={() => pickType(c.assetType)}
-                className={`text-left rounded-xl border p-3 transition-colors ${
-                  active
-                    ? "border-(--app-accent-edge) bg-(--app-cta)/10"
-                    : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
-                }`}
-              >
-                <Icon
-                  className={`w-5 h-5 mb-1.5 ${active ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"}`}
-                />
-                <p className="text-sm font-semibold text-white leading-tight">
-                  {c.label}
-                </p>
-                <p className="text-[11px] text-(--app-ink-3) mt-0.5 line-clamp-2">
-                  {c.description}
-                </p>
-              </button>
-            );
-          })}
+      {services ? (
+        <div>
+          <h1 className="text-xl font-bold text-white">Offer a service</h1>
+          <p className="text-sm text-(--app-ink-3) mt-0.5">
+            Tell buyers what you will do, how long it takes and how many
+            revisions are included. Buyers pay into escrow when they order, and
+            you are paid once the work is delivered. New services are reviewed
+            before going live.
+          </p>
         </div>
-      </section>
+      ) : (
+        <div>
+          <h1 className="text-xl font-bold text-white">Sell a digital asset</h1>
+          <p className="text-sm text-(--app-ink-3) mt-0.5">
+            Digital goods only — accounts, domains, websites, platforms, stock
+            photos/videos/music and more. New listings are reviewed before going
+            live. Offering a service instead? Use Services → Offer a service.
+          </p>
+        </div>
+      )}
+
+      {/* Step 1 — category (fixed for services) */}
+      {!services && (
+        <section className="glass rounded-xl p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3) mb-2">
+            1 · Category
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {PRODUCT_CATEGORIES.map((c) => {
+              const Icon = ICONS[c.iconKey] ?? Box;
+              const active = c.assetType === assetType;
+              return (
+                <button
+                  key={c.assetType}
+                  type="button"
+                  onClick={() => pickType(c.assetType)}
+                  className={`text-left rounded-xl border p-3 transition-colors ${
+                    active
+                      ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                      : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
+                  }`}
+                >
+                  <Icon
+                    className={`w-5 h-5 mb-1.5 ${active ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"}`}
+                  />
+                  <p className="text-sm font-semibold text-white leading-tight">
+                    {c.label}
+                  </p>
+                  <p className="text-[11px] text-(--app-ink-3) mt-0.5 line-clamp-2">
+                    {c.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {assetType && (
         <>
@@ -260,7 +283,7 @@ export function CreateListingView({
           {cat?.subTypes && cat.subTypes.length > 0 && (
             <section className="glass rounded-xl p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3) mb-2">
-                Type
+                {services ? "1 · Service category" : "Type"}
               </p>
               <div className="flex flex-wrap gap-2">
                 {cat.subTypes.map((s) => (
@@ -294,7 +317,7 @@ export function CreateListingView({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={100}
-                placeholder="What are you selling?"
+                placeholder={services ? "I will design a logo for your brand" : "What are you selling?"}
                 className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
@@ -307,13 +330,17 @@ export function CreateListingView({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={1000}
-                placeholder="Tell buyers what they're getting…"
+                placeholder={
+                  services
+                    ? "What you will do, what you need from the buyer to start, and how you work…"
+                    : "Tell buyers what they're getting…"
+                }
                 className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
               />
             </div>
             <div className="w-40">
               <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
-                Price (USD) *
+                {services ? "Starting price (USD) *" : "Price (USD) *"}
               </label>
               <input
                 type="number"
@@ -327,7 +354,7 @@ export function CreateListingView({
             {/* Licence tiers. Only where the admin has switched them on AND the
                 category is sold repeatedly — a domain has one buyer, so three
                 licence levels would promise something it cannot deliver. */}
-            {licenseTiersEnabled && repeatable && !exclusive && (
+            {licenseTiersEnabled && repeatable && !exclusive && !services && (
               <div className="w-full space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-(--app-ink-3)">
@@ -401,7 +428,7 @@ export function CreateListingView({
             {/* Only offered where it is a real choice. A domain or an account
                 can only ever go to one buyer, so showing a toggle there would
                 promise something the category cannot deliver. */}
-            {repeatable && (
+            {repeatable && !services && (
               <div className="w-full">
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
@@ -427,7 +454,7 @@ export function CreateListingView({
           {fields.length > 0 && (
             <section className="glass rounded-xl p-4 space-y-3">
               <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
-                3 · Details
+                {services ? "3 · Delivery & revisions" : "3 · Details"}
               </p>
               {fields.map((f) => (
                 <CategoryFieldInput

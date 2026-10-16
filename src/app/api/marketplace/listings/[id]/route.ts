@@ -11,6 +11,7 @@ import { inspectStoredFiles, reportStoredFiles } from "@/lib/upload-safety";
 import { screenLinks } from "@/lib/link-safety";
 import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 import { readTiers } from "@/lib/marketplace-selling";
+import { listingSellerGate } from "@/lib/marketplace-seller-gate";
 
 /**
  * Statuses in which the seller may still change what is sold (`files`) or
@@ -230,6 +231,9 @@ export async function PUT(
         { status: 403 }
       );
     }
+
+    const sellerGated = await listingSellerGate(session.user.id, listing.assetType);
+    if (sellerGated) return sellerGated;
 
     const { title, description, images, files, price, category } = parsed.data;
 
