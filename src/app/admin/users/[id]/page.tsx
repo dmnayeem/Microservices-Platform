@@ -59,6 +59,7 @@ import { Avatar } from "@/components/user/primitives/avatar";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { ImpersonationBlockToggle } from "@/components/admin/users/impersonation-block-toggle";
 import { impersonationActor, impersonationRefusal } from "@/lib/impersonation";
+import { getUserGameEarnings, getUserGameEarningsByKind, gameEarnKindLabel } from "@/lib/game-earnings";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -301,6 +302,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     { id: "analytics", label: "Analytics" },
     { id: "transactions", label: "Transactions", count: counts._count.transactions },
     { id: "tasks", label: "Tasks", count: counts._count.taskSubmissions },
+    { id: "games", label: "Games" },
     { id: "referrals", label: "Referrals", count: counts._count.referrals },
     ...(seesMoney ? [{ id: "withdrawals", label: "Withdrawals", count: counts._count.withdrawals }] : []),
   ];
@@ -399,6 +401,44 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         })
       : Promise.resolve([]),
   ]);
+
+  // Games tab: points from games (GameEarnLog), only read on that tab.
+  // Month = UTC calendar month. A failed read shows the empty state.
+  const gamesData =
+    tab === "games"
+      ? await safeRead(
+          (async () => {
+            const now = new Date();
+            const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+            const [summary, byKind, recent] = await Promise.all([
+              getUserGameEarnings(id, { monthStart }),
+              getUserGameEarningsByKind(id),
+              prisma.gameEarnLog.findMany({
+                where: { userId: id },
+                orderBy: { createdAt: "desc" },
+                take: 20,
+                select: { id: true, gameId: true, kind: true, points: true, createdAt: true },
+              }),
+            ]);
+            const titles = new Map((summary?.games ?? []).map((g) => [g.gameId, g.title]));
+            const missing = [...new Set(recent.map((r) => r.gameId))].filter((g) => !titles.has(g));
+            if (missing.length > 0) {
+              const extra = await prisma.game.findMany({
+                where: { id: { in: missing } },
+                select: { id: true, title: true },
+              });
+              for (const g of extra) titles.set(g.id, g.title);
+            }
+            return {
+              summary,
+              byKind,
+              recent: recent.map((r) => ({ ...r, title: titles.get(r.gameId) ?? "Removed game" })),
+            };
+          })(),
+          null,
+          "admin user detail games"
+        )
+      : null;
 
   const posts = postsRaw as unknown as PostRow[];
   const followers = followersRaw as unknown as FollowerRow[];
@@ -1355,6 +1395,113 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
               },
             ]}
           />
+        )}
+
+        {tab === "games" && (
+          <div className="p-6 space-y-6">
+            {!gamesData?.summary ? (
+              <div className="py-8 text-center text-gray-500">No game earnings yet</div>
+            ) : (
+              <>
+                {/* Totals — points for every admin, dollars only with finance access. */}
+                <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                  {[
+                    { label: "All time", value: gamesData.summary.totals.allTime },
+                    { label: "This month", value: gamesData.summary.totals.month },
+                    ...gamesData.byKind.map((k) => ({
+                      label: `${gameEarnKindLabel(k.kind)} (all time)`,
+                      value: k.points,
+                    })),
+                  ].map((t) => (
+                    <div key={t.label} className="rounded-lg border border-gray-800 bg-gray-800/40 p-3 min-w-0">
+                      <p className="text-xs text-gray-400 truncate">{t.label}</p>
+                      <p className="mt-1 text-lg font-semibold text-white">{pts(t.value)} pts</p>
+                      {seesMoney && (
+                        <p className="text-xs text-gray-500">≈ {usd(t.value / (pointsPerUsd || 1))}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-3">By game</h3>
+                  <div className="rounded-lg border border-gray-800 overflow-hidden">
+                    <AdminTable<(typeof gamesData.summary.games)[number]>
+                      bare
+                      rows={gamesData.summary.games}
+                      getRowKey={(g) => g.gameId}
+                      empty={<div className="py-8 text-center text-gray-500">No game earnings yet</div>}
+                      columns={[
+                        {
+                          key: "game",
+                          header: "Game",
+                          primary: true,
+                          cell: (g) => <span className="text-white">{g.title}</span>,
+                        },
+                        {
+                          key: "month",
+                          header: "This month",
+                          cell: (g) => <span className="text-gray-300">{pts(g.month)} pts</span>,
+                        },
+                        {
+                          key: "all",
+                          header: "All time",
+                          cell: (g) => (
+                            <span className="font-medium text-emerald-400">
+                              {pts(g.allTime)} pts
+                              {seesMoney && (
+                                <span className="ml-1 text-xs font-normal text-gray-500">
+                                  ≈ {usd(g.allTime / (pointsPerUsd || 1))}
+                                </span>
+                              )}
+                            </span>
+                          ),
+                        },
+                      ]}
+                    />
+                  </div>
+                  {gamesData.summary.games.length >= 20 && (
+                    <p className="mt-2 text-xs text-gray-500">Top 20 games by all-time points.</p>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-3">Last 20 payouts</h3>
+                  <div className="rounded-lg border border-gray-800 overflow-hidden">
+                    <AdminTable<(typeof gamesData.recent)[number]>
+                      bare
+                      rows={gamesData.recent}
+                      getRowKey={(r) => r.id}
+                      empty={<div className="py-8 text-center text-gray-500">No game payouts</div>}
+                      columns={[
+                        {
+                          key: "game",
+                          header: "Game",
+                          primary: true,
+                          cell: (r) => <span className="text-white">{r.title}</span>,
+                        },
+                        {
+                          key: "kind",
+                          header: "Kind",
+                          cell: (r) => <span className="text-gray-400">{gameEarnKindLabel(r.kind)}</span>,
+                        },
+                        {
+                          key: "points",
+                          header: "Points",
+                          cell: (r) => <span className="font-medium text-emerald-400">+{pts(r.points)}</span>,
+                        },
+                        {
+                          key: "date",
+                          header: "Date",
+                          cell: (r) => <span className="text-gray-400">{format(r.createdAt, "MMM d, yyyy HH:mm")}</span>,
+                        },
+                      ]}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         )}
 
         {tab === "referrals" && (
