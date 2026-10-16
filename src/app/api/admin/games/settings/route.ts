@@ -21,6 +21,8 @@ const schema = z.object({
   globalDailyCap: int(B.globalDailyCap, "Daily cap across all games"),
   maxPerSession: int(B.maxPerSession, "Max points per session"),
   scoreMaxPerMinute: int(B.scoreMaxPerMinute, "Max score points per minute"),
+  serverMaxPerCredit: int(B.serverMaxPerCredit, "Max points per game-server credit"),
+  serverDailyCap: int(B.serverDailyCap, "Game-server daily cap per player"),
 });
 
 /**
@@ -50,13 +52,15 @@ export async function PUT(request: NextRequest) {
   await saveSetting(GAMES_SETTING_KEYS.globalDailyCap, d.globalDailyCap, "games");
   await saveSetting(GAMES_SETTING_KEYS.maxPerSession, d.maxPerSession, "games");
   await saveSetting(GAMES_SETTING_KEYS.scoreMaxPerMinute, d.scoreMaxPerMinute, "games");
+  await saveSetting(GAMES_SETTING_KEYS.serverMaxPerCredit, d.serverMaxPerCredit, "games");
+  await saveSetting(GAMES_SETTING_KEYS.serverDailyCap, d.serverDailyCap, "games");
 
   await writeAudit({
     actorId: session.user.id,
     action: "GAMES_SETTINGS_UPDATED",
     entity: "SystemSetting",
     entityId: "games",
-    summary: `Game earning ${d.enabled ? "on" : "OFF"}; ≤${d.maxPointsPerTick} pts/tick, ticks ≥${d.minTickSeconds}s, ${d.globalDailyCap}/day, ${d.maxPerSession}/session, score ≤${d.scoreMaxPerMinute}/min`,
+    summary: `Game earning ${d.enabled ? "on" : "OFF"}; ≤${d.maxPointsPerTick} pts/tick, ticks ≥${d.minTickSeconds}s, ${d.globalDailyCap}/day, ${d.maxPerSession}/session, score ≤${d.scoreMaxPerMinute}/min, server ≤${d.serverMaxPerCredit}/credit ${d.serverDailyCap}/day`,
     meta: { before, after: d },
   }).catch(() => {});
 

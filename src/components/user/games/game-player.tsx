@@ -33,6 +33,8 @@ interface SessionInfo {
     maxPerSession: number;
     requiresAd: boolean;
   };
+  /** Games whose own server decides income: the member's key for that game website. */
+  playerKey?: string;
   /** Absent on servers older than the Games SDK. */
   score?: {
     enabled: boolean;
@@ -224,8 +226,9 @@ export function GamePlayer({
       {
         source: "revtype-player",
         type: "welcome",
-        earning: !!s?.score?.enabled,
+        earning: !!s?.score?.enabled || !!s?.playerKey,
         pointsPer1000: s?.score?.pointsPer1000 ?? 0,
+        playerKey: s?.playerKey ?? "",
       },
       gameOrigin
     );

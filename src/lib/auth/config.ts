@@ -178,6 +178,7 @@ export const authConfig: NextAuthConfig = {
         "/api/spaces/m/", // ad viewability beacon (exact path) — signed single-use serve token, IVT-judged, in-memory limited
         "/api/spaces/go/", // ad click redirect (exact path) — destination is the ad's stored URL only; logged-out clicks are real
         "/api/games/ext/", // game website (SDK standalone) — signed connect token + allowed-origin check, no cookies
+        "/api/games/s2s/", // owner's game server → RevType — HMAC-signed with the website's server key
       ];
       const isPublicApiRoute =
         publicApiPrefixes.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p)) ||

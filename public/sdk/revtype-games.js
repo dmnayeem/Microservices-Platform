@@ -17,6 +17,14 @@
  *
  * Traffic: one small request every 30 seconds while the game is in front.
  *
+ * If YOUR GAME SERVER decides what players earn (server to server):
+ *   RevType.init({ gameId, earnBy: "server" })    // the SDK only connects the account
+ *   RevType.onReady(function (info) { ... info.playerKey ... })
+ *     → send info.playerKey to your game server once and store it with the
+ *       player's account; your server then credits income with it
+ *       (POST https://revtype.com/api/games/s2s/credit, signed with your
+ *       server key). setScore/addScore are not used in this mode.
+ *
  * Optional:
  *   RevType.init({ gameId, badge: false })        // hide the built-in button
  *   RevType.init({ gameId, position: "top-left" }) // bottom-right (default) / bottom-left / top-right / top-left
@@ -46,9 +54,17 @@
     inFrame = true;
   }
 
-  var cfg = { gameId: null, badge: true, position: "bottom-right" };
+  var cfg = { gameId: null, badge: true, position: "bottom-right", earnBy: "score" };
   var mode = "pending"; // "player" (inside RevType) | "site" (your website)
-  var state = { connected: false, earning: false, name: "", points: 0, pointsPer1000: 0, withdrawUrl: "" };
+  var state = {
+    connected: false,
+    earning: false,
+    name: "",
+    points: 0,
+    pointsPer1000: 0,
+    withdrawUrl: "",
+    playerKey: "",
+  };
   var readyFns = [];
   var earnFns = [];
   var lastScore = 0;
@@ -68,6 +84,7 @@
       name: state.name,
       points: state.points,
       pointsPer1000: state.pointsPer1000,
+      playerKey: state.playerKey,
     };
   }
   function ready() {
@@ -118,6 +135,7 @@
         state.connected = true;
         state.earning = !!d.earning;
         state.pointsPer1000 = Number(d.pointsPer1000) || 0;
+        state.playerKey = d.playerKey || "";
         ready();
         if (pending > 0) schedulePlayer();
       } else if (d.type === "earned") {
@@ -205,6 +223,7 @@
       state.name = r.data.name || state.name;
       state.points = Number(r.data.points) || 0;
       state.withdrawUrl = r.data.withdrawUrl || "";
+      state.playerKey = r.data.playerKey || "";
       renderBadge();
     });
   }
@@ -215,6 +234,15 @@
     stopTimers();
     refreshMe()
       .then(function () {
+        // Server mode: your game server credits income; no play session here.
+        if (cfg.earnBy === "server") {
+          state.connected = !!token;
+          state.earning = !!token;
+          starting = false;
+          ready();
+          startBalanceRefresh();
+          return null;
+        }
         if (!token || !cfg.gameId) return null;
         return api("POST", "session", { gameId: cfg.gameId });
       })
@@ -246,6 +274,16 @@
 
   // Only the tab in front takes the session back — otherwise two open tabs
   // would keep ending each other's session (one open session per player).
+  // Server mode: income arrives from your server, so refresh the button's
+  // balance once a minute while the game is in front.
+  var balanceTimer = null;
+  function startBalanceRefresh() {
+    if (balanceTimer) return;
+    balanceTimer = setInterval(function () {
+      if (!document.hidden && token) refreshMe();
+    }, 60000);
+  }
+
   function restartSession() {
     sessionId = null;
     stopTimers();
@@ -377,6 +415,7 @@
       if (opts.gameId) cfg.gameId = String(opts.gameId);
       if (opts.badge === false) cfg.badge = false;
       if (opts.position) cfg.position = String(opts.position);
+      if (opts.earnBy === "server") cfg.earnBy = "server";
       if (mode === "site") {
         if (token && !sessionId) startSite();
         renderBadge();
@@ -384,6 +423,14 @@
     },
     connect: connect,
     disconnect: dropToken,
+    /** Server mode: the player's key for your game server ("" until connected). */
+    getPlayerKey: function () {
+      return state.playerKey;
+    },
+    /** Re-read the player's RevType balance (e.g. right after your server credited). */
+    refresh: function () {
+      return refreshMe();
+    },
     isConnected: function () {
       return state.connected;
     },

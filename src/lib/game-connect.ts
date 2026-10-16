@@ -1,7 +1,7 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import { getSetting } from "@/lib/system-settings";
+import { getSetting, saveSetting } from "@/lib/system-settings";
 
 /**
  * "Connect RevType" for the owner's separate game website (owner, 2026-10-17).
@@ -121,4 +121,72 @@ export function gamePreflight(origin: string | null): NextResponse {
     res.headers.set("Vary", "Origin");
   }
   return res;
+}
+
+// ── Game server → RevType (server to server) ─────────────────────────────────
+//
+// When the owner's game server decides what a player earned (owner,
+// 2026-10-17), it reports it straight to RevType: POST /api/games/s2s/credit,
+// signed with that website's SERVER KEY. The browser is never trusted with
+// money. A player is named by their PLAYER KEY — a permanent, site-bound id the
+// game gets once the player presses "Connect RevType" (SDK: RevType.onReady →
+// info.playerKey) and stores with its own account.
+
+export const GAME_SITE_KEY_VERSIONS = "games.connect_key_versions";
+
+/** Short, stable id of a website — part of ledger references. */
+export function siteId(origin: string): string {
+  return createHmac("sha256", "game-site-id").update(origin).digest("hex").slice(0, 10);
+}
+
+async function keyVersions(): Promise<Record<string, number>> {
+  const raw = await getSetting<unknown>(GAME_SITE_KEY_VERSIONS, {}).catch(() => ({}));
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, number>) : {};
+}
+
+/**
+ * The website's server key. Derived (nothing secret is stored): rotating it
+ * bumps the version, which changes the key and kills the old one at once.
+ */
+export async function getSiteServerKey(origin: string): Promise<string> {
+  const v = Number((await keyVersions())[origin] ?? 1) || 1;
+  return `rtgs_${createHmac("sha256", secret()).update(`game-site-key.${origin}.${v}`).digest("hex").slice(0, 48)}`;
+}
+
+export async function rotateSiteServerKey(origin: string): Promise<void> {
+  const all = await keyVersions();
+  all[origin] = (Number(all[origin] ?? 1) || 1) + 1;
+  await saveSetting(GAME_SITE_KEY_VERSIONS, all, "games");
+}
+
+/** Constant-time check of a request body's signature against the site's key. */
+export async function verifySiteSignature(origin: string, rawBody: string, signature: string | null): Promise<boolean> {
+  if (!signature) return false;
+  const key = await getSiteServerKey(origin);
+  const want = Buffer.from(createHmac("sha256", key).update(rawBody).digest("hex"));
+  const got = Buffer.from(signature.trim().toLowerCase());
+  return want.length === got.length && timingSafeEqual(want, got);
+}
+
+const signPlayer = (body: string) => b64(createHmac("sha256", secret()).update(`game-player.${body}`).digest());
+
+/** Permanent player id for one website. Only usable with that site's server key. */
+export function playerKeyFor(userId: string, origin: string): string {
+  const body = b64(JSON.stringify({ typ: "game-player", u: userId, o: origin }));
+  return `rtp_${body}.${signPlayer(body)}`;
+}
+
+export function verifyPlayerKey(key: string | null | undefined): { userId: string; origin: string } | null {
+  if (!key || !key.startsWith("rtp_")) return null;
+  const [body, sig] = key.slice(4).split(".");
+  if (!body || !sig) return null;
+  const want = Buffer.from(signPlayer(body));
+  const got = Buffer.from(sig);
+  if (want.length !== got.length || !timingSafeEqual(want, got)) return null;
+  try {
+    const p = JSON.parse(unb64(body).toString("utf8")) as { typ?: string; u?: string; o?: string };
+    return p.typ === "game-player" && p.u && p.o ? { userId: p.u, origin: p.o } : null;
+  } catch {
+    return null;
+  }
 }

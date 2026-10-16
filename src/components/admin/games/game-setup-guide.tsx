@@ -172,6 +172,72 @@ if (window.RevType) {
   });
 }`;
 
+  const serverInstall = `<script src="${origin}/sdk/revtype-games.js"></script>
+<script>RevType.init({ gameId: "${idText}", earnBy: "server" });</script>`;
+
+  const playerKeyExample = `RevType.onReady(function (info) {
+  if (info.connected && info.playerKey) {
+    // your own API — save it with the logged-in player's account
+    fetch("/api/revtype/link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerKey: info.playerKey })
+    });
+  }
+});`;
+
+  const nodeExample = `// Node.js 18+ — call when a player earned points
+const crypto = require("crypto");
+
+async function payOnRevType(playerKey, points, reference) {
+  const body = JSON.stringify({
+    playerKey,                 // saved when the player connected
+    gameId: "${idText}",
+    points,                    // whole number, e.g. 50
+    reference                  // your unique payout id, e.g. "match-98123"
+  });
+  const signature = crypto
+    .createHmac("sha256", process.env.REVTYPE_SERVER_KEY)
+    .update(body)
+    .digest("hex");
+  const res = await fetch("${origin}/api/games/s2s/credit", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-RevType-Site": "https://YOUR-GAME-WEBSITE",
+      "X-RevType-Signature": signature
+    },
+    body
+  });
+  return res.json(); // { ok: true, credited: 50 }
+}`;
+
+  const phpExample = `<?php
+// PHP — call when a player earned points
+function payOnRevType($playerKey, $points, $reference) {
+  $body = json_encode([
+    "playerKey" => $playerKey,
+    "gameId"    => "${idText}",
+    "points"    => (int) $points,
+    "reference" => $reference
+  ]);
+  $signature = hash_hmac("sha256", $body, getenv("REVTYPE_SERVER_KEY"));
+  $ch = curl_init("${origin}/api/games/s2s/credit");
+  curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => $body,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+      "Content-Type: application/json",
+      "X-RevType-Site: https://YOUR-GAME-WEBSITE",
+      "X-RevType-Signature: " . $signature
+    ]
+  ]);
+  $res = curl_exec($ch);
+  curl_close($ch);
+  return json_decode($res, true); // ["ok" => true, "credited" => 50]
+}`;
+
   const h = hostSetup(host, origin);
 
   return (
@@ -268,6 +334,46 @@ if (window.RevType) {
           points going up, and they appear in the member&apos;s RevType wallet.
         </P>
       </Step>
+
+      <details className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-white">
+          If your game server decides what players earn (recommended)
+        </summary>
+        <div className="mt-3 space-y-3">
+          <P>
+            Use this when your game has its own server that works out each player&apos;s income. Your
+            server sends the income straight to RevType — the browser never decides money, so it
+            can&apos;t be faked. Skip step 5 (scores) in this case.
+          </P>
+          <P>
+            <strong>a.</strong> In the game page, use this instead of the step 4 code:
+          </P>
+          <CopyBlock label="index.html — server mode" value={serverInstall} />
+          <P>
+            <strong>b.</strong> When a player connects, the game gets their <C>playerKey</C>. Send it to
+            your game server once and save it with that player&apos;s account:
+          </P>
+          <CopyBlock label="Game page — send the playerKey to your server" value={playerKeyExample} />
+          <P>
+            <strong>c.</strong> Get your <strong>server key</strong> from Games → Settings → Your game
+            websites → Show server keys. Put it in your game server&apos;s settings (environment
+            variable <C>REVTYPE_SERVER_KEY</C>) — never in the game page.
+          </P>
+          <P>
+            <strong>d.</strong> Whenever your server decides a player earned points, call RevType.
+            The <C>reference</C> must be your own unique id for that payout — sending the same one
+            again never pays twice, so it is safe to retry.
+          </P>
+          <CopyBlock label="Game server — Node.js" value={nodeExample} />
+          <CopyBlock label="Game server — PHP" value={phpExample} />
+          <P>
+            The answer is <C>{"{ ok: true, credited: 50 }"}</C>. <C>duplicate: true</C> means that
+            reference was already paid; <C>capped: true</C> means a daily limit cut it (Games →
+            Settings → game-server limits). The points appear in the player&apos;s RevType wallet at
+            once and are withdrawn there.
+          </P>
+        </div>
+      </details>
 
       <details className="rounded-lg border border-slate-800 bg-slate-900 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-white">

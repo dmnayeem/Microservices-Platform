@@ -5,7 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { requireActiveUser } from "@/lib/require-active";
 import { getPointsPerUsd } from "@/lib/economy";
 import { startSession, heartbeat, reportScore, BEAT_INTERVAL_SECONDS } from "@/lib/game-session";
-import { gameCors, gamePreflight, isAllowedGameOrigin, normalizeOrigin, verifyGameConnectToken } from "@/lib/game-connect";
+import { gameCors, gamePreflight, isAllowedGameOrigin, normalizeOrigin, playerKeyFor, verifyGameConnectToken } from "@/lib/game-connect";
 
 /**
  * /api/games/ext/:action — the owner's separate game website, via the RevType
@@ -68,6 +68,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ acti
     points: user.pointsBalance,
     usd: ppu > 0 ? Math.floor((user.pointsBalance / ppu) * 100) / 100 : 0,
     withdrawUrl: `${SITE_URL}/withdrawal`,
+    // For games whose SERVER decides income: the game stores this with its
+    // own account and uses it in /api/games/s2s/credit.
+    playerKey: playerKeyFor(a.userId, a.origin),
   });
 }
 
