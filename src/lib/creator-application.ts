@@ -48,6 +48,21 @@ export const CREATOR_TYPES: Record<CreatorApplicationType, CreatorTypeMeta> = {
     grantFeatures: ["sellServices"],
     dashboardHref: "/services/create",
   },
+  BLUE_BADGE: {
+    label: "Blue Badge",
+    blurb: "The blue checkmark next to your name. Apply and an admin reviews your profile and KYC.",
+    gateFeature: null,
+    // Granted on approval by setting the badge itself (see the admin review).
+    grantFeatures: [],
+    dashboardHref: "/profile",
+  },
+  DEALS: {
+    label: "Escrow Deals",
+    blurb: "Hire sellers through escrow deals — your money is held until the order is delivered.",
+    gateFeature: "deals",
+    grantFeatures: ["deals"],
+    dashboardHref: "/marketplace/messages",
+  },
   TASK_BUYER: {
     label: "Task Buyer",
     blurb:
@@ -85,6 +100,13 @@ export async function hasCreatorAccess(
       select: { affiliateJoinedAt: true },
     });
     return !!u?.affiliateJoinedAt;
+  }
+  if (type === "BLUE_BADGE") {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isBlueVerified: true, blueBadgeExpiresAt: true },
+    });
+    return !!u?.isBlueVerified && (!u.blueBadgeExpiresAt || u.blueBadgeExpiresAt > new Date());
   }
   const gate = CREATOR_TYPES[type].gateFeature;
   if (!gate) return false;
@@ -137,6 +159,8 @@ export async function grantCreatorAccess(
   type: CreatorApplicationType
 ) {
   const meta = CREATOR_TYPES[type];
+  // The badge is granted with a reviewer-chosen duration (grantBlueBadge).
+  if (type === "BLUE_BADGE") return;
   if (type === "AFFILIATE") {
     await prisma.user.updateMany({
       where: { id: userId, affiliateJoinedAt: null },
@@ -204,8 +228,10 @@ export async function approveCreatorApplication(opts: {
   }
   const meta = CREATOR_TYPES[app.type];
 
-  const updated = await prisma.creatorApplication.update({
-    where: { id: app.id },
+  // Compare-and-set on PENDING: two reviewers clicking at once must not both
+  // grant (for the blue badge that would add the duration twice).
+  const flipped = await prisma.creatorApplication.updateMany({
+    where: { id: app.id, status: CreatorApplicationStatus.PENDING },
     data: {
       status: CreatorApplicationStatus.APPROVED,
       adminNote: opts.adminNote ?? null,
@@ -213,6 +239,8 @@ export async function approveCreatorApplication(opts: {
       reviewedAt: new Date(),
     },
   });
+  if (flipped.count === 0) throw new Error("Application was already reviewed");
+  const updated = { ...app, status: CreatorApplicationStatus.APPROVED };
 
   await grantCreatorAccess(app.userId, app.type);
 
@@ -266,4 +294,45 @@ export async function rejectCreatorApplication(opts: {
     }),
   ]);
   return updated;
+}
+
+/**
+ * Give the blue badge for an approved BLUE_BADGE application — the same rule
+ * as the admin user editor: lifetime (no end date) or N days from now (or from
+ * the end of a badge still running). Auto-renew stays OFF so a free grant can
+ * never turn into a charge when the hourly sweep reaches its end date.
+ * Returns the audit entry for the caller to write.
+ */
+export async function grantBlueBadge(
+  userId: string,
+  opts: { lifetime: boolean; days: number | null }
+): Promise<{ summary: string; meta: Record<string, unknown> }> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isBlueVerified: true, blueBadgeExpiresAt: true, blueBadgeAutoRenew: true },
+  });
+  if (!u) throw new Error("User not found");
+  const now = new Date();
+  const base =
+    u.isBlueVerified && u.blueBadgeExpiresAt && u.blueBadgeExpiresAt > now ? u.blueBadgeExpiresAt : now;
+  const expiresAt = opts.lifetime ? null : new Date(base.getTime() + (opts.days ?? 0) * 86_400_000);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { isBlueVerified: true, blueBadgeExpiresAt: expiresAt, blueBadgeAutoRenew: false },
+  });
+  return {
+    summary: expiresAt
+      ? `Granted the blue badge until ${expiresAt.toISOString().slice(0, 10)} (application approved)`
+      : "Granted the blue badge for life (application approved)",
+    meta: {
+      before: {
+        isBlueVerified: u.isBlueVerified,
+        blueBadgeExpiresAt: u.blueBadgeExpiresAt?.toISOString() ?? null,
+        blueBadgeAutoRenew: u.blueBadgeAutoRenew,
+      },
+      after: { isBlueVerified: true, blueBadgeExpiresAt: expiresAt?.toISOString() ?? null, blueBadgeAutoRenew: false },
+      lifetime: expiresAt === null,
+      durationDays: opts.lifetime ? null : opts.days,
+    },
+  };
 }

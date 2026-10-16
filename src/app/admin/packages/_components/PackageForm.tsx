@@ -74,6 +74,7 @@ export interface PackageFormPkg {
   sellCoursesEnabled: boolean;
   sellMarketplaceEnabled: boolean;
   sellServicesEnabled: boolean;
+  dealsEnabled: boolean;
   agencyModeEnabled: boolean;
   shareLinksEnabled: boolean;
   shareYoutubeEnabled: boolean;
@@ -170,6 +171,7 @@ const CREATOR_TOGGLES: Array<{ key: keyof PackageFormPkg; label: string; tooltip
   { key: "sellCoursesEnabled", label: "Sell Courses / Tutor", tooltip: "Lets users create & sell courses (tutor tools)." },
   { key: "sellMarketplaceEnabled", label: "Sell on Marketplace", tooltip: "Lets users list & sell items on the marketplace." },
   { key: "sellServicesEnabled", label: "Offer Services", tooltip: "Lets users list freelance services on the Services page." },
+  { key: "dealsEnabled", label: "Escrow Deals", tooltip: "Lets users start and fund escrow deals with sellers. Off = they apply for it." },
   { key: "agencyModeEnabled", label: "Agency / Moderator Mode", tooltip: "Unlocks the agency console / moderator capabilities." },
   { key: "shareLinksEnabled", label: "Share Links in Posts", tooltip: "Lets users post clickable links (with previews) in the social feed." },
   { key: "shareYoutubeEnabled", label: "Share YouTube / Video Links", tooltip: "Lets users post YouTube/Vimeo/video links that play inline in the feed." },

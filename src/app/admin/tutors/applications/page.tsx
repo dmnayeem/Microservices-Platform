@@ -7,6 +7,8 @@ import Link from "next/link";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { formatDistanceToNow } from "date-fns";
 import { ApplicationDecisionButtons } from "./_components/ApplicationDecisionButtons";
+import { splitAnswersText } from "@/lib/application-requirements";
+import { ApplicationAnswers } from "@/components/shared/application-questions";
 
 interface PageProps {
   searchParams: Promise<{ status?: string }>;
@@ -54,6 +56,7 @@ export default async function TutorApplicationsPage({ searchParams }: PageProps)
     status: "PENDING" | "APPROVED" | "REJECTED";
     bio: string;
     expertise: string[];
+    sampleOutline: string | null;
     portfolioUrl: string | null;
     idDocumentUrl: string | null;
     adminNote: string | null;
@@ -186,6 +189,7 @@ export default async function TutorApplicationsPage({ searchParams }: PageProps)
                       ))}
                     </div>
                   )}
+                  <ApplicationAnswers answers={splitAnswersText(app.sampleOutline).answers} />
                   <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                     {app.portfolioUrl && (
                       <a

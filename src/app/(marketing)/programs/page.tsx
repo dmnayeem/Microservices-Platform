@@ -14,6 +14,7 @@ import {
   Store,
   Target,
   UserPlus,
+  Handshake,
   type LucideIcon,
 } from "lucide-react";
 import { Section, SectionHeading, GlassCard, PrimaryButton, GhostButton, MarketingHero, CtaBand } from "@/components/marketing/ui";
@@ -39,6 +40,7 @@ const ICONS: Record<ProgramIcon, LucideIcon> = {
   share: Share2,
   graduation: GraduationCap,
   medal: Medal,
+  handshake: Handshake,
   badge: BadgeCheck,
 };
 

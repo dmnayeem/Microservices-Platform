@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createTutorApplication } from "@/lib/tutor-application";
-import { requirementsRefusal } from "@/lib/application-requirements-server";
+import { checkAnswers, requirementsRefusal } from "@/lib/application-requirements-server";
+import { answersToText } from "@/lib/application-requirements";
 
 const applySchema = z.object({
   bio: z.string().min(50, "Bio must be at least 50 characters").max(2000),
@@ -11,6 +12,7 @@ const applySchema = z.object({
   sampleOutline: z.string().max(4000).optional().nullable(),
   portfolioUrl: z.string().url().optional().nullable().or(z.literal("")),
   idDocumentUrl: z.string().url().optional().nullable().or(z.literal("")),
+  answers: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
 
 // GET /api/tutor/apply — fetch current user's latest application (if any)
@@ -76,10 +78,15 @@ export async function POST(req: NextRequest) {
     }
     const refusal = await requirementsRefusal(session.user.id, "TUTOR");
     if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+    const qa = await checkAnswers("TUTOR", v.data.answers);
+    if (!qa.ok) return NextResponse.json({ error: qa.error }, { status: 400 });
+    // TutorApplication has no JSON column: the answers ride on the outline
+    // as a readable block (split back out on the admin page).
+    const outline = `${v.data.sampleOutline ?? ""}${answersToText(qa.answers)}`.trim();
     const app = await createTutorApplication(session.user.id, {
       bio: v.data.bio,
       expertise: v.data.expertise,
-      sampleOutline: v.data.sampleOutline ?? null,
+      sampleOutline: outline || null,
       portfolioUrl: v.data.portfolioUrl || null,
       idDocumentUrl: v.data.idDocumentUrl || null,
     });

@@ -60,6 +60,7 @@ const PLAN_PATCH = z
     sellCoursesEnabled: z.boolean().optional(),
     sellMarketplaceEnabled: z.boolean().optional(),
     sellServicesEnabled: z.boolean().optional(),
+    dealsEnabled: z.boolean().optional(),
     agencyModeEnabled: z.boolean().optional(),
     shareLinksEnabled: z.boolean().optional(),
     shareYoutubeEnabled: z.boolean().optional(),

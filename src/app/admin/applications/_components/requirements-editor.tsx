@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { FieldHelp } from "@/components/admin/field-help";
 import { NumberInput } from "@/components/admin/number-input";
 import { inp } from "@/components/admin/settings/keyed-settings";
+import { QuestionsEditor } from "./questions-editor";
 import {
   PROGRAMS,
   PROGRAM_KEYS,
@@ -166,6 +167,8 @@ export function RequirementsEditor({
                   onChange={(e) => set(k, { note: e.target.value })}
                 />
               </div>
+
+              <QuestionsEditor questions={r.questions} onChange={(questions) => set(k, { questions })} />
 
               {k === "AMBASSADOR" && (
                 <p className="text-[11px] text-slate-500">

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { BadgeCheck, Loader2, Medal, Users } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { pts } from "@/lib/utils";
+import { validateAnswers, type ApplicationQuestion } from "@/lib/application-requirements";
+import { ApplicationQuestionFields } from "@/components/shared/application-questions";
 
 interface Data {
   terms: {
@@ -22,11 +24,13 @@ interface Data {
   application: { status: string; adminNote: string | null; createdAt: string } | null;
   thisMonth: { month: string; qualified: number; projected: number } | null;
   payouts: { month: string; qualified: number; points: number }[];
+  questions?: ApplicationQuestion[];
 }
 
 export function AmbassadorView() {
   const [data, setData] = useState<Data | null>(null);
   const [message, setMessage] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     const r = await fetch("/api/ambassador", { cache: "no-store" }).catch(() => null);
@@ -37,9 +41,14 @@ export function AmbassadorView() {
   }, [load]);
 
   const apply = async () => {
+    const qa = validateAnswers(data?.questions ?? [], answers);
+    if (!qa.ok) {
+      toast.error(qa.error);
+      return;
+    }
     setBusy(true);
     try {
-      const r = await fetch("/api/ambassador", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) });
+      const r = await fetch("/api/ambassador", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, answers }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error ?? "Couldn't apply");
       toast.success("Application sent — we'll let you know");
@@ -128,6 +137,12 @@ export function AmbassadorView() {
                     maxLength={1000}
                     placeholder="How will you share RevType? (your page, group, channel…)"
                     className="w-full rounded-xl border border-(--app-line) bg-(--app-surface-2) px-3 py-2 text-sm text-(--app-ink)"
+                  />
+                  <ApplicationQuestionFields
+                    questions={data.questions ?? []}
+                    values={answers}
+                    onChange={setAnswers}
+                    inputClassName="w-full rounded-xl border border-(--app-line) bg-(--app-surface-2) px-3 py-2 text-sm text-(--app-ink)"
                   />
                   <button type="button" onClick={apply} disabled={busy} className="app-accent inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black disabled:opacity-60">
                     {busy && <Loader2 className="h-4 w-4 animate-spin" />} Apply

@@ -4,10 +4,17 @@ import { ArrowRight, Inbox } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { PROGRAMS, PROGRAM_KEYS, type ProgramKey } from "@/lib/application-requirements";
-import { getRequirementsConfig } from "@/lib/application-requirements-server";
+import {
+  PROGRAMS,
+  PROGRAM_KEYS,
+  answersFromPayload,
+  splitAnswersText,
+  type ProgramKey,
+} from "@/lib/application-requirements";
+import { evaluateApplicants, getRequirementsConfig } from "@/lib/application-requirements-server";
 import { getAmbassadorConfig } from "@/lib/ambassadors-server";
 import { RequirementsEditor } from "./_components/requirements-editor";
+import { PendingReview, type PendingItem } from "./_components/pending-review";
 
 export const metadata = { title: "Applications" };
 
@@ -72,11 +79,153 @@ export default async function AdminApplicationsPage() {
       Awaited<ReturnType<typeof getAmbassadorConfig>>,
     ];
 
+  // Everything waiting, with what the reviewer needs to decide inline.
+  const [creatorWaiting, tutorWaiting, ambWaiting, canTutor, canAmbassador, canGrantBadge] = (await Promise.all([
+    prisma.creatorApplication.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "asc" },
+      take: 50,
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        message: true,
+        links: true,
+        payload: true,
+        createdAt: true,
+        user: { select: { name: true, email: true } },
+      },
+    }),
+    prisma.tutorApplication.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "asc" },
+      take: 30,
+      select: {
+        id: true,
+        userId: true,
+        bio: true,
+        expertise: true,
+        sampleOutline: true,
+        portfolioUrl: true,
+        createdAt: true,
+        user: { select: { name: true, email: true } },
+      },
+    }),
+    prisma.ambassadorApplication.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "asc" },
+      take: 30,
+      select: { id: true, userId: true, message: true, createdAt: true },
+    }),
+    can(userId, "tutor.applications.review"),
+    can(userId, "community.manage"),
+    can(userId, "users.grant_badge"),
+  ])) as unknown as [
+    {
+      id: string;
+      userId: string;
+      type: ProgramKey;
+      message: string;
+      links: string[];
+      payload: unknown;
+      createdAt: Date;
+      user: Row["user"];
+    }[],
+    {
+      id: string;
+      userId: string;
+      bio: string;
+      expertise: string[];
+      sampleOutline: string | null;
+      portfolioUrl: string | null;
+      createdAt: Date;
+      user: Row["user"];
+    }[],
+    { id: string; userId: string; message: string | null; createdAt: Date }[],
+    boolean,
+    boolean,
+    boolean,
+  ];
+
   const ambUsers = await prisma.user.findMany({
-    where: { id: { in: ambassadorRecent.map((a) => a.userId) } },
+    where: { id: { in: [...new Set([...ambassadorRecent, ...ambWaiting].map((a) => a.userId))] } },
     select: { id: true, name: true, email: true },
   });
   const ambUserById = new Map(ambUsers.map((u) => [u.id, u]));
+
+  const evals = await evaluateApplicants([
+    ...creatorWaiting.map((a) => ({ userId: a.userId, program: a.type })),
+    ...tutorWaiting.map((a) => ({ userId: a.userId, program: "TUTOR" as const })),
+    ...ambWaiting.map((a) => ({ userId: a.userId, program: "AMBASSADOR" as const })),
+  ]);
+  const checksFor = (program: ProgramKey, uid: string) =>
+    (evals.get(`${program}:${uid}`)?.checks ?? []).map((c) => ({ label: c.label, met: c.met }));
+
+  const waiting: PendingItem[] = [
+    ...creatorWaiting.map((a): PendingItem => {
+      const detail = (a.payload as { detail?: unknown } | null)?.detail;
+      return {
+        kind: "creator",
+        id: a.id,
+        userId: a.userId,
+        program: a.type,
+        programLabel: PROGRAMS[a.type]?.label ?? a.type,
+        user: a.user,
+        createdAt: a.createdAt.toISOString(),
+        message: a.message,
+        detail: typeof detail === "string" ? detail : null,
+        links: a.links,
+        answers: answersFromPayload(a.payload),
+        checks: checksFor(a.type, a.userId),
+        canDecide: true,
+        isBadge: a.type === "BLUE_BADGE",
+        canGrantBadge,
+        reviewHref: `/admin/creators?status=PENDING&type=${a.type}`,
+      };
+    }),
+    ...tutorWaiting.map((a): PendingItem => {
+      const outline = splitAnswersText(a.sampleOutline);
+      return {
+        kind: "tutor",
+        id: a.id,
+        userId: a.userId,
+        program: "TUTOR",
+        programLabel: PROGRAMS.TUTOR.label,
+        user: a.user,
+        createdAt: a.createdAt.toISOString(),
+        message: a.bio,
+        detail: a.expertise.length ? `Expertise: ${a.expertise.join(", ")}` : null,
+        links: a.portfolioUrl ? [a.portfolioUrl] : [],
+        answers: outline.answers,
+        checks: checksFor("TUTOR", a.userId),
+        canDecide: canTutor,
+        isBadge: false,
+        canGrantBadge: false,
+        reviewHref: "/admin/tutors/applications?status=PENDING",
+      };
+    }),
+    ...ambWaiting.map((a): PendingItem => {
+      const msg = splitAnswersText(a.message);
+      return {
+        kind: "ambassador",
+        id: a.userId,
+        userId: a.userId,
+        program: "AMBASSADOR",
+        programLabel: PROGRAMS.AMBASSADOR.label,
+        user: ambUserById.get(a.userId) ?? null,
+        createdAt: a.createdAt.toISOString(),
+        message: msg.body,
+        detail: null,
+        links: [],
+        answers: msg.answers,
+        checks: checksFor("AMBASSADOR", a.userId),
+        canDecide: canAmbassador,
+        isBadge: false,
+        canGrantBadge: false,
+        reviewHref: "/admin/ambassadors",
+      };
+    }),
+  ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   const pending: Partial<Record<ProgramKey, number>> = {};
   for (const g of creatorPending) pending[g.type] = g._count;
@@ -156,6 +305,8 @@ export default async function AdminApplicationsPage() {
           </p>
         </Link>
       </div>
+
+      <PendingReview items={waiting} />
 
       {/* Recent across programs */}
       <section className="rounded-xl border border-slate-800 bg-slate-900">

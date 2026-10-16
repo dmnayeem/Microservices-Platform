@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { ambassadorBonus, monthOf } from "@/lib/ambassadors";
-import { requirementsRefusal } from "@/lib/application-requirements-server";
+import { checkAnswers, effectiveRequirements, requirementsRefusal } from "@/lib/application-requirements-server";
+import { answersToText } from "@/lib/application-requirements";
 import { applyAsAmbassador, applyEligibility, getAmbassadorConfig, qualifiedInMonth } from "@/lib/ambassadors-server";
 
 /**
@@ -16,9 +17,10 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = session.user.id;
   const cfg = await getAmbassadorConfig();
-  const [application, payouts] = await Promise.all([
+  const [application, payouts, req] = await Promise.all([
     prisma.ambassadorApplication.findUnique({ where: { userId }, select: { status: true, adminNote: true, createdAt: true } }),
     prisma.ambassadorPayout.findMany({ where: { userId }, orderBy: { month: "desc" }, take: 12, select: { month: true, qualified: true, points: true } }),
+    effectiveRequirements("AMBASSADOR"),
   ]);
   const month = monthOf(new Date());
   const approved = application?.status === "APPROVED";
@@ -39,6 +41,7 @@ export async function GET() {
     application,
     thisMonth: approved ? { month, qualified, projected: ambassadorBonus(cfg, qualified) } : null,
     payouts,
+    questions: req.questions,
   });
 }
 
@@ -47,12 +50,14 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const limited = await enforceDbRateLimit(request, "ambassador-apply", session.user.id, 5, 60_000);
   if (limited) return limited;
-  const body = (await request.json().catch(() => ({}))) as { message?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { message?: unknown; answers?: unknown };
   // The Applications center's requirements; applyAsAmbassador still runs the
   // program's own checks (level, KYC, referrals) after this.
   const refusal = await requirementsRefusal(session.user.id, "AMBASSADOR");
   if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
-  const r = await applyAsAmbassador(session.user.id, body.message ? String(body.message) : null);
+  const qa = await checkAnswers("AMBASSADOR", body.answers);
+  if (!qa.ok) return NextResponse.json({ error: qa.error }, { status: 400 });
+  const r = await applyAsAmbassador(session.user.id, body.message ? String(body.message) : null, answersToText(qa.answers));
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
   return NextResponse.json({ ok: true });
 }

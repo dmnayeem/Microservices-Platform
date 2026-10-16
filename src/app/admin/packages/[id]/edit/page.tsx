@@ -75,6 +75,7 @@ export default async function EditPackagePage({ params }: PageProps) {
     sellCoursesEnabled: pkg.sellCoursesEnabled,
     sellMarketplaceEnabled: pkg.sellMarketplaceEnabled,
     sellServicesEnabled: pkg.sellServicesEnabled,
+    dealsEnabled: pkg.dealsEnabled,
     agencyModeEnabled: pkg.agencyModeEnabled,
     shareLinksEnabled: pkg.shareLinksEnabled,
     shareYoutubeEnabled: pkg.shareYoutubeEnabled,

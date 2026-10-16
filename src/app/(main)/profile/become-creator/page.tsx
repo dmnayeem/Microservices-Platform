@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { CREATOR_TYPES, CREATOR_TYPE_VALUES } from "@/lib/creator-application";
+import { getRequirementsConfig } from "@/lib/application-requirements-server";
 import type { CreatorApplicationType } from "@/generated/prisma";
 import { BecomeCreatorView, type RoleCard } from "./_components/BecomeCreatorView";
 
@@ -13,7 +14,7 @@ export default async function BecomeCreatorPage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [features, user, apps, tutorApp] = await Promise.all([
+  const [features, user, apps, tutorApp, reqs] = await Promise.all([
     getEffectiveFeatures(userId),
     prisma.user.findUnique({
       where: { id: userId },
@@ -28,6 +29,7 @@ export default async function BecomeCreatorPage() {
       orderBy: { createdAt: "desc" },
       select: { status: true, adminNote: true },
     }),
+    getRequirementsConfig(),
   ]);
 
   // Latest application per generic type.
@@ -56,6 +58,8 @@ export default async function BecomeCreatorPage() {
 
   // The four generic types.
   for (const type of CREATOR_TYPE_VALUES) {
+    // The blue badge lives on /apply (review or buy), not on this creator page.
+    if (type === "BLUE_BADGE") continue;
     const meta = CREATOR_TYPES[type];
     const hasAccess =
       type === "AFFILIATE"
@@ -78,6 +82,7 @@ export default async function BecomeCreatorPage() {
             ? "rejected"
             : "apply",
       adminNote: latest?.status === "REJECTED" ? latest.adminNote : null,
+      questions: reqs[type].questions,
     });
   }
 

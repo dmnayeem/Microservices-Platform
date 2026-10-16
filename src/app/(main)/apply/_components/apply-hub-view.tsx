@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   GraduationCap,
+  Handshake,
   Lock,
   Medal,
   Megaphone,
@@ -21,7 +22,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ApplyModal, type RoleCard } from "@/app/(main)/profile/become-creator/_components/BecomeCreatorView";
-import type { ProgramIcon, ProgramKey } from "@/lib/application-requirements";
+import type { AnswerView, ApplicationQuestion, ProgramIcon, ProgramKey } from "@/lib/application-requirements";
+import { ApplicationAnswers } from "@/components/shared/application-questions";
 
 export type HubStatus = "none" | "pending" | "active" | "rejected";
 
@@ -37,6 +39,11 @@ export interface HubCard {
   enabled: boolean;
   checks: { key: string; label: string; met: boolean; href: string | null }[];
   eligible: boolean;
+  questions: ApplicationQuestion[];
+  /** Blue badge: the shop, offered next to "Apply for review" (null when closed). */
+  buyHref: string | null;
+  /** The member's answers on their latest application. */
+  answers: AnswerView[];
   status: HubStatus;
   adminNote: string | null;
   appliedAt: string | null;
@@ -52,6 +59,7 @@ const ICONS: Record<ProgramIcon, LucideIcon> = {
   share: Share2,
   graduation: GraduationCap,
   medal: Medal,
+  handshake: Handshake,
   badge: BadgeCheck,
 };
 
@@ -115,6 +123,7 @@ function toRoleCard(c: HubCard): RoleCard {
     applyType: c.key,
     status: c.status === "rejected" ? "rejected" : "apply",
     adminNote: c.adminNote,
+    questions: c.questions,
   };
 }
 
@@ -122,7 +131,15 @@ function ProgramCard({ card: c, focused, onApply }: { card: HubCard; focused: bo
   const Icon = ICONS[c.icon] ?? Sparkles;
   const pill = STATUS_PILL[c.status];
   const isBadge = c.key === "BLUE_BADGE";
-  const applyLabel = isBadge ? "Get the badge" : c.status === "rejected" ? "Apply again" : "Apply";
+  const applyLabel = isBadge ? "Apply for review" : c.status === "rejected" ? "Apply again" : "Apply";
+  const buyLink = c.buyHref ? (
+    <Link
+      href={c.buyHref}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3.5 py-2 text-sm font-semibold text-(--app-ink) hover:border-(--app-accent-edge)"
+    >
+      Buy it now <ArrowRight className="w-3.5 h-3.5" />
+    </Link>
+  ) : null;
 
   return (
     <section
@@ -183,6 +200,10 @@ function ProgramCard({ card: c, focused, onApply }: { card: HubCard; focused: bo
         </div>
       )}
 
+      {(c.status === "pending" || c.status === "rejected") && c.answers.length > 0 && (
+        <ApplicationAnswers answers={c.answers} tone="app" title="Your answers" />
+      )}
+
       {c.status === "rejected" && (
         <p className="mt-3 text-[11px] text-red-300/80 bg-red-500/5 border border-red-500/20 rounded-lg px-2 py-1.5">
           Your last application was not approved.{c.adminNote ? ` Reviewer note: ${c.adminNote}` : ""}
@@ -200,14 +221,17 @@ function ProgramCard({ card: c, focused, onApply }: { card: HubCard; focused: bo
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           ) : c.status === "pending" ? (
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-400">
-              <Clock className="w-4 h-4" /> Pending review
-              {c.appliedAt && (
-                <span className="text-xs font-normal text-(--app-ink-3)">
-                  · applied {new Date(c.appliedAt).toLocaleDateString()}
-                </span>
-              )}
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-400">
+                <Clock className="w-4 h-4" /> Pending review
+                {c.appliedAt && (
+                  <span className="text-xs font-normal text-(--app-ink-3)">
+                    · applied {new Date(c.appliedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </span>
+              {c.eligible && c.enabled && buyLink}
+            </div>
           ) : !c.enabled ? (
             <span className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3)">
               <Lock className="w-4 h-4" /> Not open right now
@@ -226,13 +250,16 @@ function ProgramCard({ card: c, focused, onApply }: { card: HubCard; focused: bo
               {applyLabel} <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={onApply}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-(--app-cta) px-3.5 py-2 text-sm font-bold text-(--app-on-cta)"
-            >
-              {applyLabel} <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onApply}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-(--app-cta) px-3.5 py-2 text-sm font-bold text-(--app-on-cta)"
+              >
+                {applyLabel} <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              {buyLink}
+            </div>
           )}
         </div>
       </div>

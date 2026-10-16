@@ -18,8 +18,12 @@ import {
   Sparkles,
   Briefcase,
   Target,
+  Handshake,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
+import { validateAnswers, type ApplicationQuestion } from "@/lib/application-requirements";
+import { ApplicationQuestionFields } from "@/components/shared/application-questions";
 
 export interface RoleCard {
   key: string; // "TUTOR" | CreatorApplicationType
@@ -30,6 +34,8 @@ export interface RoleCard {
   applyHref?: string; // tutor links out
   status: "has_access" | "pending" | "rejected" | "apply";
   adminNote?: string | null;
+  /** The admin's custom questions for this program. */
+  questions?: ApplicationQuestion[];
 }
 
 const ICONS: Record<string, LucideIcon> = {
@@ -40,6 +46,8 @@ const ICONS: Record<string, LucideIcon> = {
   AFFILIATE: Share2,
   SERVICE_PROVIDER: Briefcase,
   TASK_BUYER: Target,
+  DEALS: Handshake,
+  BLUE_BADGE: BadgeCheck,
 };
 
 const DETAIL_LABEL: Record<string, string> = {
@@ -49,6 +57,12 @@ const DETAIL_LABEL: Record<string, string> = {
   AFFILIATE: "Where will you promote? (channels / audience)",
   SERVICE_PROVIDER: "What services will you offer?",
   TASK_BUYER: "What will you ask people to do? (e.g. follows, shares, reviews)",
+  DEALS: "What will you hire sellers for?",
+  BLUE_BADGE: "Who are you? (creator, brand, public figure, business…)",
+};
+
+const MESSAGE_LABEL: Record<string, string> = {
+  BLUE_BADGE: "Why should your account be verified?",
 };
 
 export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
@@ -147,12 +161,20 @@ export function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => v
   const [message, setMessage] = useState("");
   const [detail, setDetail] = useState("");
   const [links, setLinks] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const detailLabel = DETAIL_LABEL[card.applyType ?? ""] ?? "Details";
+  const messageLabel = MESSAGE_LABEL[card.applyType ?? ""] ?? "Why you? Tell us about yourself";
+  const questions = card.questions ?? [];
 
   const submit = async () => {
     if (message.trim().length < 20) {
       toast.error("Please write at least 20 characters.");
+      return;
+    }
+    const qa = validateAnswers(questions, answers);
+    if (!qa.ok) {
+      toast.error(qa.error);
       return;
     }
     setBusy(true);
@@ -169,6 +191,7 @@ export function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => v
           message: message.trim(),
           links: linkList,
           payload: detail.trim() ? { detail: detail.trim() } : undefined,
+          answers,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -188,7 +211,7 @@ export function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => v
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4"
+        className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -200,7 +223,7 @@ export function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => v
 
         <div>
           <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
-            Why you? Tell us about yourself <span className="text-red-400">*</span>
+            {messageLabel} <span className="text-red-400">*</span>
           </label>
           <textarea
             value={message}
@@ -234,6 +257,13 @@ export function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => v
             className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
+
+        <ApplicationQuestionFields
+          questions={questions}
+          values={answers}
+          onChange={setAnswers}
+          inputClassName="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+        />
 
         <div className="flex gap-2 pt-1">
           <button

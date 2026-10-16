@@ -3,9 +3,17 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { CREATOR_TYPES, CREATOR_TYPE_VALUES } from "@/lib/creator-application";
-import { getBadgeState } from "@/lib/badges-server";
+import { getBadgeConfig, getBadgeState } from "@/lib/badges-server";
 import { evaluateAllPrograms } from "@/lib/application-requirements-server";
-import { PROGRAMS, PROGRAM_KEYS, isProgramKey, type ProgramKey } from "@/lib/application-requirements";
+import {
+  PROGRAMS,
+  PROGRAM_KEYS,
+  answersFromPayload,
+  isProgramKey,
+  splitAnswersText,
+  type AnswerView,
+  type ProgramKey,
+} from "@/lib/application-requirements";
 import type { CreatorApplicationType } from "@/generated/prisma";
 import { ApplyHubView, type HubCard, type HubStatus } from "./_components/apply-hub-view";
 
@@ -24,26 +32,27 @@ export default async function ApplyPage({
   }
   const userId = session.user.id;
 
-  const [features, user, creatorApps, tutorApp, ambassadorApp, badge, evals] = await Promise.all([
+  const [features, user, creatorApps, tutorApp, ambassadorApp, badge, evals, badgeCfg] = await Promise.all([
     getEffectiveFeatures(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { role: true, affiliateJoinedAt: true } }),
     prisma.creatorApplication.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
-      select: { type: true, status: true, adminNote: true, createdAt: true },
+      select: { type: true, status: true, adminNote: true, createdAt: true, payload: true },
       take: 60,
     }),
     prisma.tutorApplication.findFirst({
       where: { userId },
       orderBy: { createdAt: "desc" },
-      select: { status: true, adminNote: true, createdAt: true },
+      select: { status: true, adminNote: true, createdAt: true, sampleOutline: true },
     }),
     prisma.ambassadorApplication.findUnique({
       where: { userId },
-      select: { status: true, adminNote: true, createdAt: true },
+      select: { status: true, adminNote: true, createdAt: true, message: true },
     }),
     getBadgeState(userId),
     evaluateAllPrograms(userId),
+    getBadgeConfig(),
   ]);
 
   const latestByType = new Map<CreatorApplicationType, (typeof creatorApps)[number]>();
@@ -52,8 +61,10 @@ export default async function ApplyPage({
   const fromStatus = (s: string | undefined | null): HubStatus =>
     s === "PENDING" ? "pending" : s === "REJECTED" ? "rejected" : s === "APPROVED" ? "active" : "none";
 
-  const statusOf: Record<ProgramKey, { status: HubStatus; adminNote: string | null; appliedAt: string | null }> =
-    {} as never;
+  const statusOf: Record<
+    ProgramKey,
+    { status: HubStatus; adminNote: string | null; appliedAt: string | null; answers: AnswerView[] }
+  > = {} as never;
 
   for (const type of CREATOR_TYPE_VALUES) {
     const meta = CREATOR_TYPES[type];
@@ -65,12 +76,14 @@ export default async function ApplyPage({
           : false;
     const latest = latestByType.get(type);
     // An approved application whose access was later revoked reads as "none":
-    // the member has to apply again.
-    const st = hasAccess ? "active" : latest?.status === "APPROVED" ? "none" : fromStatus(latest?.status);
+    // the member has to apply again. The blue badge's "access" is the badge.
+    const active = type === "BLUE_BADGE" ? !!badge?.active : hasAccess;
+    const st = active ? "active" : latest?.status === "APPROVED" ? "none" : fromStatus(latest?.status);
     statusOf[type] = {
       status: st,
       adminNote: latest?.adminNote ?? null,
       appliedAt: latest?.createdAt.toISOString() ?? null,
+      answers: answersFromPayload(latest?.payload),
     };
   }
 
@@ -79,16 +92,13 @@ export default async function ApplyPage({
     status: isTutor ? "active" : tutorApp?.status === "APPROVED" ? "none" : fromStatus(tutorApp?.status),
     adminNote: tutorApp?.adminNote ?? null,
     appliedAt: tutorApp?.createdAt.toISOString() ?? null,
+    answers: splitAnswersText(tutorApp?.sampleOutline).answers,
   };
   statusOf.AMBASSADOR = {
     status: fromStatus(ambassadorApp?.status),
     adminNote: ambassadorApp?.adminNote ?? null,
     appliedAt: ambassadorApp?.createdAt.toISOString() ?? null,
-  };
-  statusOf.BLUE_BADGE = {
-    status: badge?.active ? "active" : "none",
-    adminNote: null,
-    appliedAt: null,
+    answers: splitAnswersText(ambassadorApp?.message).answers,
   };
 
   const cards: HubCard[] = PROGRAM_KEYS.map((key) => {
@@ -106,6 +116,9 @@ export default async function ApplyPage({
       enabled: ev.requirements.enabled,
       checks: ev.checks.filter((c) => c.key !== "enabled"),
       eligible: ev.ok,
+      questions: ev.requirements.questions,
+      // The badge can also be bought outright when the badge shop is open.
+      buyHref: key === "BLUE_BADGE" && badgeCfg.enabled ? "/badge" : null,
       ...statusOf[key],
       // Tutors apply from a USER role only; staff see why instead of a form that refuses them.
       blockedReason:

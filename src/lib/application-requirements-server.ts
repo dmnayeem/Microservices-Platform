@@ -8,7 +8,9 @@ import {
   APPLICATION_REQUIREMENTS_KEY,
   PROGRAMS,
   normalizeRequirementsConfig,
+  validateAnswers,
   type ProgramKey,
+  type StoredAnswer,
   type ProgramRequirements,
   type RequirementsConfig,
 } from "@/lib/application-requirements";
@@ -145,4 +147,43 @@ export async function requirementsRefusal(userId: string, program: ProgramKey): 
   }
   const what = program === "BLUE_BADGE" ? "get the Blue Badge" : `apply for ${label}`;
   return `Before you can ${what}: ${r.unmet.map((u) => u.label).join("; ")}.`;
+}
+
+/**
+ * Validate an applicant's answers to the program's custom questions.
+ * Returns the answers to store, or the refusal sentence.
+ */
+export async function checkAnswers(
+  program: ProgramKey,
+  raw: unknown
+): Promise<{ ok: true; answers: StoredAnswer[] } | { ok: false; error: string }> {
+  const req = await effectiveRequirements(program);
+  return validateAnswers(req.questions, raw);
+}
+
+/**
+ * Requirement checks for many applicants at once (the admin review list): one
+ * settings read, one user query. The "program closed" line is left out —
+ * a pending application can still be reviewed after a program closes.
+ */
+export async function evaluateApplicants(
+  items: { userId: string; program: ProgramKey }[]
+): Promise<Map<string, ProgramEvaluation>> {
+  const out = new Map<string, ProgramEvaluation>();
+  if (!items.length) return out;
+  const cfg = await getRequirementsConfig();
+  const programs = [...new Set(items.map((i) => i.program))];
+  const [users, reqs] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: [...new Set(items.map((i) => i.userId))] } },
+      select: { id: true, ...USER_SELECT },
+    }),
+    Promise.all(programs.map((p) => effectiveRequirements(p, cfg))),
+  ]);
+  const userById = new Map((users as unknown as (EvalUser & { id: string })[]).map((u) => [u.id, u]));
+  const reqByProgram = new Map(programs.map((p, i) => [p, { ...reqs[i], enabled: true }]));
+  for (const it of items) {
+    out.set(`${it.program}:${it.userId}`, evaluateUser(userById.get(it.userId) ?? null, reqByProgram.get(it.program)!));
+  }
+  return out;
 }
