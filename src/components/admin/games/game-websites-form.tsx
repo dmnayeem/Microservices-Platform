@@ -147,6 +147,13 @@ export function GameWebsitesForm({ initial, canEdit }: { initial: string[]; canE
         </div>
       )}
 
+      {canEdit && text.trim() !== initial.join("\n").trim() && (
+        <p className="rounded-lg bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-xs text-amber-200">
+          Not saved yet — press <strong>Save websites</strong> below (the Save button further down the
+          page saves only the limits).
+        </p>
+      )}
+
       {canEdit && (
         <button
           type="button"
