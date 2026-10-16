@@ -28,6 +28,13 @@ import {
 } from "@/lib/app-install-tasks";
 import type { QuizQuestionShape } from "@/lib/quiz-shape";
 import type { CustomConfig, CustomField } from "@/lib/custom-tasks";
+import {
+  getAction,
+  normalizeSocialConfig,
+  type SocialField,
+  type SocialBundleConfig,
+  type BundleItem,
+} from "@/lib/social-tasks";
 
 /* ────────────────────────────── QUIZ ──────────────────────────────────────
  *
@@ -403,3 +410,134 @@ export function buildBuyerCustomConfig(input: BuyerCustomInput): CustomConfig {
 /** Shown to the buyer, above the custom form builder. */
 export const BUYER_CUSTOM_NOTICE =
   "Add a field for every single thing you need back. A custom task with no fields pays the worker for pressing a button and hands you nothing — so if you want five email accounts, ask for the address and the password as separate fields, and set how many completions to fund below.";
+
+
+/* ───────────────────────────── SOCIAL ─────────────────────────────────────
+ *
+ * HAZARD: "I need 20 members" paid for by one person with 20 submissions.
+ *
+ * A buyer social task used to be three loose columns (platform, action, URL)
+ * with no `socialConfig`, so it carried none of the per-item options an admin
+ * task has. It now gets a one-item bundle — the exact shape the admin builder
+ * saves — and `uniqueAccount` is ON by default: the submit route refuses an
+ * account or post another member already submitted on the same task. Each
+ * member uses their own existing account; nothing here creates, buys or
+ * shares accounts.
+ */
+
+/** Actions whose whole point is the member's own post: the text is required. */
+export const BUYER_SOCIAL_TEXT_REQUIRED = new Set(["POST_ON_PAGE", "MENTION_IN_POST"]);
+
+const BUYER_FIELD_TYPES = new Set(["text", "textarea", "url", "select"]);
+
+/**
+ * The action's fields a buyer may fill in: the words, link and handle a member
+ * copies. Not the target (that is the Target URL box), not images, and not
+ * number knobs (watch seconds, days live) that the admin builder wires
+ * elsewhere — offering a box that does nothing is worse than no box.
+ */
+export function buyerSocialFields(
+  platform: string | null | undefined,
+  action: string | null | undefined
+): SocialField[] {
+  const def = getAction(platform, action);
+  if (!def) return [];
+  return def.adminFields.filter(
+    (f) =>
+      BUYER_FIELD_TYPES.has(f.type) &&
+      f.role !== "target" &&
+      f.role !== "image" &&
+      f.role !== "imagePrompt"
+  );
+}
+
+export const buyerSocialSchema = z.object({
+  fields: z.record(z.string().max(40), z.string().max(3000)).optional(),
+  /** Default true — see the hazard note. */
+  uniqueAccount: z.boolean().optional(),
+  /** Each member writes their own version from a ready-made AI prompt (no AI cost to us). */
+  memberWrites: z.boolean().optional(),
+});
+
+export type BuyerSocialInput = z.infer<typeof buyerSocialSchema>;
+
+/**
+ * Validate the buyer's text for an action. Only the work-request actions
+ * REQUIRE their text — every other action stays as permissive as before.
+ */
+export function buyerSocialProblem(
+  platform: string,
+  action: string,
+  input: BuyerSocialInput | undefined
+): string | null {
+  if (!BUYER_SOCIAL_TEXT_REQUIRED.has(action)) return null;
+  const def = getAction(platform, action);
+  if (!def) return null;
+  const fields = input?.fields ?? {};
+  const missing = buyerSocialFields(platform, action).find((f) => {
+    if (!f.required) return false;
+    if (input?.memberWrites && def.aiGeneratableFields?.includes(f.key)) return false;
+    return !(fields[f.key] ?? "").trim();
+  });
+  return missing ? `Fill "${missing.label}" for ${def.label}.` : null;
+}
+
+/** Build the `Task.socialConfig` value for a buyer social task. */
+export function buildBuyerSocialConfig(opts: {
+  platform: string;
+  action: string;
+  targetUrl: string;
+  points: number;
+  input?: BuyerSocialInput;
+}): SocialBundleConfig {
+  const allowed = new Set(buyerSocialFields(opts.platform, opts.action).map((f) => f.key));
+  const fields: Record<string, string> = { targetUrl: opts.targetUrl };
+  for (const [k, v] of Object.entries(opts.input?.fields ?? {})) {
+    if (allowed.has(k) && v.trim()) fields[k] = v.trim();
+  }
+  const uniqueAccount = opts.input?.uniqueAccount !== false;
+  const def = getAction(opts.platform, opts.action);
+  const memberWrites = !!opts.input?.memberWrites && !!def?.supportsAiPrompt;
+  const item: BundleItem = {
+    action: opts.action,
+    fields,
+    points: opts.points,
+    // Same proof the legacy column-only buyer task asked for, plus the
+    // member's username when one-account-per-member needs something to compare.
+    proofRequirements: { url: true, screenshot: true, username: uniqueAccount },
+    aiMode: memberWrites ? "diy" : "off",
+    aiPromptEnabled: memberWrites,
+    aiPrompt: null,
+    ...(uniqueAccount ? { uniqueAccount: true } : {}),
+  };
+  return { platform: opts.platform, items: [item], version: 2, sequential: false };
+}
+
+/**
+ * Keep a buyer task's bundle in step when the buyer edits the platform, action
+ * or target columns. Null when the task has no bundle (an older buyer task) —
+ * those still run from the columns alone.
+ */
+export function resyncBuyerSocialConfig(
+  raw: unknown,
+  next: {
+    platform: string | null;
+    action: string | null;
+    targetUrl: string | null;
+    points: number;
+  }
+): SocialBundleConfig | null {
+  const norm = normalizeSocialConfig(raw);
+  const first = norm.items[0];
+  if (!first || !next.platform || !next.action) return null;
+  const allowed = new Set(buyerSocialFields(next.platform, next.action).map((f) => f.key));
+  const fields: Record<string, string> = {};
+  for (const [k, v] of Object.entries(first.fields)) if (allowed.has(k)) fields[k] = v;
+  if (next.targetUrl) fields.targetUrl = next.targetUrl;
+  return {
+    platform: next.platform,
+    items: [{ ...first, action: next.action, fields, points: next.points }],
+    version: 2,
+    sequential: false,
+  };
+}

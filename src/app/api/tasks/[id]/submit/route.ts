@@ -65,6 +65,7 @@ import {
   socialWatchTargetSeconds,
   normalizeSocialConfig,
   getAction,
+  isPostCreationAction,
 } from "@/lib/social-tasks";
 import { verifyCodeFor, contentHasCode } from "@/lib/task-verify-code";
 import {
@@ -100,6 +101,11 @@ import {
   destinationFieldFor,
   proofHostAllowed,
 } from "@/lib/social-proof-url";
+import {
+  postUrlKey,
+  accountKeyFromUrl,
+  accountKeyFromUsername,
+} from "@/lib/social-account-key";
 import { runAchievementCheck } from "@/lib/achievements";
 import { closeTaskIfFull } from "@/lib/task-slots";
 import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
@@ -1023,6 +1029,106 @@ export async function POST(
               { status: 400 }
             );
           }
+        }
+      }
+
+      // One account per member (BundleItem.uniqueAccount). Unlike the flags
+      // below, this REFUSES: the task asked for N different people, and a
+      // second member submitting an account or post someone else already
+      // submitted is not a different person. Only pending/approved claims
+      // count, so a rejected attempt never locks an account out.
+      {
+        const uCfg = normalizeSocialConfig(task.socialConfig);
+        const uPlatform = (uCfg.platform ?? task.socialPlatform ?? "").toUpperCase();
+        const keys = new Map<string, { kind: string; valueHash: string }>();
+        const addKey = (kind: string, raw: string | null) => {
+          if (!raw) return;
+          const valueHash = hash(raw);
+          keys.set(`${kind}:${valueHash}`, { kind, valueHash });
+        };
+        // Recorded for future checks — the legacy kinds already are, above.
+        const freshKeys: Array<{ kind: string; valueHash: string }> = [];
+        uCfg.items.forEach((it, i) => {
+          if (!it.uniqueAccount) return;
+          const p =
+            socialBundle?.[i] ??
+            (!socialBundle && uCfg.items.length === 1 ? { proofUrl, username } : null);
+          if (!p) return;
+          const target = it.fields?.targetUrl ?? it.fields?.targetHandle ?? "";
+          const targetPost = postUrlKey(target);
+          const targetAccount = accountKeyFromUrl(uPlatform, target);
+          const acct = accountKeyFromUsername(uPlatform, p.username as string | undefined);
+          addKey("ACCOUNT", acct);
+          addKey("USERNAME", norm(p.username) || null);
+          const url = typeof p.proofUrl === "string" ? p.proofUrl : "";
+          // Only a post the member CREATED is theirs alone. For a like, a
+          // follow or a comment the proof link is usually the target itself
+          // (in whatever spelling the member copied), and every honest member
+          // would collide on it.
+          const creates = isPostCreationAction(it.action);
+          const post = creates ? postUrlKey(url) : null;
+          if (post && post !== targetPost) {
+            addKey("POST", post);
+            addKey("URL", norm(url) || null);
+          }
+          // A visitor post or a comment lives under the TARGET's name, so its
+          // URL names the page, not the member — only the member's own posts
+          // and bare profile links say who they are.
+          const ownPost = creates && it.action !== "POST_ON_PAGE";
+          const urlAcct = accountKeyFromUrl(uPlatform, url, { profileOnly: !ownPost });
+          if (urlAcct && urlAcct !== targetAccount) addKey("ACCOUNT", urlAcct);
+        });
+        for (const k of keys.values()) {
+          if (k.kind === "ACCOUNT" || k.kind === "POST") freshKeys.push(k);
+        }
+        if (keys.size > 0) {
+          const hits = await prisma.socialProofFingerprint.findMany({
+            where: {
+              taskId: task.id,
+              userId: { not: session.user.id },
+              OR: [...keys.values()],
+            },
+            select: { submissionId: true, kind: true },
+            take: 50,
+          });
+          if (hits.length > 0) {
+            const live = await prisma.taskSubmission.findFirst({
+              where: {
+                id: { in: hits.map((h) => h.submissionId) },
+                OR: [
+                  { status: { in: [SubmissionStatus.APPROVED, SubmissionStatus.AUTO_APPROVED] } },
+                  { status: SubmissionStatus.PENDING, submittedAt: { not: null } },
+                ],
+              },
+              select: { id: true },
+            });
+            if (live) {
+              const liveKinds = new Set(
+                hits.filter((h) => h.submissionId === live.id).map((h) => h.kind)
+              );
+              const accountClash = liveKinds.has("ACCOUNT") || liveKinds.has("USERNAME");
+              return NextResponse.json(
+                {
+                  error: accountClash
+                    ? "Another member already submitted this account for this task. Each member must do it once, with their own account."
+                    : "Another member already submitted this post for this task. Submit the post you made with your own account.",
+                  code: "ACCOUNT_ALREADY_USED",
+                },
+                { status: 400 }
+              );
+            }
+          }
+        }
+        if (freshKeys.length > 0) {
+          await prisma.socialProofFingerprint.createMany({
+            data: freshKeys.map((k) => ({
+              taskId: task.id,
+              userId: session.user.id,
+              submissionId: submission.id,
+              kind: k.kind,
+              valueHash: k.valueHash,
+            })),
+          });
         }
       }
 

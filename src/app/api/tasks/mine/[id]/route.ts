@@ -14,6 +14,7 @@ import {
   buildBuyerAppInstallConfig,
   buyerCustomSchema,
   buildBuyerCustomConfig,
+  resyncBuyerSocialConfig,
 } from "@/lib/buyer-task-configs";
 import { validateAppInstallConfig } from "@/lib/app-install-tasks";
 import { validateSurveyConfig } from "@/lib/survey-tasks";
@@ -107,6 +108,9 @@ export async function PATCH(
       status: true,
       type: true,
       socialPlatform: true,
+      socialAction: true,
+      socialUrl: true,
+      socialConfig: true,
       pointsReward: true,
       totalLimit: true,
       budgetPoints: true,
@@ -331,6 +335,27 @@ export async function PATCH(
               : {}),
             ...(d.socialAction !== undefined
               ? { socialAction: d.socialAction }
+              : {}),
+            // A buyer task now carries a one-item bundle too; left alone it
+            // would keep serving the old action / target after this edit.
+            ...((d.socialUrl !== undefined ||
+              d.socialPlatform !== undefined ||
+              d.socialAction !== undefined ||
+              reward !== task.pointsReward) &&
+            task.socialConfig
+              ? (() => {
+                  const synced = resyncBuyerSocialConfig(task.socialConfig, {
+                    platform: (d.socialPlatform !== undefined
+                      ? d.socialPlatform
+                      : task.socialPlatform
+                    )?.toUpperCase() ?? null,
+                    action:
+                      d.socialAction !== undefined ? d.socialAction : task.socialAction,
+                    targetUrl: d.socialUrl !== undefined ? d.socialUrl : task.socialUrl,
+                    points: reward,
+                  });
+                  return synced ? { socialConfig: synced as unknown as object } : {};
+                })()
               : {}),
           }
         : {}),

@@ -22,6 +22,9 @@ import {
   buildBuyerAppInstallConfig,
   buyerCustomSchema,
   buildBuyerCustomConfig,
+  buyerSocialSchema,
+  buyerSocialProblem,
+  buildBuyerSocialConfig,
 } from "@/lib/buyer-task-configs";
 import { validateAppInstallConfig } from "@/lib/app-install-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
@@ -63,6 +66,8 @@ const schema = z.object({
   socialPlatform: z.string().max(40).optional().nullable(),
   socialAction: z.string().max(40).optional().nullable(),
   socialUrl: z.string().url().optional().nullable(),
+  // The action's text / handle, and one-account-per-member (default on).
+  social: buyerSocialSchema.optional(),
   // VIDEO
   videoUrl: z.string().url().optional().nullable(),
   watchSeconds: z.number().int().min(5).max(3600).optional(),
@@ -299,6 +304,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    const socialProblem = buyerSocialProblem(def.key, d.socialAction!, d.social);
+    if (socialProblem) {
+      return NextResponse.json({ error: socialProblem }, { status: 400 });
+    }
   }
 
   // Per-type gate: VIDEO self-serve additionally requires the videoTasks
@@ -388,7 +397,7 @@ export async function POST(req: NextRequest) {
         d.title,
         d.description,
         d.instructions,
-        ...stringsIn([d.custom, d.survey, d.quiz, d.article, d.appInstall]),
+        ...stringsIn([d.custom, d.survey, d.quiz, d.article, d.appInstall, d.social]),
       ],
       urls: [d.socialUrl, d.videoUrl],
     },
@@ -451,6 +460,19 @@ export async function POST(req: NextRequest) {
             d.type === "SOCIAL" ? d.socialPlatform?.toUpperCase() || null : null,
           socialAction: d.type === "SOCIAL" ? d.socialAction || null : null,
           socialUrl: d.type === "SOCIAL" ? d.socialUrl || null : null,
+          // The same one-item bundle the admin builder saves, so the buyer's
+          // text, AI mode and one-account-per-member travel with the task.
+          ...(d.type === "SOCIAL" && d.socialPlatform && d.socialAction && d.socialUrl
+            ? {
+                socialConfig: buildBuyerSocialConfig({
+                  platform: d.socialPlatform.toUpperCase(),
+                  action: d.socialAction,
+                  targetUrl: d.socialUrl,
+                  points: d.pointsReward,
+                  input: d.social,
+                }) as unknown as object,
+              }
+            : {}),
           // The runner reads `surveyConfig` and does not care who built the
           // task, so a buyer survey is answered by exactly the same screen an
           // admin survey is. One-response-per-person is enforced in

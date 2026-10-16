@@ -1362,6 +1362,13 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
               <p className="t-label-sm uppercase tracking-wider text-(--app-ink-2)">
                 Submit your proof
               </p>
+              {item.uniqueAccount && (
+                <p className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[11px] leading-relaxed text-sky-200">
+                  Use your own {platform.label} account. Each account can be
+                  used by one member only — an account or post someone else
+                  already submitted will be refused.
+                </p>
+              )}
 
               {req.url && (
                 <div>

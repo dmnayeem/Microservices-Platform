@@ -258,6 +258,7 @@ const FIELD_ROLE: Record<string, FieldRole> = {
   subredditList: "meta",
   awardType: "meta",
   tagHandle: "meta",
+  mentionHandle: "meta",
   verifyTarget: "meta",
 };
 
@@ -3279,6 +3280,141 @@ const EXTRA_ACTIONS: Record<string, SocialAction[]> = {
   ],
 };
 
+// -----------------------------------------------------------------------------
+// Work requests — "I need N members to post on / tag this page, each with
+// their OWN existing account". One member = one account; `BundleItem.uniqueAccount`
+// is what makes the submit route refuse an account a second member already used.
+//
+// Only where the platform really allows it: a visitor post on someone's wall
+// exists on Facebook alone; everywhere else the member tags the account in a
+// post of their own. Body keys reuse the platform's existing body key so the
+// recipe, AI prompt and caption rules treat them like every other post.
+// -----------------------------------------------------------------------------
+
+const fieldMentionHandle = (placeholder: string): SocialField => ({
+  key: "mentionHandle",
+  label: "Account to tag",
+  type: "text",
+  required: true,
+  placeholder,
+  helperText: "Members type this in their post so the platform links it to the account.",
+});
+
+const fieldPostText = (key: string, label: string): SocialField => ({
+  key,
+  label,
+  type: "textarea",
+  required: true,
+  placeholder: "What each member should post",
+  helperText: "Or switch the content mode to AI so every member writes their own version.",
+});
+
+function mentionAction(opts: {
+  bodyKey: string;
+  bodyLabel: string;
+  handlePlaceholder: string;
+  description: string;
+  proofLabel: string;
+  reward: { min: number; max: number };
+}): SocialAction {
+  return {
+    key: "MENTION_IN_POST",
+    label: "Mention / Tag in a Post",
+    emoji: "🏷️",
+    description: opts.description,
+    adminFields: [
+      fieldUrl("targetUrl", "Page / profile to tag"),
+      fieldMentionHandle(opts.handlePlaceholder),
+      fieldPostText(opts.bodyKey, opts.bodyLabel),
+    ],
+    aiGeneratableFields: [opts.bodyKey],
+    proofFields: [fieldUrl("proofUrl", opts.proofLabel), fieldScreenshot],
+    supportsAiPrompt: true,
+    suggestedReward: opts.reward,
+  };
+}
+
+const WORK_REQUEST_ACTIONS: Record<string, SocialAction[]> = {
+  FACEBOOK: [
+    {
+      key: "POST_ON_PAGE",
+      label: "Post on a Page / Profile",
+      emoji: "📝",
+      description:
+        "Write a visitor post on the target page or profile from your own account",
+      adminFields: [
+        {
+          ...fieldUrl("targetUrl", "Page / profile URL"),
+          helperText: "The page or profile must allow visitor posts.",
+        },
+        fieldPostText("postContent", "Post text"),
+      ],
+      aiGeneratableFields: ["postContent"],
+      proofFields: [fieldUrl("proofUrl", "URL of your post on their page"), fieldScreenshot],
+      supportsAiPrompt: true,
+      suggestedReward: { min: 20, max: 80 },
+    },
+    mentionAction({
+      bodyKey: "postContent",
+      bodyLabel: "Post text",
+      handlePlaceholder: "@PageName",
+      description: "Publish a post on your own timeline that tags the target page or profile",
+      proofLabel: "URL of your post",
+      reward: { min: 20, max: 80 },
+    }),
+  ],
+  INSTAGRAM: [
+    mentionAction({
+      bodyKey: "caption",
+      bodyLabel: "Caption",
+      handlePlaceholder: "@account",
+      description: "Publish a post or reel that tags / @mentions the target account",
+      proofLabel: "URL of your post or reel",
+      reward: { min: 20, max: 80 },
+    }),
+  ],
+  TWITTER: [
+    mentionAction({
+      bodyKey: "tweetContent",
+      bodyLabel: "Post text",
+      handlePlaceholder: "@account",
+      description: "Post on X that @mentions the target account",
+      proofLabel: "URL of your post",
+      reward: { min: 15, max: 60 },
+    }),
+  ],
+  LINKEDIN: [
+    mentionAction({
+      bodyKey: "postText",
+      bodyLabel: "Post text",
+      handlePlaceholder: "@Company or @Person",
+      description: "Publish a LinkedIn post that @mentions the target company or person",
+      proofLabel: "URL of your post",
+      reward: { min: 20, max: 80 },
+    }),
+  ],
+  TIKTOK: [
+    mentionAction({
+      bodyKey: "caption",
+      bodyLabel: "Caption",
+      handlePlaceholder: "@account",
+      description: "Post a video whose caption @mentions the target account",
+      proofLabel: "URL of your video",
+      reward: { min: 25, max: 100 },
+    }),
+  ],
+  THREADS: [
+    mentionAction({
+      bodyKey: "threadContent",
+      bodyLabel: "Post text",
+      handlePlaceholder: "@account",
+      description: "Post on Threads that @mentions the target account",
+      proofLabel: "URL of your post",
+      reward: { min: 15, max: 60 },
+    }),
+  ],
+};
+
 // Merge the extra actions into the platform definitions (runs once at load).
 // `augmentCatalog()` then stamps roles / adds the shared content fields / derives
 // each action's recipe — it is invoked at the BOTTOM of this file because it
@@ -3286,6 +3422,8 @@ const EXTRA_ACTIONS: Record<string, SocialAction[]> = {
 for (const _platform of SOCIAL_PLATFORMS) {
   const extra = EXTRA_ACTIONS[_platform.key];
   if (extra) _platform.actions.push(...extra);
+  const work = WORK_REQUEST_ACTIONS[_platform.key];
+  if (work) _platform.actions.push(...work);
 }
 
 // -----------------------------------------------------------------------------
@@ -3482,6 +3620,13 @@ export interface BundleItem {
    */
   aiTopic?: string;
   aiSummary?: string;
+  /**
+   * One account per member: the submit route refuses a proof username /
+   * profile / post URL that a DIFFERENT member already used on this task in a
+   * pending or approved submission. Off (undefined) for every task saved
+   * before this existed, so their behaviour is unchanged.
+   */
+  uniqueAccount?: boolean;
 }
 
 /**
@@ -3584,6 +3729,7 @@ function coerceBundleItem(raw: unknown): BundleItem | null {
     captionUserTag: r.captionUserTag === true ? true : undefined,
     aiTopic: typeof r.aiTopic === "string" && r.aiTopic.trim() ? r.aiTopic.slice(0, 200) : undefined,
     aiSummary: typeof r.aiSummary === "string" && r.aiSummary.trim() ? r.aiSummary.slice(0, 2000) : undefined,
+    uniqueAccount: r.uniqueAccount === true ? true : undefined,
   };
 }
 
@@ -3663,6 +3809,8 @@ export interface SocialTaskItemView {
   verify?: VerifyMethod;
   /** The admin set an AI topic / summary — the member gets Generate boxes (not the text itself). */
   aiWriting?: boolean;
+  /** One account per member — shown to the member before they submit. */
+  uniqueAccount?: boolean;
 }
 
 export interface SocialTaskView {
@@ -3721,6 +3869,7 @@ export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
     targetUrl: it.fields?.targetUrl ?? it.fields?.targetHandle ?? "",
     verify: it.verify,
     aiWriting: !!(it.aiSummary || it.aiTopic),
+    uniqueAccount: it.uniqueAccount === true ? true : undefined,
   }));
   // Legacy single-action tasks store the action on the Task columns
   // (socialPlatform/socialAction/socialUrl) with a null socialConfig → 0 items.
@@ -3876,6 +4025,9 @@ const ACTION_TIER: Record<string, number> = {
   BOOST: 50,
   FOLLOW_CHANNEL: 60,
   RESPOND: 40,
+  // work requests — members post on / tag a page with their own account
+  POST_ON_PAGE: 80,
+  MENTION_IN_POST: 80,
 };
 
 /** Natural-flow tier for an action key (lower = earlier). Unknown → 90. */
