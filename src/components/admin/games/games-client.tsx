@@ -649,7 +649,7 @@ function GameModal({
         </div>
 
         <div className="p-5 space-y-4">
-          {tab === "setup" && <GameSetupGuide onGoToTab={setTab} />}
+          {tab === "setup" && <GameSetupGuide gameId={game?.id ?? null} onGoToTab={setTab} />}
 
           {tab === "basics" && (
             <>

@@ -8,7 +8,9 @@ import { toast } from "@/lib/toast";
 /**
  * Setup guide for connecting a self-built HTML5 game to RevType (owner,
  * 2026-10-17): shown first when adding a game, written for a non-technical
- * admin — every step says which file, where in it, and what to paste.
+ * admin — every step says which file, where in it, and what to paste. Games
+ * live on the owner's own game website; players connect their RevType
+ * account there (src/lib/game-connect.ts).
  * The SDK itself is public/sdk/revtype-games.js; scores are paid by
  * reportScore in src/lib/game-session.ts.
  */
@@ -116,13 +118,18 @@ function hostSetup(host: Host, origin: string): { file: string; where: string; c
 }
 
 export function GameSetupGuide({
+  gameId,
   onGoToTab,
 }: {
+  /** null while adding — the id exists once the game is created. */
+  gameId: string | null;
   onGoToTab: (tab: "basics" | "embed" | "rewards") => void;
 }) {
   const origin = siteOrigin();
   const [host, setHost] = useState<Host>("netlify");
-  const scriptTag = `<script src="${origin}/sdk/revtype-games.js"></script>`;
+  const idText = gameId ?? "YOUR_GAME_ID";
+  const install = `<script src="${origin}/sdk/revtype-games.js"></script>
+<script>RevType.init({ gameId: "${idText}" });</script>`;
 
   const indexExample = `<!DOCTYPE html>
 <html>
@@ -136,8 +143,8 @@ export function GameSetupGuide({
   <!-- your game here -->
   <script src="game.js"></script>
 
-  <!-- RevType: paste this line just before </body> -->
-  ${scriptTag}
+  <!-- RevType: paste these two lines just before </body> -->
+  ${install.replace("\n", "\n  ")}
 </body>
 </html>`;
 
@@ -148,17 +155,20 @@ if (window.RevType) RevType.setScore(score);`;
   const addExample = `// Or send each gain instead:
 if (window.RevType) RevType.addScore(10);`;
 
-  const extrasExample = `// Optional: show a message when the game runs inside RevType
+  const extrasExample = `// Optional: hide the built-in button and use your own
+//   RevType.init({ gameId: "${idText}", badge: false });
+//   myButton.onclick = function () { RevType.connect(); };
+
+// Optional: move the built-in button
+//   RevType.init({ gameId: "${idText}", position: "top-left" });
+
+// Optional: react when RevType is ready or credits points
 if (window.RevType) {
   RevType.onReady(function (info) {
-    if (info.earning) {
-      // e.g. show "Earning RevType points" on your start screen
-    }
+    // info.connected, info.name, info.points, info.earning
   });
-
-  // Optional: react when RevType credits points
   RevType.onEarn(function (e) {
-    // e.awarded = points just credited, e.sessionPoints = total this play
+    // e.awarded = points just credited
   });
 }`;
 
@@ -169,32 +179,66 @@ if (window.RevType) {
       <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 p-3 space-y-1">
         <p className="text-sm font-bold text-white">Connect your own HTML5 game to RevType</p>
         <P>
-          Follow these steps once per game. Your game stays on its own website; RevType shows it
-          inside the Games page. The game tells RevType the player&apos;s score, and RevType turns it
-          into points the player can withdraw. Every code box has a Copy button.
+          Your games stay on your own game website. Players there press <strong>Connect RevType</strong>{" "}
+          once and sign in (or sign up) to RevType. From then on, the points they earn in your games go
+          to their RevType account, and they withdraw them on RevType. Every code box has a Copy button.
         </P>
       </div>
 
       <Step n={1} title="Put your game online">
         <P>
-          Upload your game folder (the one with <C>index.html</C>) to any web host — for example
-          Netlify (drag and drop the folder), Cloudflare Pages, Vercel, GitHub Pages, or your own
-          hosting. It must open with <C>https://</C>. Copy the address of the game, for example{" "}
-          <C>https://mygames.com/space-runner/</C>. You will paste it in step 5.
+          Upload your game folder (the one with <C>index.html</C>) to your game website — any host
+          works: Netlify, Cloudflare Pages, Vercel, GitHub Pages or your own hosting. It must open with{" "}
+          <C>https://</C>. Note the game&apos;s address, for example{" "}
+          <C>https://play.mygames.com/space-runner/</C>.
         </P>
       </Step>
 
-      <Step n={2} title="Install the RevType script in your game">
+      <Step n={2} title="Allow your game website (once for all games)">
         <P>
-          Open your game&apos;s <C>index.html</C> in any text editor. Find the line{" "}
-          <C>&lt;/body&gt;</C> near the bottom. Paste this line just above it:
+          Go to <strong>Games → Settings → Your game websites</strong> and add your website&apos;s
+          address, for example <C>https://play.mygames.com</C>. Only websites listed there can
+          connect to RevType. You do this once — every game on that website then works.
         </P>
-        <CopyBlock label="Paste just before </body> in index.html" value={scriptTag} />
+      </Step>
+
+      <Step n={3} title="Create the game here">
+        <P>
+          In the <TabLink onClick={() => onGoToTab("basics")}>Basics</TabLink> tab, enter the title,
+          icon image and category. In the <TabLink onClick={() => onGoToTab("embed")}>Embed</TabLink>{" "}
+          tab, paste the game&apos;s address from step 1. In the{" "}
+          <TabLink onClick={() => onGoToTab("rewards")}>Rewards</TabLink> tab, tick{" "}
+          <strong>My own game with the RevType SDK</strong> and <strong>Pay for scores</strong>, and set{" "}
+          <strong>RevType points per 1,000 game points</strong>. Press <strong>Create game</strong>.
+        </P>
+        {!gameId && (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/25 p-2.5 text-xs text-amber-200">
+            After you create the game, open it again: this guide then shows the code with your
+            game&apos;s ID filled in.
+          </div>
+        )}
+      </Step>
+
+      <Step n={4} title="Install the RevType script in your game">
+        <P>
+          Open your game&apos;s <C>index.html</C> in any text editor. Find the line <C>&lt;/body&gt;</C>{" "}
+          near the bottom and paste these two lines just above it:
+        </P>
+        {gameId && (
+          <P>
+            Game ID: <C>{gameId}</C> — already filled in below.
+          </P>
+        )}
+        <CopyBlock label="Paste just before </body> in index.html" value={install} />
         <P>This is how the finished file looks:</P>
         <CopyBlock label="Example index.html" value={indexExample} />
+        <P>
+          A small <strong>Earn rewards · Connect RevType</strong> button now appears on your game.
+          After the player connects, it shows their RevType points and a Withdraw link.
+        </P>
       </Step>
 
-      <Step n={3} title="Send the score from your game code">
+      <Step n={5} title="Send the score from your game code">
         <P>
           Open the JavaScript file where your game adds points to the player (search for{" "}
           <C>score</C>). Right after the score changes, add the RevType line:
@@ -203,89 +247,82 @@ if (window.RevType) {
         <CopyBlock label="Or send each gain" value={addExample} />
         <P>
           Use one of the two, not both. It is fine if your score goes back to 0 when a new round
-          starts — RevType adds up only what the player gains. The <C>if (window.RevType)</C> part
-          keeps your game working normally when it is opened outside RevType.
+          starts — RevType adds up only what the player gains. Points a player earns before
+          connecting are kept and sent once they connect. The <C>if (window.RevType)</C> part keeps
+          your game working normally if the script can&apos;t load.
         </P>
-        <details className="group">
+        <details>
           <summary className="cursor-pointer text-xs font-semibold text-emerald-400 hover:text-emerald-300">
             Optional extras
           </summary>
           <div className="mt-2">
-            <CopyBlock label="Optional — earning message and credit callback" value={extrasExample} />
+            <CopyBlock label="Optional — your own button, button position, callbacks" value={extrasExample} />
           </div>
         </details>
       </Step>
 
-      <Step n={4} title="Allow RevType to show your game">
+      <Step n={6} title="Test it">
         <P>
-          Your host must allow your game to open inside RevType. Choose where your game is hosted:
+          Open your game on your website, press <strong>Connect RevType</strong>, sign in with a normal
+          member account and press <strong>Allow</strong>. Play for 2–3 minutes. The button shows the
+          points going up, and they appear in the member&apos;s RevType wallet.
         </P>
-        <div className="flex flex-wrap gap-1.5">
-          {HOSTS.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              onClick={() => setHost(x.id)}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${
-                host === x.id
-                  ? "bg-emerald-600 border-emerald-600 text-white"
-                  : "border-slate-700 text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              {x.label}
-            </button>
-          ))}
+      </Step>
+
+      <details className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-white">
+          Optional: also show the game inside RevType&apos;s Games page
+        </summary>
+        <div className="mt-3 space-y-2">
+          <P>
+            The game is also listed on RevType&apos;s own Games page, where members play it without
+            connecting. For that, your host must allow RevType to show the game in a frame. Choose your
+            host:
+          </P>
+          <div className="flex flex-wrap gap-1.5">
+            {HOSTS.map((x) => (
+              <button
+                key={x.id}
+                type="button"
+                onClick={() => setHost(x.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${
+                  host === x.id
+                    ? "bg-emerald-600 border-emerald-600 text-white"
+                    : "border-slate-700 text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+          {h ? (
+            <>
+              <P>{h.where}</P>
+              <CopyBlock label={h.file} value={h.code} />
+            </>
+          ) : (
+            <P>Nothing to do — GitHub Pages already allows it.</P>
+          )}
+          <P>
+            Then press <strong>Test this URL</strong> in the{" "}
+            <TabLink onClick={() => onGoToTab("embed")}>Embed</TabLink> tab.
+          </P>
         </div>
-        {h ? (
-          <>
-            <P>{h.where}</P>
-            <CopyBlock label={h.file} value={h.code} />
-          </>
-        ) : (
-          <P>Nothing to do — GitHub Pages already allows it.</P>
-        )}
-      </Step>
-
-      <Step n={5} title="Add the game here">
-        <P>
-          In the{" "}
-          <TabLink onClick={() => onGoToTab("basics")}>Basics</TabLink> tab, enter the title, icon
-          image and category. In the <TabLink onClick={() => onGoToTab("embed")}>Embed</TabLink> tab,
-          paste your game&apos;s address from step 1 and press <strong>Test this URL</strong> — it
-          must say the game can be shown.
-        </P>
-      </Step>
-
-      <Step n={6} title="Turn on paying for scores">
-        <P>
-          In the <TabLink onClick={() => onGoToTab("rewards")}>Rewards</TabLink> tab, tick{" "}
-          <strong>My own game with the RevType SDK</strong> and <strong>Pay for scores</strong>, and
-          set <strong>RevType points per 1,000 game points</strong>. Then press{" "}
-          <strong>Create game</strong>.
-        </P>
-      </Step>
-
-      <Step n={7} title="Test it">
-        <P>
-          Log in with a normal member account, open the game from the Games page and play for 2–3
-          minutes. The points counter at the top of the player goes up, and the points appear in the
-          member&apos;s wallet.
-        </P>
-      </Step>
+      </details>
 
       <div className="rounded-lg bg-slate-900 border border-slate-800 p-3 space-y-1">
         <p className="text-xs font-semibold text-white">How players get paid</p>
         <P>
-          Points go straight to the player&apos;s Earn Points and are withdrawn through the normal
-          Withdraw page — nothing else to set up. Points only count when the game is played inside
-          RevType.
+          Points go straight to the player&apos;s Earn Points on RevType. They withdraw on RevType&apos;s
+          normal Withdraw page (the button on your game links there) — nothing else to set up. One
+          RevType account works for all your games.
         </P>
         <p className="text-xs font-semibold text-white pt-1">Why the per-minute limit</p>
         <P>
-          The game runs in the player&apos;s browser, so a score can be faked. RevType therefore pays
-          at most the &quot;Score points per minute&quot; limit (Games → Settings) for each minute it
-          measured the game being played, plus the daily limits — a faked score can never earn
-          faster than that.
+          The game runs in the player&apos;s browser, so a score can be faked. RevType therefore pays at
+          most the &quot;Score points per minute&quot; limit (Games → Settings) for each minute it
+          measured the game being played, plus the daily limits — a faked score can never earn faster
+          than that.
         </P>
       </div>
     </div>

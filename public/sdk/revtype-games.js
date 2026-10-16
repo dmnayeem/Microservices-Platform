@@ -1,65 +1,56 @@
 /*!
- * RevType Games SDK v1 — connects an HTML5 game (on any domain) to RevType.
+ * RevType Games SDK v2 — lets players earn RevType points from your HTML5 game.
  *
- * Add to the game's HTML:
- *   <script src="https://revtype.com/sdk/revtype-games.js"></script>
+ * 1. Add to the game's HTML, just before </body>:
+ *      <script src="https://revtype.com/sdk/revtype-games.js"></script>
+ *      <script>RevType.init({ gameId: "YOUR_GAME_ID" });</script>
  *
- * Then, in the game:
- *   RevType.setScore(score)   // the player's current score (may restart from 0 each round)
- *   RevType.addScore(n)       // or: the player just gained n points
- *   RevType.onReady(fn)       // fn({ connected, earning, pointsPer1000 })
- *   RevType.onEarn(fn)        // fn({ awarded, sessionPoints }) when RevType credits points
+ * 2. In the game code, whenever the player gains points:
+ *      RevType.setScore(score)   // the player's current score (may restart from 0 each round)
+ *      RevType.addScore(n)       // or: the player just gained n points
  *
- * The game only reports its score. RevType (the page the game is embedded in)
- * decides what it is worth, caps it by real play time, and credits the
- * member's RevType points. Opened outside RevType, the calls do nothing.
+ * Works in two places:
+ *  - On your own game website: shows a small "Connect RevType" button. The
+ *    player signs in to RevType once; after that their points go to their
+ *    RevType account, and they withdraw on revtype.com.
+ *  - Inside RevType's Games page: already signed in, nothing to show.
+ *
+ * Optional:
+ *   RevType.init({ gameId, badge: false })        // hide the built-in button
+ *   RevType.init({ gameId, position: "top-left" }) // bottom-right (default) / bottom-left / top-right / top-left
+ *   RevType.connect()                             // open the sign-in window from your own button
+ *   RevType.onReady(fn)  // fn({ connected, earning, name, points })
+ *   RevType.onEarn(fn)   // fn({ awarded, sessionPoints })
+ *
+ * RevType decides what a score is worth and limits it by real play time, so
+ * the game only reports — it never decides payouts.
  */
 (function () {
   "use strict";
   if (window.RevType && window.RevType.version) return;
 
-  var inFrame = window.parent && window.parent !== window;
-  var parentOrigin = null;
-  var state = { connected: false, earning: false, pointsPer1000: 0 };
-  // Points gained and not yet sent, and the last score passed to setScore.
-  var pending = 0;
-  var lastScore = 0;
-  var sum = 0;
-  var timer = null;
+  // ── Where RevType is: the origin this script was loaded from ──────────────
+  var API = "https://revtype.com";
+  try {
+    var cs = document.currentScript;
+    if (cs && cs.src) API = new URL(cs.src).origin;
+  } catch (_e) {}
+
+  var TOKEN_KEY = "revtype_connect_token";
+  var inFrame = false;
+  try {
+    inFrame = window.parent && window.parent !== window;
+  } catch (_e) {
+    inFrame = true;
+  }
+
+  var cfg = { gameId: null, badge: true, position: "bottom-right" };
+  var mode = "pending"; // "player" (inside RevType) | "site" (your website)
+  var state = { connected: false, earning: false, name: "", points: 0, pointsPer1000: 0, withdrawUrl: "" };
   var readyFns = [];
   var earnFns = [];
-  var SEND_EVERY_MS = 3000;
-
-  function post(msg) {
-    if (!inFrame) return;
-    msg.source = "revtype-sdk";
-    msg.v = 1;
-    try {
-      window.parent.postMessage(msg, parentOrigin || "*");
-    } catch (_e) {}
-  }
-
-  // Only GAINS are sent; RevType adds them up. A new round (score back to 0)
-  // or a page reload therefore never loses points.
-  function flush() {
-    timer = null;
-    if (!state.connected || pending <= 0) return;
-    var n = pending;
-    pending = 0;
-    post({ type: "add", n: n });
-  }
-
-  function gain(n) {
-    if (n <= 0) return;
-    pending += n;
-    sum += n;
-    schedule();
-  }
-
-  function schedule() {
-    if (timer) return;
-    timer = setTimeout(flush, SEND_EVERY_MS);
-  }
+  var lastScore = 0;
+  var pending = 0; // gains not yet handed on
 
   function call(fns, arg) {
     for (var i = 0; i < fns.length; i++) {
@@ -68,33 +59,337 @@
       } catch (_e) {}
     }
   }
+  function publicState() {
+    return {
+      connected: state.connected,
+      earning: state.earning,
+      name: state.name,
+      points: state.points,
+      pointsPer1000: state.pointsPer1000,
+    };
+  }
+  function ready() {
+    call(readyFns, publicState());
+    renderBadge();
+  }
+  function gain(n) {
+    if (n <= 0) return;
+    pending += n;
+    if (mode === "player") schedulePlayer();
+  }
+
+  // ── Mode 1: inside RevType's game player (iframe) ────────────────────────
+  var parentOrigin = null;
+  var playerTimer = null;
+  function postParent(msg) {
+    msg.source = "revtype-sdk";
+    msg.v = 2;
+    try {
+      window.parent.postMessage(msg, parentOrigin || "*");
+    } catch (_e) {}
+  }
+  function flushPlayer() {
+    playerTimer = null;
+    if (mode !== "player" || pending <= 0) return;
+    var n = pending;
+    pending = 0;
+    postParent({ type: "add", n: n });
+  }
+  function schedulePlayer() {
+    if (!playerTimer) playerTimer = setTimeout(flushPlayer, 3000);
+  }
 
   window.addEventListener("message", function (e) {
-    if (!inFrame || e.source !== window.parent) return;
     var d = e.data;
-    if (!d || d.source !== "revtype-player") return;
-    if (d.type === "welcome") {
-      parentOrigin = e.origin;
-      state = {
-        connected: true,
-        earning: !!d.earning,
-        pointsPer1000: Number(d.pointsPer1000) || 0,
-      };
-      call(readyFns, state);
-      if (pending > 0) schedule();
-    } else if (d.type === "earned") {
-      call(earnFns, { awarded: Number(d.awarded) || 0, sessionPoints: Number(d.sessionPoints) || 0 });
+    if (!d) return;
+    // RevType player → this game
+    if (inFrame && e.source === window.parent && d.source === "revtype-player") {
+      if (d.type === "welcome") {
+        parentOrigin = e.origin;
+        // A slow load may have started website mode already: inside RevType
+        // the player owns the session, so stop ours (it would end theirs).
+        if (mode === "site") {
+          stopTimers();
+          sessionId = null;
+        }
+        mode = "player";
+        state.connected = true;
+        state.earning = !!d.earning;
+        state.pointsPer1000 = Number(d.pointsPer1000) || 0;
+        ready();
+        if (pending > 0) schedulePlayer();
+      } else if (d.type === "earned") {
+        call(earnFns, { awarded: Number(d.awarded) || 0, sessionPoints: Number(d.sessionPoints) || 0 });
+      }
+      return;
+    }
+    // Connect popup (revtype.com) → this game
+    if (e.origin === API && d.source === "revtype-connect" && d.token) {
+      saveToken(d.token);
+      state.name = d.name || "";
+      startSite();
     }
   });
 
-  // Send what is pending before the game closes.
-  window.addEventListener("pagehide", flush);
+  // ── Mode 2: on your own game website ─────────────────────────────────────
+  var token = null;
+  var sessionId = null;
+  var sessionTotal = 0;
+  var sentTotal = 0;
+  var beatTimer = null;
+  var scoreTimer = null;
+  var starting = false;
+
+  function saveToken(t) {
+    token = t;
+    try {
+      localStorage.setItem(TOKEN_KEY, t);
+    } catch (_e) {}
+  }
+  function loadToken() {
+    // Coming back from a blocked popup: the token is in the URL fragment.
+    try {
+      var m = /[#&]revtype_token=([^&]+)/.exec(location.hash);
+      if (m) {
+        saveToken(decodeURIComponent(m[1]));
+        history.replaceState(null, "", location.pathname + location.search);
+        return;
+      }
+    } catch (_e) {}
+    try {
+      token = localStorage.getItem(TOKEN_KEY);
+    } catch (_e) {
+      token = null;
+    }
+  }
+  function stopTimers() {
+    if (beatTimer) clearInterval(beatTimer);
+    if (scoreTimer) clearInterval(scoreTimer);
+    beatTimer = scoreTimer = null;
+  }
+  function dropToken() {
+    token = null;
+    sessionId = null;
+    state.connected = false;
+    state.earning = false;
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch (_e) {}
+    stopTimers();
+    ready();
+  }
+
+  function api(method, action, body) {
+    return fetch(API + "/api/games/ext/" + action, {
+      method: method,
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: body ? JSON.stringify(body) : undefined,
+      keepalive: method === "POST",
+    }).then(function (r) {
+      return r
+        .json()
+        .catch(function () {
+          return {};
+        })
+        .then(function (d) {
+          if (r.status === 401) dropToken();
+          return { status: r.status, ok: r.ok, data: d || {} };
+        });
+    });
+  }
+
+  function refreshMe() {
+    if (!token) return Promise.resolve();
+    return api("GET", "me").then(function (r) {
+      if (!r.ok) return;
+      state.name = r.data.name || state.name;
+      state.points = Number(r.data.points) || 0;
+      state.withdrawUrl = r.data.withdrawUrl || "";
+      renderBadge();
+    });
+  }
+
+  function startSite() {
+    if (mode !== "site" || !token || starting) return;
+    starting = true;
+    stopTimers();
+    refreshMe()
+      .then(function () {
+        if (!token || !cfg.gameId) return null;
+        return api("POST", "session", { gameId: cfg.gameId });
+      })
+      .then(function (r) {
+        starting = false;
+        state.connected = !!token;
+        if (!r || !r.ok) {
+          ready();
+          return;
+        }
+        sessionId = r.data.sessionId;
+        // Points gained before connecting count toward this session.
+        sessionTotal = pending;
+        pending = 0;
+        sentTotal = 0;
+        state.earning = !!(r.data.score && r.data.score.enabled);
+        state.pointsPer1000 = (r.data.score && r.data.score.pointsPer1000) || 0;
+        var beatMs = (Number(r.data.beatSeconds) || 15) * 1000;
+        beat();
+        beatTimer = setInterval(beat, beatMs);
+        scoreTimer = setInterval(sendScore, 5000);
+        ready();
+      })
+      .catch(function () {
+        starting = false;
+      });
+  }
+
+  // Only the tab in front takes the session back — otherwise two open tabs
+  // would keep ending each other's session (one open session per player).
+  function restartSession() {
+    sessionId = null;
+    stopTimers();
+    if (!document.hidden) startSite();
+  }
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden") flush();
+    if (mode === "site" && !document.hidden && token && !sessionId) startSite();
   });
 
+  function beat() {
+    if (!sessionId || document.hidden) return;
+    api("POST", "heartbeat", { gameId: cfg.gameId, sessionId: sessionId }).then(function (r) {
+      if (r.status === 409) restartSession();
+      else if (r.ok && r.data.awarded > 0) onAwarded(r.data);
+    });
+  }
+
+  function sendScore() {
+    if (!sessionId) return;
+    sessionTotal += pending;
+    pending = 0;
+    if (sessionTotal <= sentTotal) return;
+    var total = sessionTotal;
+    api("POST", "score", { gameId: cfg.gameId, sessionId: sessionId, total: total }).then(function (r) {
+      if (r.ok) {
+        sentTotal = total;
+        if (r.data.awarded > 0) onAwarded(r.data);
+      } else if (r.status === 409) {
+        // Session closed (another tab, or idle too long): keep the unsent points.
+        pending += total - sentTotal;
+        restartSession();
+      }
+    });
+  }
+
+  function onAwarded(d) {
+    state.points += Number(d.awarded) || 0;
+    renderBadge();
+    call(earnFns, { awarded: Number(d.awarded) || 0, sessionPoints: Number(d.sessionPoints) || 0 });
+  }
+
+  function connect() {
+    var url =
+      API +
+      "/connect/games?origin=" +
+      encodeURIComponent(location.origin) +
+      "&return=" +
+      encodeURIComponent(location.href.split("#")[0]);
+    var w = null;
+    try {
+      w = window.open(url, "revtype_connect", "width=440,height=680");
+    } catch (_e) {}
+    if (!w) {
+      // Popup blocked: go there in this tab; it comes back with the token.
+      location.href = url;
+    }
+  }
+
+  // Connected in another tab of the same website: pick it up here too.
+  window.addEventListener("storage", function (e) {
+    if (mode === "site" && e.key === TOKEN_KEY && e.newValue && !token) {
+      token = e.newValue;
+      startSite();
+    }
+  });
+
+  window.addEventListener("pagehide", function () {
+    if (mode === "site") sendScore();
+    if (mode === "player") flushPlayer();
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && mode === "site") sendScore();
+  });
+
+  // ── The built-in button ──────────────────────────────────────────────────
+  var badgeEl = null;
+  function renderBadge() {
+    if (mode !== "site" || !cfg.badge || !document.body) {
+      if (badgeEl) badgeEl.style.display = "none";
+      return;
+    }
+    if (!badgeEl) {
+      badgeEl = document.createElement("button");
+      badgeEl.type = "button";
+      var pos = String(cfg.position || "bottom-right").split("-");
+      var s = badgeEl.style;
+      s.position = "fixed";
+      s[pos[0] === "top" ? "top" : "bottom"] = "12px";
+      s[pos[1] === "left" ? "left" : "right"] = "12px";
+      s.zIndex = "2147483647";
+      s.padding = "8px 12px";
+      s.border = "0";
+      s.borderRadius = "999px";
+      s.font = "600 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
+      s.color = "#fff";
+      s.background = "linear-gradient(135deg,#059669,#0d9488)";
+      s.boxShadow = "0 4px 14px rgba(0,0,0,.35)";
+      s.cursor = "pointer";
+      badgeEl.addEventListener("click", function () {
+        if (!state.connected) connect();
+        else window.open(state.withdrawUrl || API + "/withdrawal", "_blank", "noopener");
+      });
+      document.body.appendChild(badgeEl);
+    }
+    badgeEl.style.display = "";
+    badgeEl.textContent = state.connected
+      ? "RevType: " + Number(state.points || 0).toLocaleString() + " pts · Withdraw"
+      : "Earn rewards · Connect RevType";
+    badgeEl.title = state.connected
+      ? "Signed in as " + (state.name || "RevType member") + ". Points go to your RevType account."
+      : "Sign in to RevType to turn your game points into rewards you can withdraw.";
+  }
+
+  // ── Decide the mode ──────────────────────────────────────────────────────
+  function goSite() {
+    if (mode !== "pending") return;
+    mode = "site";
+    loadToken();
+    if (token) startSite();
+    else ready();
+  }
+  if (inFrame) {
+    postParent({ type: "hello" });
+    // No answer from a RevType player → this is your own website (maybe in a frame).
+    setTimeout(goSite, 1500);
+  } else if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", goSite);
+  } else {
+    setTimeout(goSite, 0);
+  }
+
   window.RevType = {
-    version: 1,
+    version: 2,
+    init: function (opts) {
+      opts = opts || {};
+      if (opts.gameId) cfg.gameId = String(opts.gameId);
+      if (opts.badge === false) cfg.badge = false;
+      if (opts.position) cfg.position = String(opts.position);
+      if (mode === "site") {
+        if (token && !sessionId) startSite();
+        renderBadge();
+      }
+    },
+    connect: connect,
+    disconnect: dropToken,
     isConnected: function () {
       return state.connected;
     },
@@ -110,19 +405,13 @@
       if (!isFinite(n) || n <= 0) return;
       gain(n);
     },
-    /** Points reported to RevType in this page so far. */
-    getScore: function () {
-      return sum;
-    },
     onReady: function (fn) {
       if (typeof fn !== "function") return;
       readyFns.push(fn);
-      if (state.connected) fn(state);
+      if (mode !== "pending") fn(publicState());
     },
     onEarn: function (fn) {
       if (typeof fn === "function") earnFns.push(fn);
     },
   };
-
-  post({ type: "hello" });
 })();
