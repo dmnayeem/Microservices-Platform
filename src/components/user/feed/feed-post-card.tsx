@@ -24,9 +24,9 @@ import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { profileHref } from "@/lib/user-href";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { getPostBackground } from "@/lib/post-backgrounds";
 import { ShareModal } from "@/components/user/primitives/share-modal";
 import { ImageZoomModal } from "@/components/user/primitives/image-zoom-modal";
@@ -56,6 +56,14 @@ import {
 } from "@/components/user/primitives/inline-video-embed";
 import type { FeedPost } from "./social-feed-view.types";
 import { VerifiedBadge, badgeRingStyle } from "@/components/user/profile/verified-badge";
+import { usePostBoost } from "@/components/user/boost/use-post-boost";
+import { useBoostTracking } from "@/hooks/use-boost-tracking";
+
+// Loaded on first open — most cards never open it.
+const BoostComposer = dynamic(
+  () => import("@/components/user/boost/boost-composer").then((m) => m.BoostComposer),
+  { ssr: false }
+);
 
 // URL detection lives in `@/lib/post-urls`, shared with the composer so that
 // what previews there is what links here. The local copy this replaced required
@@ -126,6 +134,17 @@ export const FeedPostCard = memo(function FeedPostCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [boostOpen, setBoostOpen] = useState(false);
+  // A sponsored placement counts its impression / view / click for the boost
+  // owner's bill (hooks/use-boost-tracking -> /api/boost/event).
+  const boostTrack = useBoostTracking(post.sponsored ? post.boostCampaignId : null);
+  const boostRef = boostTrack.ref;
+  useEffect(() => {
+    boostRef(articleRef.current);
+  }, [boostRef]);
+  // The owner's latest boost of this post (one shared request per page).
+  const myBoost = usePostBoost(post.id, post.isOwner);
+  const boostIsOpen =
+    !!myBoost && (myBoost.status === "PENDING" || myBoost.status === "ACTIVE" || myBoost.status === "PAUSED");
   const [busy, setBusy] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
@@ -464,12 +483,22 @@ export const FeedPostCard = memo(function FeedPostCard({
       singleTapTimer.current = null;
       lastTapRef.current = { at: 0, index: -1, pt: null };
       setZoomIndex(index);
+      boostTrack.trackClick();
     }, 450);
   };
 
   return (
     <article
       ref={articleRef}
+      // Following a link in the post (text link, link preview, permalink) is a
+      // click on a sponsored post; like / comment / share are counted apart.
+      onClickCapture={
+        post.sponsored
+          ? (e) => {
+              if ((e.target as HTMLElement).closest?.("a[href]")) boostTrack.trackClick();
+            }
+          : undefined
+      }
       className={cn(
         // One radius, one surface, one border, one shadow — the card is the
         // paper, not the message. A post was previously given a cyan border
@@ -557,6 +586,15 @@ export const FeedPostCard = memo(function FeedPostCard({
                   addSuffix: true,
                 })}
               </span>
+              {/* A paid placement says so. The feed sets `sponsored` only when it
+                  served this post as a boost; the author never sees the label on
+                  their own post (they get the boost status row instead). */}
+              {!post.isOwner && (post.sponsored || !!post.boostCampaignId) && (
+                <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+                  <span aria-hidden>·</span>
+                  <span className="font-semibold">Sponsored</span>
+                </span>
+              )}
               {/* The author's own posts say who they went out to. An author who
                   cannot see what they published cannot correct it. */}
               {post.isOwner && post.audience && (
@@ -897,23 +935,18 @@ export const FeedPostCard = memo(function FeedPostCard({
         >
           <Bookmark className={cn("w-5 h-5 shrink-0", post.isSaved && "fill-current")} />
         </button>
-        {post.isOwner &&
-          canBoost &&
-          !(post.boostedUntil && new Date(post.boostedUntil) > new Date()) && (
-            <button
-              onClick={() => setBoostOpen(true)}
-              aria-label="Boost this post"
-              className="shrink-0 app-tap app-press ml-auto inline-flex items-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
-            >
-              <Megaphone className="w-5 h-5 shrink-0" />
-              <span className="hidden sm:inline">Boost</span>
-            </button>
-          )}
-        {post.boostedUntil && new Date(post.boostedUntil) > new Date() && (
-          <span className="app-chip app-chip-warn ml-auto shrink-0" title="Boosted">
-            <Megaphone className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Boosted</span>
-          </span>
+        {/* The one filled control in the row: it is the owner's call to
+            action. Hidden while a boost is open (pending / running / paused)
+            — a post has at most one, and the status row below says which. */}
+        {post.isOwner && canBoost && !boostIsOpen && (
+          <button
+            onClick={() => setBoostOpen(true)}
+            aria-label="Boost this post"
+            className="shrink-0 app-tap app-press ml-auto inline-flex items-center gap-1.5 px-3 rounded-(--app-r-chip) bg-(--app-cta) text-(--app-on-cta) text-sm font-bold hover:bg-(--app-cta-hover)"
+          >
+            <Megaphone className="w-4 h-4 shrink-0" />
+            <span className="hidden min-[400px]:inline">Boost</span>
+          </button>
         )}
         {post.isOwner && (
           <div className="ml-auto flex shrink-0 items-center">
@@ -933,6 +966,51 @@ export const FeedPostCard = memo(function FeedPostCard({
           </div>
         )}
       </div>
+      {/* The owner's boost, where they will look for it: under their post. */}
+      {myBoost && ["PENDING", "ACTIVE", "PAUSED", "REJECTED"].includes(myBoost.status) && (
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-x-2 gap-y-1 border-t px-(--app-pad) py-2 text-xs",
+            myBoost.status === "REJECTED"
+              ? "border-rose-500/25 bg-rose-500/10 text-rose-100"
+              : "border-(--app-line) bg-(--app-surface-2)/50 text-(--app-ink-2)"
+          )}
+        >
+          <Megaphone className="w-3.5 h-3.5 shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">
+            {myBoost.status === "PENDING" && <b>Boost pending review</b>}
+            {myBoost.status === "PAUSED" && <b>Boost paused by an admin</b>}
+            {myBoost.status === "ACTIVE" && (
+              <>
+                <b>Boosted</b> — {myBoost.counts.views.toLocaleString()}{" "}
+                {myBoost.counts.views === 1 ? "view" : "views"}
+                {myBoost.endsAt && ` · ends ${format(new Date(myBoost.endsAt), "MMM d")}`}
+              </>
+            )}
+            {myBoost.status === "REJECTED" && (
+              <>
+                <b>Boost rejected</b>
+                {myBoost.rejectReason ? `: ${myBoost.rejectReason}` : ""}
+              </>
+            )}
+          </span>
+          {myBoost.status === "REJECTED" && canBoost ? (
+            <button
+              onClick={() => setBoostOpen(true)}
+              className="app-press shrink-0 rounded-(--app-r-chip) border border-rose-400/40 px-2.5 py-1 font-bold hover:bg-rose-500/15"
+            >
+              Edit &amp; resubmit
+            </button>
+          ) : (
+            <Link
+              href={`/boosts?id=${myBoost.id}`}
+              className="shrink-0 font-bold text-(--app-accent-ink) underline-offset-2 hover:underline"
+            >
+              {myBoost.status === "ACTIVE" ? "View stats" : "Details"}
+            </Link>
+          )}
+        </div>
+      )}
       {/* Compact sponsor banner under the post. The caller decides WHICH posts
           get one (ads.under_post_interval); this only renders what it is told
           to. FEED_POST_BELOW declares maxHeightPx: 72 and the renderer
@@ -1033,70 +1111,25 @@ export const FeedPostCard = memo(function FeedPostCard({
         />
       )}
 
+      {/* Mounted only while open: the composer (and the audience builder in
+          it) is loaded on demand, not with every card in the feed. A rejected
+          boost pre-fills it — "Edit & resubmit". */}
       {boostOpen && (
-        <div
-          className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4"
-          onClick={() => !busy && setBoostOpen(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl border border-(--app-line) bg-(--app-surface) p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-base font-bold text-white inline-flex items-center gap-1.5">
-              <Megaphone className="w-4 h-4 text-amber-400" /> Boost this post
-            </p>
-            <p className="text-sm text-(--app-ink-2) mt-1">
-              Boosted posts recirculate near the top of the feed for the chosen
-              period. Pick how long:
-            </p>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {[
-                { d: 1, label: "1 day", pts: 30 },
-                { d: 7, label: "7 days", pts: 100 },
-                { d: 30, label: "30 days", pts: 300 },
-              ].map(({ d, label, pts }) => (
-                <button
-                  key={d}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      const res = await fetch(`/api/feed/${post.id}/boost`, {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          "Idempotency-Key": newIdempotencyKey(),
-                        },
-                        body: JSON.stringify({ days: d }),
-                      });
-                      const data = await res.json().catch(() => ({}));
-                      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-                      toast.success("Boosted! Your post will recirculate.");
-                      onUpdated({ boostedUntil: data.boostedUntil ?? null });
-                      setBoostOpen(false);
-                    } catch (err) {
-                      toast.error("Boost failed", {
-                        description: err instanceof Error ? err.message : "Try again",
-                      });
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                  className="app-press min-h-16 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-amber-500 hover:text-white text-sm font-semibold text-(--app-ink) disabled:opacity-50 flex flex-col items-center justify-center gap-0.5"
-                >
-                  <span>{label}</span>
-                  <span className="text-xs font-bold text-amber-400">{pts} pts</span>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => !busy && setBoostOpen(false)}
-              className="app-press app-tap-row mt-3 w-full rounded-lg text-sm font-semibold text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <BoostComposer
+          open
+          onOpenChange={setBoostOpen}
+          postId={post.id}
+          initial={
+            myBoost?.status === "REJECTED"
+              ? {
+                  targeting: myBoost.targeting,
+                  budgetPoints: myBoost.budgetPoints,
+                  durationDays: myBoost.durationDays,
+                  paidWith: myBoost.paidWith,
+                }
+              : null
+          }
+        />
       )}
     </article>
   );

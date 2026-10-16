@@ -23,6 +23,7 @@ import {
   parsePrizeTiers,
 } from "@/lib/lottery-prizes";
 import { LotteryActions } from "./_components/LotteryActions";
+import { lotteryTicketValueRatio } from "@/lib/lottery";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -119,6 +120,7 @@ export default async function LotteryDetailPage({ params }: PageProps) {
   const livePool = computePool({
     ticketsSold,
     ticketPrice: typedLottery.ticketPrice,
+    ticketValueRatio: await lotteryTicketValueRatio(),
     houseCutPercent: typedLottery.houseCutPercent,
     seedPoints: typedLottery.poolSeedPoints,
     rolloverInPoints: typedLottery.rolloverInPoints,

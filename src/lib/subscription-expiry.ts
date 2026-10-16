@@ -1,11 +1,13 @@
 import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
-import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { defaultPackage } from "@/lib/packages";
 import { getSetting } from "@/lib/system-settings";
 import { PLAN_DURATION_DAYS, planPriceUsd, type PlanDuration } from "@/lib/plan-pricing";
 import { toNum } from "@/lib/money";
 import { deliverToUser } from "@/lib/notify";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { chargePlatform, pickRenewalSource } from "@/lib/platform-pay";
+import { quotePlatformPrice } from "@/lib/pay-source";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -29,10 +31,11 @@ function termDuration(startDate: Date, endDate: Date): PlanDuration | null {
 /**
  * For each active subscription whose end date has passed:
  *   • autoRenew on (and allowed globally by `plans.auto_renew_enabled`) + the
- *     plan still on sale + the user still on it + enough CASH → charge the
+ *     plan still on sale + the user still on it + enough Ad Fund, else Ad
+ *     Points (owner, 2026-10-16 — never Cash or Earn Points) → charge the
  *     plan's CURRENT price for the same term length and extend the period.
  *     The charge is a compare-and-set on the period as read, and the ledger row
- *     (PURCHASE `sub_renew_<id>_<oldEnd>`, counted as subscription revenue in
+ *     (`adfund_|adpts_sub_renew_<id>_<oldEnd>`, counted as platform spending in
  *     lib/finance/revenue.ts) is keyed on that same old value, so two
  *     overlapping sweeps can never both charge.
  *   • otherwise → deactivate the subscription and revert the user to the default
@@ -51,19 +54,18 @@ async function runSubscriptionExpiryBatch(): Promise<{
     take: 100,
   });
 
-  // Subscription has no `user` relation — batch-load balance + entitlement expiry.
-  const balanceById = new Map<string, number>();
+  // Subscription has no `user` relation — batch-load status + entitlement expiry.
+  const blockedById = new Map<string, boolean>();
   const expiresById = new Map<string, Date | null>();
   const planById = new Map<string, string | null>();
   if (due.length > 0) {
     const users = await prisma.user.findMany({
       where: { id: { in: due.map((s) => s.userId) } },
-      select: { id: true, cashBalance: true, packageExpiresAt: true, packageId: true, status: true },
+      select: { id: true, packageExpiresAt: true, packageId: true, status: true },
     });
     for (const u of users) {
       // A banned / suspended account is never charged by a background job.
-      const blocked = u.status === "BANNED" || u.status === "SUSPENDED";
-      balanceById.set(u.id, blocked ? -1 : toNum(u.cashBalance));
+      blockedById.set(u.id, u.status === "BANNED" || u.status === "SUSPENDED");
       expiresById.set(u.id, u.packageExpiresAt);
       planById.set(u.id, u.packageId);
     }
@@ -83,6 +85,7 @@ async function runSubscriptionExpiryBatch(): Promise<{
   const pkgById = new Map(pkgRows.map((p) => [p.id, p]));
 
   const fallback = await defaultPackage();
+  const adRate = due.some((s) => s.autoRenew) ? await getAdPointsPerUsd() : 100;
 
   let renewed = 0;
   let expired = 0;
@@ -111,7 +114,7 @@ async function runSubscriptionExpiryBatch(): Promise<{
       price > 0 &&
       // Only the plan the user is actually on renews.
       planById.get(sub.userId) === sub.packageId &&
-      (balanceById.get(sub.userId) ?? 0) >= price
+      blockedById.get(sub.userId) === false
     ) {
       const newEnd = new Date(now.getTime() + PLAN_DURATION_DAYS[duration] * DAY_MS);
       try {
@@ -125,26 +128,29 @@ async function runSubscriptionExpiryBatch(): Promise<{
             data: { startDate: now, endDate: newEnd },
           });
           if (claim.count === 0) throw new Error("ALREADY_RENEWED");
-          const debit = await tx.user.updateMany({
-            where: { id: sub.userId, packageId: sub.packageId, cashBalance: { gte: price } },
-            data: { cashBalance: { decrement: price }, packageExpiresAt: newEnd },
+          // Still on this plan (CAS) — then extend the entitlement.
+          const onPlan = await tx.user.updateMany({
+            where: { id: sub.userId, packageId: sub.packageId },
+            data: { packageExpiresAt: newEnd },
           });
-          if (debit.count === 0) throw new Error("INSUFFICIENT");
-          await tx.transaction.create({
-            data: {
-              userId: sub.userId,
-              type: TransactionType.PURCHASE,
-              status: TransactionStatus.COMPLETED,
-              amount: price,
-              points: 0,
-              description: `${pkg.name} plan auto-renewal (${duration.toLowerCase()})`,
-              reference: `sub_renew_${sub.id}_${sub.endDate.getTime()}`,
-              metadata: {
-                subscriptionId: sub.id,
-                packageId: sub.packageId,
-                duration,
-                priceUsd: price,
-              },
+          if (onPlan.count === 0) throw new Error("INSUFFICIENT");
+          // Ad Fund first, else Ad Points, else the plan lapses (the throw
+          // rolls the claim back and the row falls through to expiry below).
+          const quote = quotePlatformPrice({ usd: price }, adRate);
+          const from = await pickRenewalSource(tx, sub.userId, quote);
+          if (!from) throw new Error("INSUFFICIENT");
+          await chargePlatform(tx, {
+            userId: sub.userId,
+            quote,
+            from,
+            description: `${pkg.name} plan auto-renewal (${duration.toLowerCase()})`,
+            reference: `sub_renew_${sub.id}_${sub.endDate.getTime()}`,
+            purpose: "plan_renew",
+            metadata: {
+              subscriptionId: sub.id,
+              packageId: sub.packageId,
+              duration,
+              priceUsd: price,
             },
           });
         });
@@ -189,7 +195,7 @@ async function runSubscriptionExpiryBatch(): Promise<{
       userId: sub.userId,
       title: "Subscription expired",
       message: sub.autoRenew
-        ? "Your premium plan has ended — it could not auto-renew (not enough cash in your wallet, or the plan is no longer sold). Renew any time to restore your benefits."
+        ? "Your premium plan has ended — it could not auto-renew (not enough Ad Fund or Ad Points, or the plan is no longer sold). Renew any time to restore your benefits."
         : "Your premium plan has ended. Renew any time to restore your benefits.",
       link: "/packages",
     });

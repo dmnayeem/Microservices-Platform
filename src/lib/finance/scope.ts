@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getPointsPerUsd } from "@/lib/economy";
+import { AD_FUND_REF, AD_POINTS_REF, getAdPointsPerUsd } from "@/lib/ad-wallet";
 import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
 
 /**
@@ -29,6 +30,16 @@ export interface BalanceScope {
   adCreditUsd: number;
   /** Cash + points-at-rate. Ad credit is excluded: it is non-withdrawable. */
   walletLiabilityUsd: number;
+  /** Ad Fund — deposited money HELD for the member (owner, 2026-10-16). */
+  adFundUsd: number;
+  /** Ad Points (spend-only) and their value at the admin rate. */
+  adPoints: number;
+  adPointsUsd: number;
+  /**
+   * Everything the platform owes members: withdrawable (cash + Earn Points)
+   * plus spend-only value it must still deliver (Ad Fund + Ad Points).
+   */
+  memberLiabilityUsd: number;
 }
 
 export interface Balances {
@@ -39,6 +50,7 @@ export interface Balances {
   /** all − real, i.e. what sits on staff accounts. */
   staffOnlyUsd: number;
   pointsPerUsd: number;
+  adPointsPerUsd: number;
 }
 
 function shape(
@@ -47,14 +59,20 @@ function shape(
       cashBalance: unknown;
       pointsBalance: number | null;
       adCreditBalance: unknown;
+      adFundBalance: unknown;
+      adPointsBalance: number | null;
     };
     _count: number;
   },
-  pointsPerUsd: number
+  pointsPerUsd: number,
+  adPointsPerUsd: number
 ): BalanceScope {
   const cashUsd = toNum(agg._sum.cashBalance as never);
   const points = agg._sum.pointsBalance ?? 0;
   const pointsUsd = points / pointsPerUsd;
+  const adFundUsd = toNum(agg._sum.adFundBalance as never);
+  const adPoints = agg._sum.adPointsBalance ?? 0;
+  const adPointsUsd = adPoints / adPointsPerUsd;
   return {
     users: agg._count,
     cashUsd,
@@ -62,13 +80,21 @@ function shape(
     pointsUsd,
     adCreditUsd: toNum(agg._sum.adCreditBalance as never),
     walletLiabilityUsd: cashUsd + pointsUsd,
+    adFundUsd,
+    adPoints,
+    adPointsUsd,
+    memberLiabilityUsd: cashUsd + pointsUsd + adFundUsd + adPointsUsd,
   };
 }
 
 export async function getBalances(): Promise<Balances> {
-  const [pointsPerUsd, testIds] = await Promise.all([getPointsPerUsd(), getFinanceTestUserIds()]);
+  const [pointsPerUsd, testIds, adPointsPerUsd] = await Promise.all([
+    getPointsPerUsd(),
+    getFinanceTestUserIds(),
+    getAdPointsPerUsd(),
+  ]);
   const select = {
-    _sum: { cashBalance: true, pointsBalance: true, adCreditBalance: true },
+    _sum: { cashBalance: true, pointsBalance: true, adCreditBalance: true, adFundBalance: true, adPointsBalance: true },
     _count: true,
   } as const;
 
@@ -79,14 +105,15 @@ export async function getBalances(): Promise<Balances> {
     prisma.user.aggregate({ where: withoutUsers({ role: "USER" }, testIds, "id"), ...select }),
   ]);
 
-  const allShaped = shape(all as never, pointsPerUsd);
-  const realShaped = shape(real as never, pointsPerUsd);
+  const allShaped = shape(all as never, pointsPerUsd, adPointsPerUsd);
+  const realShaped = shape(real as never, pointsPerUsd, adPointsPerUsd);
 
   return {
     real: realShaped,
     all: allShaped,
     staffOnlyUsd: allShaped.walletLiabilityUsd - realShaped.walletLiabilityUsd,
     pointsPerUsd,
+    adPointsPerUsd,
   };
 }
 
@@ -186,7 +213,19 @@ export async function getReconciliation(): Promise<Reconciliation> {
   const [users, ledger] = (await Promise.all([
     prisma.user.aggregate({ where: withoutUsers({}, testIds, "id"), _sum: { cashBalance: true } }),
     prisma.transaction.aggregate({
-      where: withoutUsers({ status: "COMPLETED" }, testIds),
+      // Ad Points / Ad Fund rows never touch cashBalance (deposits now land in
+      // Ad Fund), so they would only widen a gap that is about cash.
+      where: withoutUsers(
+        {
+          status: "COMPLETED",
+          // OR null: a NOT on a NULL reference would drop the row in SQL.
+          OR: [
+            { reference: null },
+            { NOT: [{ reference: { startsWith: AD_POINTS_REF } }, { reference: { startsWith: AD_FUND_REF } }] },
+          ],
+        },
+        testIds
+      ),
       _sum: { amount: true },
     }),
   ])) as unknown as [

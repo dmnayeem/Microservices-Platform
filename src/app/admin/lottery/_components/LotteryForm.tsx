@@ -380,7 +380,7 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
           {form.entryMode === "PAID" ? (
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
-                Ticket price (points) <span className="text-red-400">*</span>
+                Ticket price (Ad Points — paid from Ad Points or Ad Fund) <span className="text-red-400">*</span>
               </label>
               <input
                 type="number"

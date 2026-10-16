@@ -14,20 +14,18 @@ import {
  * The feed's loose switches, gathered from where they used to sit:
  *   - `ui.groups_enabled`            ← System Settings → Site toggles
  *   - `social.ai_regenerate_limit`   ← System Settings → Limits
- *   - `feed.boost_max_per_user`      ← Ad Manager → Feed ad density
  *
- * Same keys, same row categories (the boost cap has always been filed under
- * "ads" and stays there), same save route — only the screen changed. The feed
- * ad intervals stay in the Ad Manager with the rest of the ad inventory.
+ * Same keys, same save route — only the screen changed. The feed ad intervals
+ * stay in the Ad Manager with the rest of the ad inventory.
+ *
+ * The old boost cap (`feed.boost_max_per_user`) moved to Post boosts →
+ * Pricing as "Times one viewer sees a boost" — the feed now reads only that
+ * one, so a box left here would have been a dead control.
  */
 const DEFAULTS: SettingsBag = {
   "ui.groups_enabled": false,
   "social.ai_regenerate_limit": 2,
-  "feed.boost_max_per_user": 20,
 };
-
-/** Not in the settings catalog; its row has always been category "ads". */
-const CATEGORY_FOR: Record<string, string> = { "feed.boost_max_per_user": "ads" };
 
 export function FeedGeneralPanel({
   initial,
@@ -37,7 +35,6 @@ export function FeedGeneralPanel({
   canEdit: boolean;
 }) {
   const { values, set, busy, dirty, save } = useKeyedSettings(DEFAULTS, initial, {
-    categoryFor: CATEGORY_FOR,
     savedMessage: "Feed settings saved",
   });
 
@@ -69,27 +66,15 @@ export function FeedGeneralPanel({
           className={inp}
         />
       </Field>
-      <Field
-        settingKey="feed.boost_max_per_user"
-        label="Boosted post — max times shown per user"
-        hint="How many times the same boosted post may be shown to one user · 0 = unlimited"
-      >
-        <input
-          type="number"
-          min={0}
-          max={1000}
-          value={Number(values["feed.boost_max_per_user"] ?? 20)}
-          onChange={(e) =>
-            set("feed.boost_max_per_user", Math.max(0, Number(e.target.value) || 0))
-          }
-          disabled={!canEdit}
-          className={inp}
-        />
-      </Field>
-
       <SaveBar canEdit={canEdit} busy={busy} dirty={dirty} onSave={save} />
 
-      <div className="pt-2">
+      <div className="pt-2 space-y-2">
+        <SeeAlso
+          label="Boosted post — times shown per viewer"
+          href="/admin/boosts?tab=pricing"
+          linkLabel="Post boosts → Pricing"
+          why="How many times the feed may show the same boosted post to one person, next to the boost prices and limits it belongs with."
+        />
         <SeeAlso
           label="Feed ad density"
           href="/admin/ads?tab=placements"

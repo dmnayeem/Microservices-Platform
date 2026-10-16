@@ -17,6 +17,7 @@ import {
   splitCoursePrice,
 } from "@/lib/course-commission";
 import { reverseHeldTutorPayout } from "@/lib/course-payouts";
+import { adFundPaidFor, refundToPayingBalance, refundedToLabel } from "@/lib/shop-pay";
 
 /** Cents precision. `round2` in `@/lib/money` returns a Decimal; these figures
  *  stay plain numbers all the way to Prisma. */
@@ -165,6 +166,8 @@ export async function PATCH(
     const tutorOwed = Math.max(0, money2(tutorAmount - affiliateAmount));
     // What was actually recovered from the tutor; the clamp below can lower it.
     let tutorClawback = 0;
+    // Which balance the refund went back to (for the buyer's notice).
+    let refundedTo = { adFund: 0, cash: 0 };
 
     await prisma.$transaction(async (tx) => {
       // Claim the request. Without this a double-click ran the whole refund
@@ -182,26 +185,26 @@ export async function PATCH(
       });
       if (claimed.count === 0) throw new Error("REFUND_ALREADY_PROCESSED");
 
-      // 1. Restore buyer wallet
+      // 1. Restore the buyer's balance — the one that paid. An Ad Fund
+      // enrolment left `adfund_course_<courseId>_<enrollmentId>`; then the
+      // refund (never more than that row) goes back to Ad Fund. Otherwise, or
+      // when the enrolment id is gone, Cash exactly as before.
       if (refundAmount > 0) {
-        await tx.user.update({
-          where: { id: request.userId },
-          data: { cashBalance: { increment: refundAmount } },
-        });
-        await tx.transaction.create({
-          data: {
-            userId: request.userId,
-            type: TransactionType.COURSE_REFUND,
-            status: TransactionStatus.COMPLETED,
-            amount: refundAmount,
-            points: 0,
-            description: `Refund — "${c.title}"`,
-            reference: `course_refund_${c.id}_${request.id}`,
-            metadata: {
-              courseId: c.id,
-              refundRequestId: request.id,
-              originalEnrollmentId: request.enrollmentId,
-            },
+        const adFundPaid = request.enrollmentId
+          ? await adFundPaidFor(tx, request.userId, `course_${c.id}_${request.enrollmentId}`)
+          : 0;
+        refundedTo = await refundToPayingBalance(tx, {
+          userId: request.userId,
+          usd: refundAmount,
+          adFundPaid,
+          reference: `course_refund_${c.id}_${request.id}`,
+          description: `Refund — "${c.title}"`,
+          purpose: "refund:course",
+          cashType: TransactionType.COURSE_REFUND,
+          metadata: {
+            courseId: c.id,
+            refundRequestId: request.id,
+            originalEnrollmentId: request.enrollmentId,
           },
         });
       }
@@ -325,7 +328,7 @@ export async function PATCH(
         userId: request.userId,
         type: NotificationType.COURSE,
         title: "Refund approved 💸",
-        message: `${usd(refundAmount)} for "${c.title}" was returned to your wallet.`,
+        message: `${usd(refundAmount)} for "${c.title}" was returned to ${refundedToLabel(refundedTo)}.`,
         data: { courseId: c.id, refundRequestId: request.id, refundedAmount: refundAmount },
       },
     });

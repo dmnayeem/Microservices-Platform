@@ -12,6 +12,7 @@ export interface GamesSettingsValues {
   minTickSeconds: number;
   globalDailyCap: number;
   maxPerSession: number;
+  scoreMaxPerMinute: number;
 }
 
 type NumKey = Exclude<keyof GamesSettingsValues, "enabled">;
@@ -40,6 +41,12 @@ const FIELDS: { key: NumKey; label: string; hint: string; unit: string }[] = [
     label: "Max points per session",
     hint: "Points one user may earn in one play session, whatever the game says. 0 = no cap.",
     unit: "points",
+  },
+  {
+    key: "scoreMaxPerMinute",
+    label: "Score points per minute (connected games)",
+    hint: "Most points a connected game's score can pay per minute of real play. Scores come from the player's browser, so this is the real limit. 0 = score earning off.",
+    unit: "points / minute",
   },
 ];
 

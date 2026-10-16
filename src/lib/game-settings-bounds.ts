@@ -10,4 +10,5 @@ export const GAMES_BOUNDS = {
   minTickSeconds: { min: 5, max: 3_600 },
   globalDailyCap: { min: 0, max: 100_000 },
   maxPerSession: { min: 0, max: 100_000 },
+  scoreMaxPerMinute: { min: 0, max: 1_000 },
 } as const;

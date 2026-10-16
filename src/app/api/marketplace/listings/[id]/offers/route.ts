@@ -167,14 +167,21 @@ export async function POST(
     // it settled into real cash for the seller. The CAS is still the authority
     // (the balance can be spent in between); this stops a seller wasting an
     // accept on an offer that was never payable.
+    //
+    // A seller's accept pays from Cash if it covers the total, else from Ad
+    // Fund (an offer row has no column to remember a choice), so either
+    // balance on its own covering the offer qualifies — never the two added
+    // together, since the sale takes one balance.
     const buyer = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { cashBalance: true },
+      select: { cashBalance: true, adFundBalance: true },
     });
-    if (!buyer || toNum(buyer.cashBalance) < amount) {
+    const buyerCash = toNum(buyer?.cashBalance ?? 0);
+    const buyerAdFund = toNum(buyer?.adFundBalance ?? 0);
+    if (!buyer || (buyerCash < amount && buyerAdFund < amount)) {
       return NextResponse.json(
         {
-          error: `You need $${amount.toLocaleString()} in your balance to offer this much. Available: $${toNum(buyer?.cashBalance ?? 0).toLocaleString()}.`,
+          error: `You need $${amount.toLocaleString()} in your Cash or your Ad Fund to offer this much. Available: Cash $${buyerCash.toLocaleString()}, Ad Fund $${buyerAdFund.toLocaleString()}.`,
         },
         { status: 400 }
       );

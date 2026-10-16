@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { AFFILIATE_COOKIE } from "@/lib/affiliate";
 import { userCanFeature } from "@/lib/packages";
+import { parseShopSource } from "@/lib/pay-source";
 import {
   fundDeal,
   acceptDeal,
@@ -22,6 +23,9 @@ const schema = z.object({
   // deliver: the work itself (message + uploaded files / links).
   message: z.string().max(4000).optional(),
   attachments: z.array(z.string().url().max(2048)).max(10).optional(),
+  // fund / escalate (mediation fee): which balance pays — Cash (default) or
+  // Ad Fund; parsed by parseShopSource.
+  paySource: z.unknown().optional(),
 });
 
 // POST /api/marketplace/deals/:id — buyer/seller deal actions.
@@ -69,6 +73,7 @@ export async function POST(
         dealId: id,
         buyerId: userId,
         affiliateCookie: request.cookies.get(AFFILIATE_COOKIE)?.value,
+        paySource: parseShopSource(v.data.paySource),
       });
       break;
     }
@@ -104,7 +109,14 @@ export async function POST(
       break;
     }
     case "escalate": {
-      result = await escalateToAdmin({ dealId: id, userId, reason: v.data.reason });
+      // The mediation fee pays from Cash (default) or Ad Fund — the escalating
+      // party's choice; never Ad Points.
+      result = await escalateToAdmin({
+        dealId: id,
+        userId,
+        reason: v.data.reason,
+        paySource: parseShopSource(v.data.paySource),
+      });
       break;
     }
     case "refund": {
@@ -116,7 +128,10 @@ export async function POST(
   }
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status ?? 400 });
+    return NextResponse.json(
+      { error: result.error, addFund: result.addFund, shortBy: result.shortBy },
+      { status: result.status ?? 400 }
+    );
   }
   return NextResponse.json({ success: true, dealId: result.dealId });
 }

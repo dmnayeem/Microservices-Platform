@@ -13,6 +13,8 @@ import {
   type ServicePackage,
   type ServiceRequirement,
 } from "@/lib/service-packages";
+import { ShopPayChooser } from "@/components/user/shop-pay-chooser";
+import type { ShopSource } from "@/lib/pay-source";
 
 const inputCls =
   "w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)";
@@ -104,6 +106,9 @@ export function ServiceOrderSheet({
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  // Cash (default) or Ad Fund pays the escrow; a refund returns to the same one.
+  const [paySource, setPaySource] = useState<ShopSource>("CASH");
+  const [addFundUrl, setAddFundUrl] = useState<string | null>(null);
 
   const submit = async () => {
     for (const q of requirements) {
@@ -116,10 +121,15 @@ export function ServiceOrderSheet({
         // A fresh key per attempt: 4xx answers are replayed for a reused key,
         // so a buyer who tops up or fixes an answer must not get the old error.
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
-        body: JSON.stringify({ tier: tier.id === "single" ? null : tier.id, answers }),
+        body: JSON.stringify({ tier: tier.id === "single" ? null : tier.id, answers, paySource }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 402 && d.addFund) {
+          setAddFundUrl(d.addFund);
+          toast.error("Not enough Ad Fund", { description: d.error ?? "Add fund and try again." });
+          return;
+        }
         if (res.status === 402) {
           toast.error("Not enough in your wallet", {
             description: d.error ?? "Top up and try again.",
@@ -207,9 +217,18 @@ export function ServiceOrderSheet({
             ))}
           </>
         )}
+        <ShopPayChooser
+          value={paySource}
+          onChange={(v) => {
+            setPaySource(v);
+            setAddFundUrl(null);
+          }}
+          amountUsd={tier.price}
+          addFundUrl={addFundUrl}
+        />
         <p className="text-[11px] text-(--app-ink-3) inline-flex items-start gap-1">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-px" />
-          {usd(tier.price)} is taken from your wallet and held in escrow. The seller is paid only after
+          {usd(tier.price)} is taken from your {paySource === "AD_FUND" ? "Ad Fund" : "Cash"} and held in escrow. The seller is paid only after
           you accept the delivery (or it auto-releases a few days after delivery). Problems? Escalate to an admin.
         </p>
       </div>

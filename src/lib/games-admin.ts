@@ -108,3 +108,95 @@ export function slugify(name: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
 }
+
+// ── Bulk add ─────────────────────────────────────────────────────────────────
+
+export const BULK_GAMES_MAX = 200;
+
+/** One pasted line: `Title | Game URL | Icon image URL | Category (optional)`. */
+export interface BulkGameRow {
+  /** 1-based line number in the pasted text, so errors point at the right line. */
+  line: number;
+  title: string;
+  embedUrl: string;
+  iconUrl: string;
+  category: string;
+}
+
+export function isHttpsUrl(s: string): boolean {
+  try {
+    return new URL(s).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pasted text → rows. A line with a tab is split on tabs (a spreadsheet paste),
+ * anything else on `|`. Blank lines and `#` comments are skipped, and so is a
+ * spreadsheet header row ("Title", "Game URL", …) when it comes first.
+ */
+export function parseBulkGames(text: string): BulkGameRow[] {
+  const rows: BulkGameRow[] = [];
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const s = raw.trim();
+    if (!s || s.startsWith("#")) return;
+    const cells = (raw.includes("\t") ? raw.split("\t") : raw.split("|")).map((c) =>
+      c.trim()
+    );
+    const [title = "", embedUrl = "", iconUrl = "", category = ""] = cells;
+    if (rows.length === 0 && /^(game\s*)?(title|name)$/i.test(title) && !isHttpsUrl(embedUrl)) {
+      return;
+    }
+    rows.push({ line: i + 1, title, embedUrl, iconUrl, category });
+  });
+  return rows;
+}
+
+/** The per-row checks — the same function runs in the preview and on the server. */
+export function bulkRowError(r: Pick<BulkGameRow, "title" | "embedUrl" | "iconUrl" | "category">): string | null {
+  if (r.title.length < 2) return "Title is missing or too short.";
+  if (r.title.length > 120) return "Title is longer than 120 characters.";
+  if (!r.embedUrl) return "Game URL is missing.";
+  if (!isHttpsUrl(r.embedUrl)) return "Game URL must be a full address starting with https://";
+  if (!r.iconUrl) return "Icon image URL is missing.";
+  if (!isHttpsUrl(r.iconUrl) || r.iconUrl.length > 1000) {
+    return "Icon image URL must be a full address starting with https://";
+  }
+  if (r.category.length > 60) return "Category name is longer than 60 characters.";
+  return null;
+}
+
+/** An existing category with this name or slug (case-insensitive), if any. */
+export function matchGameCategory<T extends { name: string; slug: string }>(
+  name: string,
+  categories: T[]
+): T | null {
+  const n = name.trim().toLowerCase();
+  if (!n) return null;
+  const slug = slugify(name);
+  return (
+    categories.find(
+      (c) => c.name.trim().toLowerCase() === n || c.slug === n || (!!slug && c.slug === slug)
+    ) ?? null
+  );
+}
+
+export const bulkGamesSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        line: z.number().int().min(1),
+        title: z.string().max(500),
+        embedUrl: z.string().max(2000),
+        iconUrl: z.string().max(2000),
+        category: z.string().max(200).default(""),
+      })
+    )
+    .min(1, "Paste at least one game.")
+    .max(BULK_GAMES_MAX, `At most ${BULK_GAMES_MAX} games at a time.`),
+  isActive: z.boolean().default(true),
+  /** "Connected with the RevType SDK" → scoreTrusted + scoreRewardEnabled. */
+  connected: z.boolean().default(false),
+  pointsPer1000: z.number().int().min(0).max(10_000).default(0),
+});

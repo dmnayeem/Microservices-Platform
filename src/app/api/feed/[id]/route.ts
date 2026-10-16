@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { publicAudienceEpochMs } from "@/lib/public-post";
 import { authorChosePublic, postAudience } from "@/lib/public-post-gate";
+import { cancelBoostsForPost } from "@/lib/boost/core";
 
 // GET /api/feed/:id - Get single post with details
 export async function GET(
@@ -235,6 +236,11 @@ export async function PUT(
       );
     }
 
+    // Going private ends any boost of the post FIRST, so its unspent budget is
+    // refunded — a boost cannot keep charging for a post nobody may be shown.
+    const willBePublic = typeof isPublic === "boolean" ? isPublic && !post.groupId : post.isPublic;
+    if (post.isPublic && !willBePublic) await cancelBoostsForPost(id);
+
     // Update post
     const updatedPost = await prisma.post.update({
       where: { id },
@@ -290,6 +296,10 @@ export async function DELETE(
     if (post.userId !== session.user.id) {
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
+
+    // Close its boosts with a refund BEFORE the row goes (BoostCampaign.postId
+    // is SetNull, so afterwards nothing would tie the held budget to a post).
+    await cancelBoostsForPost(id);
 
     // Delete post (cascade will delete comments and likes)
     await prisma.post.delete({

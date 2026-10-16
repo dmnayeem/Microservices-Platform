@@ -17,6 +17,8 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import { ShopPayChooser } from "@/components/user/shop-pay-chooser";
+import type { ShopSource } from "@/lib/pay-source";
 
 interface CartItem {
   id: string;
@@ -38,6 +40,9 @@ export function CartView() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
+  // Which balance pays the whole cart — Cash (default) or Ad Fund.
+  const [paySource, setPaySource] = useState<ShopSource>("CASH");
+  const [addFundUrl, setAddFundUrl] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -79,9 +84,15 @@ export function CartView() {
       const res = await fetch("/api/cart/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+        body: JSON.stringify({ paySource }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 402 && data.addFund) {
+          setAddFundUrl(data.addFund);
+          toast.error("Not enough Ad Fund", { description: data.error ?? "Add fund and try again." });
+          return;
+        }
         if (res.status === 402) {
           toast.error("Not enough in your wallet", {
             description: data.details ?? data.error ?? "Top up and try again.",
@@ -214,9 +225,19 @@ export function CartView() {
               <span className="tabular-nums">{usd(total)}</span>
             </div>
             <p className="text-[11px] text-(--app-ink-3)">
-              Charged from your wallet. The platform commission is deducted
+              Charged from your {paySource === "AD_FUND" ? "Ad Fund" : "Cash"}. The platform commission is deducted
               from each seller&apos;s payout.
             </p>
+            <ShopPayChooser
+              className="pt-1"
+              value={paySource}
+              onChange={(v) => {
+                setPaySource(v);
+                setAddFundUrl(null);
+              }}
+              amountUsd={total}
+              addFundUrl={addFundUrl}
+            />
           </div>
 
           <button

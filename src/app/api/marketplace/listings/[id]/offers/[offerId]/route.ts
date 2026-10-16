@@ -24,6 +24,9 @@ import {
 import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
 import { usd } from "@/lib/utils";
 import { isServiceType } from "@/lib/marketplace-categories";
+import { debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
+import { parseShopSource, type ShopSource } from "@/lib/pay-source";
+import { adFundShortResponse } from "@/lib/shop-pay";
 
 const patchSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("accept") }),
@@ -43,6 +46,12 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; offerId: string }> }
 ) {
+  // For the Ad Fund shortfall reply in the catch below.
+  let adFundNeed = 0;
+  let returnTo = "/marketplace";
+  // A seller's accept that fell back to Ad Fund and found it short is the
+  // buyer's shortfall, not the caller's — reported as "can't cover", no link.
+  let sellerAccept = false;
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -204,6 +213,17 @@ export async function PATCH(
     // the compare-and-set below enforces.
     const { tax, pct: taxPct } = computeCommissionTax(fee, taxCfg);
     const buyerTotal = Math.round((acceptedAmount + tax) * 100) / 100;
+    // Which balance pays. The BUYER taking a counter chooses (Cash or Ad Fund).
+    // A seller accepting can't pick for the buyer, and an offer row has no
+    // column to remember a choice made when offering, so a seller-side accept
+    // follows a fixed rule: Cash if it covers the total, else Ad Fund if it
+    // does, else no sale. Ad Points never pay for this.
+    const chosenSource: ShopSource | null = byBuyer
+      ? parseShopSource((body as { paySource?: unknown } | null)?.paySource)
+      : null;
+    sellerAccept = !byBuyer;
+    adFundNeed = buyerTotal;
+    returnTo = `/marketplace/${id}`;
 
     // Interactive, not the array form, because the buyer debit has to be a
     // compare-and-set and the rest of the sale must not happen when it fails.
@@ -217,11 +237,19 @@ export async function PATCH(
     const hold = await getPayoutHoldConfig();
 
     const settled = await prisma.$transaction(async (tx) => {
-      const paid = await tx.user.updateMany({
-        where: { id: offer.buyerId, cashBalance: { gte: buyerTotal } },
-        data: { cashBalance: { decrement: buyerTotal } },
-      });
-      if (paid.count === 0) return null; // buyer can't cover — no sale
+      // Ad Fund is debited further down, once the purchase id exists for its
+      // ledger metadata; its CAS throws and rolls everything back.
+      let paySource: ShopSource = "AD_FUND";
+      if (chosenSource !== "AD_FUND") {
+        const paid = await tx.user.updateMany({
+          where: { id: offer.buyerId, cashBalance: { gte: buyerTotal } },
+          data: { cashBalance: { decrement: buyerTotal } },
+        });
+        if (paid.count > 0) paySource = "CASH";
+        // The buyer chose Cash and it can't cover — no sale. A seller's
+        // accept falls through to Ad Fund instead.
+        else if (byBuyer) return null;
+      }
 
       // Serialise with checkout / cart / escrow on this listing; a ONE_OFF
       // item already funded in escrow is promised to that buyer.
@@ -292,17 +320,30 @@ export async function PATCH(
         amount: toNum(sellerAmount),
         hold,
       });
-      await tx.transaction.create({
-        data: {
+      if (paySource === "AD_FUND") {
+        // CAS debit + the buyer's one ledger row (`adfund_marketplace_offer_…`).
+        // `purchaseId` lets a dispute refund find that Ad Fund paid.
+        await debitAdFund(tx, {
           userId: offer.buyerId,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: -buyerTotal,
-          points: 0,
-          description: `Marketplace offer accepted — "${offer.listing.title}"`,
+          usd: buyerTotal,
           reference: `marketplace_offer_${offerId}`,
-        },
-      });
+          description: `Marketplace offer accepted — "${offer.listing.title}"`,
+          purpose: "marketplace",
+          metadata: { listingId: id, offerId, purchaseId: p.id },
+        });
+      } else {
+        await tx.transaction.create({
+          data: {
+            userId: offer.buyerId,
+            type: TransactionType.PURCHASE,
+            status: TransactionStatus.COMPLETED,
+            amount: -buyerTotal,
+            points: 0,
+            description: `Marketplace offer accepted — "${offer.listing.title}"`,
+            reference: `marketplace_offer_${offerId}`,
+          },
+        });
+      }
       // Only once the money is really theirs. While held, the release sweep
       // writes this row on payout instead.
       if (!held.held) {
@@ -318,7 +359,7 @@ export async function PATCH(
           },
         });
       }
-      return { purchase: p, offer: o };
+      return { purchase: p, offer: o, paySource };
     });
 
     if (!settled) {
@@ -346,7 +387,7 @@ export async function PATCH(
               userId: offer.buyerId,
               type: NotificationType.SYSTEM,
               title: "Offer accepted! 🎉",
-              message: `Your offer on "${offer.listing.title}" was accepted at $${acceptedAmount.toLocaleString()}.`,
+              message: `Your offer on "${offer.listing.title}" was accepted at $${acceptedAmount.toLocaleString()} — paid from your ${settled.paySource === "AD_FUND" ? "Ad Fund" : "Cash"}.`,
               data: { listingId: id, offerId, purchaseId: settled.purchase.id },
             },
       })
@@ -364,6 +405,18 @@ export async function PATCH(
     // success instead of double-settling.
     if (isDuplicateLedgerError(error)) {
       return NextResponse.json({ duplicate: true });
+    }
+    // The buyer chose Ad Fund and it can't cover the counter plus tax. The
+    // whole settlement rolled back — nothing charged, the offer stays open.
+    if (error instanceof InsufficientBalanceError) {
+      // Seller accepting: neither the buyer's Cash nor Ad Fund covered it.
+      if (sellerAccept) {
+        return NextResponse.json(
+          { error: "The buyer no longer has enough balance to cover this offer, so it wasn't accepted." },
+          { status: 409 }
+        );
+      }
+      return adFundShortResponse({ needUsd: adFundNeed, returnTo });
     }
     // Raised inside the settlement transaction when a competing accept sold the
     // listing first. The buyer's debit rolled back with it.

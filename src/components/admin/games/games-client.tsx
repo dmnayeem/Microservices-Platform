@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Search,
   Tags,
+  ListPlus,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
@@ -25,8 +26,15 @@ import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { GAME_AD_PLACEMENTS } from "@/lib/ad-placements";
-import { ORIENTATIONS } from "@/lib/games-admin";
+import {
+  ORIENTATIONS,
+  BULK_GAMES_MAX,
+  bulkRowError,
+  matchGameCategory,
+  parseBulkGames,
+} from "@/lib/games-admin";
 import { GameCategoriesModal, type AdminGameCategory } from "./game-categories-modal";
+import { GameSetupGuide } from "./game-setup-guide";
 
 export interface AdminGame {
   id: string;
@@ -132,15 +140,27 @@ export function GamesClient({
   initial,
   categories,
   canManage,
+  scoreMaxPerMinute,
 }: {
   initial: AdminGame[];
   categories: AdminGameCategory[];
   canManage: boolean;
+  /** Global `games.score_max_per_minute` — feeds the "Connect your game" example. */
+  scoreMaxPerMinute: number;
 }) {
   const router = useRouter();
   const [games, setGames] = useState(initial);
+  // `router.refresh()` hands down a fresh `initial`, but useState only reads it
+  // once — without this, games just created (one or a bulk batch) never showed
+  // up until a full reload.
+  const [seenInitial, setSeenInitial] = useState(initial);
+  if (initial !== seenInitial) {
+    setSeenInitial(initial);
+    setGames(initial);
+  }
   const [modal, setModal] = useState<AdminGame | "new" | null>(null);
   const [catsOpen, setCatsOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [q, setQ] = useState("");
   const [filterCat, setFilterCat] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -252,6 +272,12 @@ export function GamesClient({
               <Tags className="w-4 h-4" /> Categories
             </button>
             <button
+              onClick={() => setBulkOpen(true)}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 text-sm"
+            >
+              <ListPlus className="w-4 h-4" /> Bulk add
+            </button>
+            <button
               onClick={() => setModal("new")}
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm"
             >
@@ -307,7 +333,15 @@ export function GamesClient({
         <GameModal
           game={modal === "new" ? null : modal}
           categories={categories}
+          scoreMaxPerMinute={scoreMaxPerMinute}
           onClose={() => setModal(null)}
+        />
+      )}
+      {bulkOpen && (
+        <BulkAddModal
+          games={games}
+          categories={categories}
+          onClose={() => setBulkOpen(false)}
         />
       )}
       {catsOpen && (
@@ -454,9 +488,10 @@ function GameRow({
 
 // ── The modal ───────────────────────────────────────────────────────────────
 
-type Tab = "basics" | "embed" | "ads" | "rewards";
+type Tab = "setup" | "basics" | "embed" | "ads" | "rewards";
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: "setup", label: "Setup guide" },
   { id: "basics", label: "Basics" },
   { id: "embed", label: "Embed" },
   { id: "ads", label: "Ads" },
@@ -466,14 +501,17 @@ const TABS: { id: Tab; label: string }[] = [
 function GameModal({
   game,
   categories,
+  scoreMaxPerMinute,
   onClose,
 }: {
   game: AdminGame | null;
   categories: AdminGameCategory[];
+  scoreMaxPerMinute: number;
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("basics");
+  // Adding a game opens on the setup guide; editing opens on Basics.
+  const [tab, setTab] = useState<Tab>(game ? "basics" : "setup");
   const [busy, setBusy] = useState(false);
   const [probing, setProbing] = useState(false);
   const [probe, setProbe] = useState<{ ok: boolean; reason?: string } | null>(
@@ -611,6 +649,8 @@ function GameModal({
         </div>
 
         <div className="p-5 space-y-4">
+          {tab === "setup" && <GameSetupGuide gameId={game?.id ?? null} onGoToTab={setTab} />}
+
           {tab === "basics" && (
             <>
               <Field label="Title">
@@ -930,51 +970,12 @@ function GameModal({
                 onChange={(v) => set({ rewardRequiresAd: v })}
               />
 
-              <div className="pt-3 border-t border-slate-800 space-y-3">
-                <p className="text-sm font-bold text-white">Score rewards</p>
-                <p className="text-[11px] text-slate-500">
-                  A score sent by a third-party game is whatever number the player
-                  wants it to be. These stay off unless the game is first-party and
-                  reports its score through a signed callback.
-                </p>
-                <Toggle
-                  label="This is a trusted first-party game"
-                  checked={form.scoreTrusted}
-                  onChange={(v) => set({ scoreTrusted: v })}
-                />
-                <Toggle
-                  label="Pay points for score"
-                  checked={form.scoreRewardEnabled}
-                  disabled={!form.scoreTrusted}
-                  onChange={(v) => set({ scoreRewardEnabled: v })}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Points per 1,000 score">
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.scorePointsPer1000}
-                      disabled={!form.scoreRewardEnabled}
-                      onChange={(e) =>
-                        set({ scorePointsPer1000: Math.max(0, parseInt(e.target.value) || 0) })
-                      }
-                      className={inp}
-                    />
-                  </Field>
-                  <Field label="Score points per day (0 = no limit)">
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.scoreDailyCapPoints}
-                      disabled={!form.scoreRewardEnabled}
-                      onChange={(e) =>
-                        set({ scoreDailyCapPoints: Math.max(0, parseInt(e.target.value) || 0) })
-                      }
-                      className={inp}
-                    />
-                  </Field>
-                </div>
-              </div>
+              <ConnectGamePanel
+                form={form}
+                set={set}
+                scoreMaxPerMinute={scoreMaxPerMinute}
+                onOpenSetupTab={() => setTab("setup")}
+              />
             </>
           )}
         </div>
@@ -994,6 +995,386 @@ function GameModal({
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             {game ? "Save changes" : "Create game"}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Connect your game (RevType Games SDK) ───────────────────────────────────
+
+function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3">
+      <span className="grid place-items-center w-6 h-6 shrink-0 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold">
+        {n}
+      </span>
+      <div className="min-w-0 flex-1 space-y-2">
+        <p className="text-sm font-semibold text-white">{title}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+interface ScoreFields {
+  scoreTrusted: boolean;
+  scoreRewardEnabled: boolean;
+  scorePointsPer1000: number;
+  scoreDailyCapPoints: number;
+}
+
+function ConnectGamePanel({
+  form,
+  set,
+  scoreMaxPerMinute,
+  onOpenSetupTab,
+}: {
+  form: ScoreFields;
+  set: (patch: Partial<ScoreFields>) => void;
+  scoreMaxPerMinute: number;
+  onOpenSetupTab: () => void;
+}) {
+  const earnFor5000 = Math.floor((5000 * form.scorePointsPer1000) / 1000);
+
+  return (
+    <div className="pt-3 border-t border-slate-800 space-y-4">
+      <div>
+        <p className="text-sm font-bold text-white">Connect your game</p>
+        <p className="text-[11px] text-slate-500 mt-0.5">
+          For games you built yourself. Players earn RevType points from their
+          in-game score. How to add the RevType script to your game:{" "}
+          <button
+            type="button"
+            onClick={onOpenSetupTab}
+            className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+          >
+            Setup guide
+          </button>
+          .
+        </p>
+      </div>
+
+      <Step n={1} title="Turn on paying for scores">
+        <Toggle
+          label="My own game with the RevType SDK"
+          hint="Only for games you built and added the script to. A score from someone else's game can be any number."
+          checked={form.scoreTrusted}
+          onChange={(v) =>
+            set(v ? { scoreTrusted: true } : { scoreTrusted: false, scoreRewardEnabled: false })
+          }
+        />
+        <Toggle
+          label="Pay for scores"
+          checked={form.scoreRewardEnabled}
+          disabled={!form.scoreTrusted}
+          onChange={(v) => set({ scoreRewardEnabled: v })}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="RevType points per 1,000 game points">
+            <input
+              type="number"
+              min={0}
+              value={form.scorePointsPer1000}
+              disabled={!form.scoreRewardEnabled}
+              onChange={(e) =>
+                set({ scorePointsPer1000: Math.max(0, parseInt(e.target.value) || 0) })
+              }
+              className={inp}
+            />
+          </Field>
+          <Field label="Max points per day, this game (0 = no limit)">
+            <input
+              type="number"
+              min={0}
+              value={form.scoreDailyCapPoints}
+              disabled={!form.scoreRewardEnabled}
+              onChange={(e) =>
+                set({ scoreDailyCapPoints: Math.max(0, parseInt(e.target.value) || 0) })
+              }
+              className={inp}
+            />
+          </Field>
+        </div>
+        {form.scoreRewardEnabled &&
+          (form.scorePointsPer1000 <= 0 ? (
+            <div className="rounded-lg bg-red-500/10 border border-red-500/25 p-3 text-xs text-red-300">
+              Set RevType points per 1,000 game points above 0 — otherwise nobody earns.
+            </div>
+          ) : scoreMaxPerMinute <= 0 ? (
+            <div className="rounded-lg bg-red-500/10 border border-red-500/25 p-3 text-xs text-red-300">
+              Score earning is switched off for every game in the Settings tab (max
+              per minute is 0).
+            </div>
+          ) : (
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/25 p-3 text-xs text-amber-200">
+              A player who scores 5,000 earns{" "}
+              <strong>{earnFor5000.toLocaleString()} points</strong>, at most{" "}
+              <strong>{scoreMaxPerMinute.toLocaleString()} per minute of play</strong>
+              {form.scoreDailyCapPoints > 0 && (
+                <>
+                  {" "}
+                  and <strong>{form.scoreDailyCapPoints.toLocaleString()} per day</strong>{" "}
+                  from this game
+                </>
+              )}
+              .
+            </div>
+          ))}
+      </Step>
+
+    </div>
+  );
+}
+
+// ── Bulk add ────────────────────────────────────────────────────────────────
+
+interface BulkProblem {
+  line: number;
+  title: string;
+  reason: string;
+}
+
+function BulkAddModal({
+  games,
+  categories,
+  onClose,
+}: {
+  games: AdminGame[];
+  categories: AdminGameCategory[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [connected, setConnected] = useState(false);
+  const [per1000, setPer1000] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{
+    created: number;
+    problems: BulkProblem[];
+    categoriesCreated: string[];
+  } | null>(null);
+
+  const rows = useMemo(() => parseBulkGames(text), [text]);
+
+  const preview = useMemo(() => {
+    const listed = new Set(games.map((g) => g.embedUrl));
+    const seen = new Set<string>();
+    return rows.map((r) => {
+      let error = bulkRowError(r);
+      if (!error && seen.has(r.embedUrl)) error = "Listed twice — only the first one is added.";
+      if (!error && listed.has(r.embedUrl)) error = "Already added.";
+      if (!error) seen.add(r.embedUrl);
+      const match = r.category ? matchGameCategory(r.category, categories) : null;
+      const category = !r.category
+        ? null
+        : match
+          ? { name: match.name, isNew: false }
+          : { name: r.category, isNew: true };
+      return { ...r, error, category };
+    });
+  }, [rows, games, categories]);
+
+  const ready = preview.filter((r) => !r.error).length;
+  const newCats = [
+    ...new Set(
+      preview.flatMap((r) => (!r.error && r.category?.isNew ? [r.category.name] : []))
+    ),
+  ];
+  const tooMany = rows.length > BULK_GAMES_MAX;
+  const needRate = connected && per1000 < 1;
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/games/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows, isActive, connected, pointsPer1000: per1000 }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      setResult({
+        created: d.created ?? 0,
+        problems: d.problems ?? [],
+        categoriesCreated: d.categoriesCreated ?? [],
+      });
+      if (d.created > 0) {
+        toast.success(`Added ${d.created} game${d.created === 1 ? "" : "s"}`);
+        router.refresh();
+      }
+    } catch (err) {
+      toast.error("Couldn't add the games", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4">
+      <div className="bg-slate-900 rounded-xl border border-slate-800 w-full max-w-3xl my-8">
+        <div className="flex items-center justify-between px-5 pt-4">
+          <h2 className="text-lg font-semibold text-white">Bulk add games</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg" aria-label="Close">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        {result ? (
+          <div className="p-5 space-y-3">
+            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-300">
+              Added {result.created} game{result.created === 1 ? "" : "s"}.
+              {result.categoriesCreated.length > 0 &&
+                ` New categories: ${result.categoriesCreated.join(", ")}.`}
+            </div>
+            {result.problems.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-white">
+                  Not added ({result.problems.length})
+                </p>
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-800 divide-y divide-slate-800">
+                  {result.problems.map((p) => (
+                    <div key={p.line} className="px-3 py-2 text-xs">
+                      <span className="text-slate-500 tabular-nums">Line {p.line}</span>{" "}
+                      <span className="text-white">{p.title || "(no title)"}</span>
+                      <span className="block text-red-300">{p.reason}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-5 space-y-4">
+            <Field
+              label="One game per line"
+              hint={`Title | Game URL | Icon image URL | Category (optional). You can also paste columns straight from a spreadsheet. Up to ${BULK_GAMES_MAX} at a time.`}
+            >
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={8}
+                spellCheck={false}
+                className={cn(inp, "font-mono text-xs")}
+                placeholder={
+                  "Bubble Pop | https://games.example.com/bubble-pop/ | https://games.example.com/bubble-pop/icon.png | Puzzle\n" +
+                  "Space Run | https://games.example.com/space-run/ | https://games.example.com/space-run/icon.png"
+                }
+              />
+            </Field>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Toggle
+                label="Connected with the RevType SDK"
+                hint="Your own games with the RevType script added (see Setup guide when adding one game). Players earn from their score."
+                checked={connected}
+                onChange={setConnected}
+              />
+              <Toggle
+                label="Live"
+                hint="Visible to users straight away."
+                checked={isActive}
+                onChange={setIsActive}
+              />
+            </div>
+            {connected && (
+              <Field
+                label="RevType points per 1,000 game points"
+                hint={
+                  per1000 > 0
+                    ? `A player who scores 5,000 earns ${(5 * per1000).toLocaleString()} points (play-time and daily limits still apply).`
+                    : "Must be at least 1."
+                }
+              >
+                <input
+                  type="number"
+                  min={0}
+                  value={per1000}
+                  onChange={(e) => setPer1000(Math.max(0, parseInt(e.target.value) || 0))}
+                  className={inp}
+                />
+              </Field>
+            )}
+
+            {rows.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-slate-400">
+                  <span className="text-emerald-400 font-semibold">{ready} ready</span>
+                  {rows.length - ready > 0 && (
+                    <>
+                      {" · "}
+                      <span className="text-red-300">{rows.length - ready} won&apos;t be added</span>
+                    </>
+                  )}
+                  {newCats.length > 0 && ` · new categories: ${newCats.join(", ")}`}
+                </p>
+                {tooMany && (
+                  <p className="text-xs text-red-300">
+                    That&apos;s {rows.length} lines — add at most {BULK_GAMES_MAX} at a time.
+                  </p>
+                )}
+                <div className="max-h-80 overflow-y-auto rounded-lg border border-slate-800 divide-y divide-slate-800">
+                  {preview.map((r) => (
+                    <div key={r.line} className="flex items-center gap-3 px-3 py-2">
+                      <span className="w-8 shrink-0 text-[11px] text-slate-500 tabular-nums">
+                        {r.line}
+                      </span>
+                      <div className="relative w-8 h-8 rounded bg-slate-800 overflow-hidden shrink-0">
+                        {r.iconUrl.startsWith("https://") && (
+                          <SmartImage src={r.iconUrl} alt="" fill sizes="32px" className="object-cover" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-white truncate">{r.title || "(no title)"}</p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {r.embedUrl || "(no game URL)"}
+                          {r.category && (
+                            <span className={r.category.isNew ? "text-amber-400" : "text-slate-400"}>
+                              {" · "}
+                              {r.category.name}
+                              {r.category.isNew && " (new)"}
+                            </span>
+                          )}
+                        </p>
+                        {r.error && <p className="text-[11px] text-red-300">{r.error}</p>}
+                      </div>
+                      {r.error ? (
+                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  New games get the default ad settings. Open a game later to change
+                  its ads, description or cover.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-3 px-5 py-4 border-t border-slate-800">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800"
+          >
+            {result ? "Done" : "Cancel"}
+          </button>
+          {!result && (
+            <button
+              onClick={submit}
+              disabled={busy || ready === 0 || tooMany || needRate}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+              Add {ready} game{ready === 1 ? "" : "s"}
+            </button>
+          )}
         </div>
       </div>
     </div>

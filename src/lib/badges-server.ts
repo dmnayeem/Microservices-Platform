@@ -1,7 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
-import { getPointsPerUsd } from "@/lib/economy";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { PlatformPayError, chargePlatform, pickRenewalSource } from "@/lib/platform-pay";
+import { quotePlatformPrice, type PaySource } from "@/lib/pay-source";
 import { deliverToUser } from "@/lib/notify";
 import { usd } from "@/lib/utils";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
@@ -22,11 +24,13 @@ import {
  * choosing the style shown, auto-renew, and the hourly sweep that renews or
  * ends them.
  *
- * Money: every sale is ONE ledger row, Transaction PURCHASE with a reference
- * starting "badge_" (lib/finance/revenue.ts sums it as "Blue badges"). Paid in
- * cash it carries `amount`; paid in points it carries `points` — never both,
- * so revenue is never counted twice. The debit is a compare-and-set
- * (`balance >= price`) so a double click cannot overspend.
+ * Money: every sale is ONE ledger row, written by src/lib/ad-wallet.ts with a
+ * reference "adpts_badge_*" / "adfund_badge_*" (owner, 2026-10-16: paid from
+ * Ad Points or Ad Fund, never Cash or Earn Points; the price is USD — Ad Fund
+ * pays it as dollars, Ad Points at the admin rate). Older sales paid in cash /
+ * points are the bare "badge_*" rows lib/finance/revenue.ts still sums. The
+ * debit is a compare-and-set (`balance >= price`) so a double click cannot
+ * overspend.
  *
  * A badge granted by an admin has `blueBadgeExpiresAt = null` and never
  * lapses; this file only ever ends badges it sold.
@@ -75,46 +79,32 @@ export async function getBadgeState(userId: string): Promise<BadgeState | null> 
   };
 }
 
-type Method = "CASH" | "POINTS";
-export type BuyResult = { ok: true; expiresAt: Date } | { ok: false; error: string; status: number };
+type Method = PaySource;
+export type BuyResult =
+  | { ok: true; expiresAt: Date }
+  | { ok: false; error: string; status: number; addFund?: string };
 
 const addDays = (from: Date, days: number) => new Date(from.getTime() + days * 86_400_000);
 
-/** Debit the wallet and write the sale, inside the caller's transaction. */
+/** Debit Ad Points / Ad Fund and write the sale, inside the caller's transaction. */
 async function charge(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   userId: string,
   priceUsd: number,
   method: Method,
-  pointsPerUsd: number,
+  adRate: number,
   description: string,
   reference: string
 ) {
   if (priceUsd <= 0) return;
-  if (method === "CASH") {
-    const d = await tx.user.updateMany({
-      where: { id: userId, cashBalance: { gte: priceUsd } },
-      data: { cashBalance: { decrement: priceUsd } },
-    });
-    if (d.count === 0) throw new Error("INSUFFICIENT");
-  } else {
-    const pts = Math.ceil(priceUsd * pointsPerUsd);
-    const d = await tx.user.updateMany({
-      where: { id: userId, pointsBalance: { gte: pts } },
-      data: { pointsBalance: { decrement: pts } },
-    });
-    if (d.count === 0) throw new Error("INSUFFICIENT");
-  }
-  await tx.transaction.create({
-    data: {
-      userId,
-      type: "PURCHASE",
-      status: "COMPLETED",
-      amount: method === "CASH" ? priceUsd : 0,
-      points: method === "POINTS" ? Math.ceil(priceUsd * pointsPerUsd) : 0,
-      description,
-      reference,
-    },
+  await chargePlatform(tx, {
+    userId,
+    quote: quotePlatformPrice({ usd: priceUsd }, adRate),
+    from: method,
+    description,
+    reference,
+    purpose: "badge",
+    returnTo: "/badge",
   });
 }
 
@@ -125,10 +115,8 @@ const CONFLICT: BuyResult = {
 };
 
 /** Map a failed purchase transaction to the user-facing result. */
-function buyFailure(e: unknown, method: Method): BuyResult | null {
-  if (e instanceof Error && e.message === "INSUFFICIENT") {
-    return { ok: false, error: method === "CASH" ? "Not enough cash in your wallet." : "Not enough points.", status: 400 };
-  }
+function buyFailure(e: unknown): BuyResult | null {
+  if (e instanceof PlatformPayError) return { ok: false, error: e.userMessage, status: 400, addFund: e.addFund };
   // The period moved under us (a concurrent buy / renewal won), or the same
   // purchase already wrote its ledger row: nothing was charged here.
   if ((e instanceof Error && e.message === "CONFLICT") || isDuplicateLedgerError(e)) return CONFLICT;
@@ -149,7 +137,7 @@ export async function buyBadge(userId: string, method: Method): Promise<BuyResul
   if (!active.ok) return { ok: false, error: active.message, status: active.httpStatus };
   const [cfg, rate, u] = await Promise.all([
     getBadgeConfig(),
-    getPointsPerUsd(),
+    getAdPointsPerUsd(),
     prisma.user.findUnique({ where: { id: userId }, select: { isBlueVerified: true, blueBadgeExpiresAt: true } }),
   ]);
   if (!u) return { ok: false, error: "Account not found", status: 404 };
@@ -182,7 +170,7 @@ export async function buyBadge(userId: string, method: Method): Promise<BuyResul
       await charge(tx, userId, cfg.badgePriceUsd, method, rate, "Blue badge (1 month)", reference);
     });
   } catch (e) {
-    const r = buyFailure(e, method);
+    const r = buyFailure(e);
     if (r) return r;
     throw e;
   }
@@ -196,7 +184,7 @@ export async function buyStyle(userId: string, style: string, method: Method): P
   }
   const active = await requireActiveUser(userId);
   if (!active.ok) return { ok: false, error: active.message, status: active.httpStatus };
-  const [cfg, rate, state] = await Promise.all([getBadgeConfig(), getPointsPerUsd(), getBadgeState(userId)]);
+  const [cfg, rate, state] = await Promise.all([getBadgeConfig(), getAdPointsPerUsd(), getBadgeState(userId)]);
   if (!state) return { ok: false, error: "Account not found", status: 404 };
   const conf = cfg.styles[style];
   if (!cfg.enabled || !conf?.enabled) return { ok: false, error: "That style is not on sale right now.", status: 403 };
@@ -212,7 +200,7 @@ export async function buyStyle(userId: string, style: string, method: Method): P
   const reference = ownedExpiry
     ? `badge_style_${style}_${userId}_${ownedExpiry.getTime()}`
     : `badge_style_${style}_${userId}_new`;
-  const autoRenew = true; // renewal itself is cash-only — the shop says so at purchase
+  const autoRenew = true; // renews from Ad Fund, else Ad Points — the shop says so at purchase
   try {
     await prisma.$transaction(async (tx) => {
       if (ownedExpiry) {
@@ -237,7 +225,7 @@ export async function buyStyle(userId: string, style: string, method: Method): P
       await tx.user.update({ where: { id: userId }, data: { verifiedBadgeStyle: style } });
     });
   } catch (e) {
-    const r = buyFailure(e, method);
+    const r = buyFailure(e);
     if (r) return r;
     throw e;
   }
@@ -269,13 +257,14 @@ export async function setAutoRenew(userId: string, item: string, on: boolean): P
 
 /**
  * Hourly: renew what is due and paid for, end the rest. Renewal is paid from
- * CASH only (points move too much to be charged without the user present).
+ * Ad Fund, else Ad Points (owner, 2026-10-16), else the item lapses — never
+ * Cash or Earn Points.
  * A lapsed badge also drops its paid style back to blue.
  */
 export async function runBadgeExpiry(limit = 200): Promise<{ renewed: number; ended: number; drained: boolean }> {
   const now = new Date();
   const cfg = await getBadgeConfig();
-  const rate = await getPointsPerUsd();
+  const rate = await getAdPointsPerUsd();
   let renewed = 0;
   let ended = 0;
 
@@ -295,7 +284,9 @@ export async function runBadgeExpiry(limit = 200): Promise<{ renewed: number; en
             data: { blueBadgeExpiresAt: addDays(now, BADGE_PERIOD_DAYS) },
           });
           if (claim.count === 0) throw new Error("RACE");
-          await charge(tx, u.id, cfg.badgePriceUsd, "CASH", rate, "Blue badge renewal (1 month)", `badge_blue_${u.id}_${u.blueBadgeExpiresAt!.getTime()}`);
+          const from = await pickRenewalSource(tx, u.id, quotePlatformPrice({ usd: cfg.badgePriceUsd }, rate));
+          if (!from && cfg.badgePriceUsd > 0) throw new Error("LAPSE");
+          await charge(tx, u.id, cfg.badgePriceUsd, from ?? "AD_FUND", rate, "Blue badge renewal (1 month)", `badge_blue_${u.id}_${u.blueBadgeExpiresAt!.getTime()}`);
         });
         ok = true;
         renewed++;
@@ -315,7 +306,7 @@ export async function runBadgeExpiry(limit = 200): Promise<{ renewed: number; en
           userId: u.id,
           title: "Blue badge ended",
           message: u.blueBadgeAutoRenew
-            ? "Your blue badge could not renew — there was not enough cash in your wallet. Get it again any time."
+            ? "Your blue badge could not renew — there was not enough Ad Fund or Ad Points. Get it again any time."
             : "Your blue badge has ended. Get it again any time.",
           link: "/badge",
         });
@@ -349,7 +340,9 @@ export async function runBadgeExpiry(limit = 200): Promise<{ renewed: number; en
             data: { expiresAt: addDays(now, BADGE_PERIOD_DAYS) },
           });
           if (claim.count === 0) throw new Error("RACE");
-          await charge(tx, s.userId, conf.priceUsd, "CASH", rate, `Badge style renewal: ${styleLabel(s.style)}`, `badge_style_${s.style}_${s.userId}_${s.expiresAt.getTime()}`);
+          const from = await pickRenewalSource(tx, s.userId, quotePlatformPrice({ usd: conf.priceUsd }, rate));
+          if (!from && conf.priceUsd > 0) throw new Error("LAPSE");
+          await charge(tx, s.userId, conf.priceUsd, from ?? "AD_FUND", rate, `Badge style renewal: ${styleLabel(s.style)}`, `badge_style_${s.style}_${s.userId}_${s.expiresAt.getTime()}`);
         });
         ok = true;
         renewed++;

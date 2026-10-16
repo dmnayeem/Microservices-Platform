@@ -26,6 +26,9 @@ import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum, toNumOrNull } from "@/lib/money";
 import { effectiveTutorHoldDays, getCourseSettings } from "@/lib/course-settings";
 import { payOrHoldTutor } from "@/lib/course-payouts";
+import { debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
+import { parseShopSource } from "@/lib/pay-source";
+import { adFundShortResponse, shopBalance } from "@/lib/shop-pay";
 
 const enrollSchema = z.object({
   couponCode: z.string().max(60).optional().nullable(),
@@ -34,6 +37,9 @@ const enrollSchema = z.object({
   paymentMethod: z
     .enum(["wallet", "stripe", "sslcommerz", "bkash", "nagad", "paypal"])
     .default("wallet"),
+  // Wallet checkout: Cash (default) or Ad Fund — parsed by parseShopSource,
+  // so nothing else (Ad Points, Earn Points) can ever pay.
+  paySource: z.unknown().optional(),
 });
 
 // POST /api/courses/:id/enroll
@@ -62,6 +68,9 @@ export async function POST(
   const pageHidden = await assertPageVisible(session.user.id, "/courses");
   if (pageHidden) return pageHidden;
   return withIdempotency(req, session.user.id, async () => {
+  // For the Ad Fund shortfall reply in the catch below.
+  let adFundNeed = 0;
+  let returnTo = "/courses";
   try {
     if (!(await userCanFeature(session.user.id, "courses"))) {
       return NextResponse.json({ error: "Courses are disabled for your plan" }, { status: 403 });
@@ -76,6 +85,7 @@ export async function POST(
       );
     }
     const { couponCode, paymentMethod } = v.data;
+    const paySource = parseShopSource(v.data.paySource);
 
     const course = await prisma.course.findFirst({
       where: { OR: [{ id }, { slug: id }] },
@@ -90,6 +100,7 @@ export async function POST(
         affiliateCommissionType: true,
         affiliateCommissionValue: true,
         tutorId: true,
+        slug: true,
         category_rel: { select: { slug: true } },
       },
     });
@@ -196,6 +207,15 @@ export async function POST(
       finalPrice = r.finalPrice;
     }
 
+    adFundNeed = finalPrice;
+    returnTo = `/courses/${course.slug ?? course.id}`;
+    if (paySource === "AD_FUND") {
+      const have = await shopBalance(session.user.id, "AD_FUND");
+      if (have == null || lt(have, finalPrice)) {
+        return adFundShortResponse({ needUsd: finalPrice, haveUsd: have, returnTo });
+      }
+    }
+
     // Wallet balance check
     const buyer = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -204,7 +224,7 @@ export async function POST(
     if (!buyer) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    if (lt(buyer.cashBalance, finalPrice)) {
+    if (paySource === "CASH" && lt(buyer.cashBalance, finalPrice)) {
       return NextResponse.json(
         {
           error: `Wallet balance is ${usd(toNum(buyer.cashBalance))} — need ${usd(finalPrice)} to enrol.`,
@@ -313,34 +333,48 @@ export async function POST(
       // in this handler runs outside the transaction. Without it, an enrolment
       // and any other purchase fired at the same time both passed their own
       // check against one balance and both went through.
-      const paid = await tx.user.updateMany({
-        where: { id: session.user.id, cashBalance: { gte: finalPrice } },
-        data: { cashBalance: { decrement: finalPrice } },
-      });
-      if (paid.count === 0) {
-        throw new Error("INSUFFICIENT_BALANCE");
-      }
-      await tx.transaction.create({
-        data: {
+      const buyerMeta = {
+        courseId: course.id,
+        enrollmentId: enrollment.id,
+        couponCode: couponInfo?.code ?? null,
+        originalPrice: livePrice,
+        finalPrice,
+        commissionBps: bps,
+        platformFee: fee,
+        tutorAmount,
+      };
+      if (paySource === "AD_FUND") {
+        // CAS debit + the buyer's one ledger row, `adfund_course_<id>_<enr>`
+        // — what a refund later looks up to return the money to Ad Fund.
+        await debitAdFund(tx, {
           userId: session.user.id,
-          type: TransactionType.COURSE_PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: -finalPrice,
-          points: 0,
-          description: `Course enrolment — "${course.title}"`,
+          usd: finalPrice,
           reference: `course_${course.id}_${enrollment.id}`,
-          metadata: {
-            courseId: course.id,
-            enrollmentId: enrollment.id,
-            couponCode: couponInfo?.code ?? null,
-            originalPrice: livePrice,
-            finalPrice,
-            commissionBps: bps,
-            platformFee: fee,
-            tutorAmount,
+          description: `Course enrolment — "${course.title}"`,
+          purpose: "course",
+          metadata: buyerMeta,
+        });
+      } else {
+        const paid = await tx.user.updateMany({
+          where: { id: session.user.id, cashBalance: { gte: finalPrice } },
+          data: { cashBalance: { decrement: finalPrice } },
+        });
+        if (paid.count === 0) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+        await tx.transaction.create({
+          data: {
+            userId: session.user.id,
+            type: TransactionType.COURSE_PURCHASE,
+            status: TransactionStatus.COMPLETED,
+            amount: -finalPrice,
+            points: 0,
+            description: `Course enrolment — "${course.title}"`,
+            reference: `course_${course.id}_${enrollment.id}`,
+            metadata: buyerMeta,
           },
-        },
-      });
+        });
+      }
 
       // Credit tutor (if any) — net of any affiliate reward.
       if (course.tutorId && tutorNet > 0) {
@@ -465,6 +499,7 @@ export async function POST(
     return NextResponse.json({
       enrollment: result.enrollment,
       amountPaid: finalPrice,
+      paySource,
       discount: couponInfo?.discount ?? 0,
     });
   } catch (error) {
@@ -489,6 +524,11 @@ export async function POST(
         { error: "You've already used this coupon the max number of times, so nothing was charged." },
         { status: 409 }
       );
+    }
+    // Ad Fund's CAS matched nothing — spent between the check above and the
+    // transaction. Rolled back: nothing enrolled or charged.
+    if (error instanceof InsufficientBalanceError) {
+      return adFundShortResponse({ needUsd: adFundNeed, returnTo });
     }
     if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
       return NextResponse.json(

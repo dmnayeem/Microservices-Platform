@@ -9,6 +9,8 @@ import { DisputeStatus, NotificationType, TransactionType, TransactionStatus } f
 import { toNum, toNumOrNull } from "@/lib/money";
 import { reverseAffiliateCommission } from "@/lib/affiliate";
 import { writeAudit } from "@/lib/audit";
+import { isServiceType } from "@/lib/marketplace-categories";
+import { adFundPaidForPurchase, refundToPayingBalance, refundedToLabel } from "@/lib/shop-pay";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -193,7 +195,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const listing = purchase
       ? await prisma.marketplaceListing.findUnique({
           where: { id: purchase.listingId },
-          select: { sellerId: true, title: true },
+          select: { sellerId: true, title: true, assetType: true },
         })
       : null;
 
@@ -375,6 +377,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const sellerOwed = money2(sellerBanked * ratio);
         const feeReversed = money2(platformFee * ratio);
         const sellerId = listing?.sellerId;
+        // Which balance the buyer's refund went back to (for their notice).
+        let refundedTo = { adFund: 0, cash: 0 };
 
         await prisma.$transaction(async (tx) => {
           // CAS on the dispute. Resolving is what moves the money, so two admins
@@ -416,32 +420,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
           // If refund amount specified and resolving for buyer, process refund
           if (refundAmount > 0 && purchase) {
-            // Refund the buyer in CASH. Marketplace purchases debit
-            // `cashBalance`, so paying the refund in points handed the buyer a
-            // different currency than they spent — converted at whatever
-            // `pointsPerUsd` happened to be on the day of the dispute, which is
-            // not necessarily the rate on the day of the sale.
-            await tx.user.update({
-              where: { id: purchase.buyerId },
-              data: { cashBalance: { increment: refundAmount } },
-            });
+            // Refund the buyer in the balance they PAID with — never points
+            // (that handed back a different currency at whatever rate applied
+            // on the dispute day). An order paid from Ad Fund has an `adfund_`
+            // debit (checkout / counter-offer: metadata.purchaseId; cart:
+            // metadata.purchaseIds; escrow: the deal's `adfund_deal_<id>`), and
+            // the refund — already capped at the amount paid above — goes back
+            // there. Everything else refunds to Cash exactly as before.
             // `totalEarnings` is deliberately untouched — getting your own money
             // back is not lifetime earnings.
-            await tx.transaction.create({
-              data: {
-                userId: purchase.buyerId,
-                type: TransactionType.REFUND,
-                status: TransactionStatus.COMPLETED,
-                points: 0,
-                amount: refundAmount,
-                description: `Refund from dispute resolution for "${listing?.title}"`,
-                reference: `dispute_refund_${id}`,
-                metadata: {
-                  disputeId: id,
-                  purchaseId: purchase.id,
-                  paidAmount,
-                  ratio,
-                },
+            const adFundPaid = await adFundPaidForPurchase(tx, purchase.buyerId, purchase.id);
+            refundedTo = await refundToPayingBalance(tx, {
+              userId: purchase.buyerId,
+              usd: refundAmount,
+              adFundPaid,
+              reference: `dispute_refund_${id}`,
+              description: `Refund from dispute resolution for "${listing?.title}"`,
+              purpose: listing && isServiceType(listing.assetType) ? "refund:service" : "refund:marketplace",
+              cashType: TransactionType.REFUND,
+              metadata: {
+                disputeId: id,
+                purchaseId: purchase.id,
+                paidAmount,
+                ratio,
               },
             });
 
@@ -545,7 +546,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 userId: purchase.buyerId,
                 type: NotificationType.SYSTEM,
                 title: "Dispute Resolved",
-                message: `Your dispute for "${listing.title}" has been resolved in favor of the ${inFavorOf.toLowerCase()}.${refundAmount > 0 ? ` You have received a ${usd(refundAmount)} refund.` : ""}`,
+                message: `Your dispute for "${listing.title}" has been resolved in favor of the ${inFavorOf.toLowerCase()}.${refundAmount > 0 ? ` You have received a ${usd(refundAmount)} refund to ${refundedToLabel(refundedTo)}.` : ""}`,
                 data: { disputeId: id, inFavorOf, refundAmount },
               },
             });

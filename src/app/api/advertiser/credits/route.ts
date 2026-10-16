@@ -23,10 +23,11 @@ export async function GET() {
 
 const schema = z.object({
   amountUsd: z.number().min(5).max(100000),
-  currency: z.enum(["cash", "points"]),
+  // Ad Fund (dollars) or Ad Points (at the rate) — owner, 2026-10-16.
+  paySource: z.enum(["AD_POINTS", "AD_FUND"]),
 });
 
-// POST /api/advertiser/credits — buy ad credit with wallet cash or points.
+// POST /api/advertiser/credits — buy ad credit with Ad Fund or Ad Points.
 // Idempotency-wrapped: this moves money, so a retried or double-fired request
 // must not charge the wallet twice.
 export async function POST(request: NextRequest) {
@@ -41,9 +42,9 @@ export async function POST(request: NextRequest) {
     const r = await buyAdCredits({
       userId,
       amountUsd: v.data.amountUsd,
-      currency: v.data.currency,
+      from: v.data.paySource,
     });
-    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status ?? 400 });
+    if (!r.ok) return NextResponse.json({ error: r.error, addFund: r.addFund }, { status: r.status ?? 400 });
     return NextResponse.json({ adCreditBalance: r.adCreditBalance });
   });
 }

@@ -8,6 +8,8 @@ import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { promptDialog } from "@/lib/confirm";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { ShopPayChooser } from "@/components/user/shop-pay-chooser";
+import type { ShopSource } from "@/lib/pay-source";
 import {
   Loader2,
   Heart,
@@ -65,6 +67,9 @@ export function CourseEnrollCta({
 }: Props) {
   const router = useRouter();
   const [enrolling, setEnrolling] = useState(false);
+  // Paid enrolment comes from Cash (default) or Ad Fund; a refund returns there.
+  const [paySource, setPaySource] = useState<ShopSource>("CASH");
+  const [addFundUrl, setAddFundUrl] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(isBookmarked);
   const [bookmarking, setBookmarking] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -122,14 +127,18 @@ export function CourseEnrollCta({
         body: JSON.stringify({
           couponCode: applied?.code ?? null,
           paymentMethod: "wallet",
+          paySource,
         }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 402 && d.addFund) setAddFundUrl(d.addFund);
+        throw new Error(d.error ?? `HTTP ${res.status}`);
+      }
       toast.success(
         isFree || finalPrice === 0
           ? "You're in!"
-          : `Enrolled — ${usd((d.amountPaid ?? finalPrice))} charged to your wallet`
+          : `Enrolled — ${usd((d.amountPaid ?? finalPrice))} charged to your ${d.paySource === "AD_FUND" ? "Ad Fund" : "Cash"}`
       );
       router.push(`/learn/${courseId}`);
     } catch (err) {
@@ -296,6 +305,18 @@ export function CourseEnrollCta({
           </div>
         )}
 
+        {!isFree && !isEnrolled && !signInHref && finalPrice > 0 && (
+          <ShopPayChooser
+            value={paySource}
+            onChange={(v) => {
+              setPaySource(v);
+              setAddFundUrl(null);
+            }}
+            amountUsd={finalPrice}
+            addFundUrl={addFundUrl}
+          />
+        )}
+
         {signInHref ? (
           <>
             <Link
@@ -340,7 +361,7 @@ export function CourseEnrollCta({
               ? "Enrol — it's free"
               : finalPrice === 0
               ? "Enrol — fully covered"
-              : `Enrol — ${usd(finalPrice)} from wallet`}
+              : `Enrol — ${usd(finalPrice)} from ${paySource === "AD_FUND" ? "Ad Fund" : "Cash"}`}
           </button>
         )}
 

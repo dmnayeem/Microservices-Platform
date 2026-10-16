@@ -10,6 +10,8 @@ import {
 import type { AdminGameCategory } from "@/components/admin/games/game-categories-modal";
 import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
 import { GamesSettingsForm } from "@/components/admin/games/games-settings-form";
+import { GameWebsitesForm } from "@/components/admin/games/game-websites-form";
+import { getGameConnectOrigins } from "@/lib/game-connect";
 import { GAMES_DEFAULTS, getGamesGlobalConfig } from "@/lib/game-settings";
 
 const TABS = [
@@ -44,21 +46,25 @@ export default async function GamesAdminPage({
   );
 
   if (tab === "settings") {
-    const config = await getGamesGlobalConfig();
+    const [config, websites] = await Promise.all([getGamesGlobalConfig(), getGameConnectOrigins()]);
     return (
       <div className="space-y-6">
         {header}
         <AdminTabs tabs={TABS} active={tab} basePath="/admin/games" />
+        <GameWebsitesForm initial={websites} canEdit={canManage} />
         <GamesSettingsForm initial={config} defaults={GAMES_DEFAULTS} canEdit={canManage} />
       </div>
     );
   }
-  const [games, categoryRows, counts] = await Promise.all([
+  const [games, categoryRows, counts, gamesConfig] = await Promise.all([
     prisma.game.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] }),
     prisma.gameCategory.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }] }),
     prisma.game.groupBy({ by: ["categoryId"], _count: { _all: true } }) as unknown as Promise<
       { categoryId: string | null; _count: { _all: number } }[]
     >,
+    // Only feeds the "Connect your game" example, so a settings hiccup must not
+    // take the whole games list down with it.
+    getGamesGlobalConfig().catch(() => GAMES_DEFAULTS),
   ]);
 
   const countByCategory = new Map<string, number>();
@@ -116,7 +122,12 @@ export default async function GamesAdminPage({
     <div className="space-y-6">
       {header}
       <AdminTabs tabs={TABS} active={tab} basePath="/admin/games" />
-      <GamesClient initial={rows} categories={categories} canManage={canManage} />
+      <GamesClient
+        initial={rows}
+        categories={categories}
+        canManage={canManage}
+        scoreMaxPerMinute={gamesConfig.scoreMaxPerMinute}
+      />
     </div>
   );
 }

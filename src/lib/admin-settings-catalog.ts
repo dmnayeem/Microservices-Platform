@@ -189,10 +189,12 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "withdrawal_requires_subscription", group: "financial", label: "Require a subscription to withdraw", description: "Users on the free/default package must buy a package before they can withdraw", home: WITHDRAWALS_HOME },
   { key: "withdrawal_payout_time_message", group: "financial", label: "Payout time message", description: "Shown to the user after they request a withdrawal", home: WITHDRAWALS_HOME },
   { key: "points_per_usd", group: "financial", label: "Points per $1", unit: "points", description: "The conversion rate when a user turns earned points into cash — how many points buy one dollar. Every earning and withdrawal is valued with it.", effect: "Higher = each point is worth less cash.", danger: "This revalues every points balance on the platform against cash, immediately. One wrong digit changes what every user's points are worth." },
+  { key: "wallet.ad_points_per_usd", group: "financial", label: "Ad Points per $1", unit: "Ad Points", description: "What Ad Points are worth: $1 = this many Ad Points. Members get Ad Points by converting Earn Points (Earn Points → USD at the points rate → Ad Points at this rate), and Ad Points pay for platform items (boosts, ads, tasks, lottery, spotlight, plans, badge, promotions). Ad Fund pays the same items at this rate.", effect: "Higher = each Ad Point is worth less, so every Ad Points price buys less. Existing Ad Points balances are revalued too.", danger: "This revalues every Ad Points balance and every Ad Points price at once." },
   { key: "points_convert_threshold", group: "financial", label: "Points needed before cash conversion unlocks", unit: "points", description: "A user needs at least this many points before the wallet shows the points-to-cash button.", effect: "Below this, the convert button is hidden." },
   { key: "bkash.usdToBdtRate", group: "financial", label: "bKash rate", unit: "BDT per $1", description: "bKash settles in taka; a USD deposit made through bKash is charged at this rate." },
   { key: "vat_enabled", group: "financial", label: "Charge VAT on deposits", description: "Adds VAT on top of the deposit amount, shown as its own line on the deposit page.", effect: "Off = no VAT is added to deposits." },
-  { key: "plans.auto_renew_enabled", group: "financial", label: "Allow plan auto-renew", description: "Lets members turn on auto-renew for their paid plan; at expiry the plan is renewed from their cash balance (never points) at the plan's current price for the same term length.", effect: "Off = no plan is renewed automatically (and the toggle is hidden) — every plan simply ends at its expiry date." },
+  { key: "plans.auto_renew_enabled", group: "financial", label: "Allow plan auto-renew", description: "Lets members turn on auto-renew for their paid plan; at expiry the plan is renewed from their Ad Fund, else their Ad Points (never Cash or Earn Points), at the plan's current price for the same term length.", effect: "Off = no plan is renewed automatically (and the toggle is hidden) — every plan simply ends at its expiry date." },
+  { key: "promotions.require_review", group: "financial", label: "Review paid promotions", description: "A member who pays to feature their own course or marketplace listing waits for an admin to approve it on the Promotions page; the featured period starts at approval, and a rejection refunds the payment in full to the balance it came from.", effect: "Off = a paid promotion is approved automatically the moment it is paid." },
   { key: "vat_pct", group: "financial", label: "VAT rate", unit: "%", description: "Applied to the deposit amount plus the payment-method charge, while VAT is switched on." },
   { key: "buyer.enabled", group: "financial", label: "Allow buyers to fund tasks", description: "Lets accounts with the buyer permission create and fund their own tasks.", effect: "Off closes the create-task API for everyone, even accounts that already hold the permission." },
   { key: "buyer.fee_percent", group: "financial", label: "Platform fee on buyer tasks", unit: "%", description: "The platform's cut when a buyer funds a task — charged on top of the points they buy.", effect: "0 = buyers pay only the rewards and the platform earns nothing on task funding." },
@@ -443,7 +445,7 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         id: "points",
         title: "Points & cash",
         blurb: "How earned points turn into money.",
-        keys: ["points_per_usd", "points_convert_threshold", "currency"],
+        keys: ["points_per_usd", "points_convert_threshold", "wallet.ad_points_per_usd", "currency"],
       },
       {
         id: "deposits",
@@ -456,6 +458,12 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         title: "Plans",
         blurb: "Paid plan renewals.",
         keys: ["plans.auto_renew_enabled"],
+      },
+      {
+        id: "promotions",
+        title: "Course & listing promotions",
+        blurb: "Members paying to feature their own course or listing.",
+        keys: ["promotions.require_review"],
       },
       {
         id: "marketplace-fee",
@@ -1116,20 +1124,20 @@ export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
     where: "Feed settings → Social earning",
   },
   {
-    label: "Groups, AI caption re-rolls, boosted-post cap",
+    label: "Groups, AI caption re-rolls",
     description:
-      "The Groups switch, how many AI caption re-rolls a social task allows, and how often one boosted post may be shown to the same user",
+      "The Groups switch and how many AI caption re-rolls a social task allows",
     href: "/admin/settings/feed?tab=general",
     where: "Feed settings → General",
   },
   {
-    label: "Boosted post — max times shown per user",
+    // Moved from Feed settings → General (2026-10-16): the feed now reads the
+    // cap from the boost pricing, not from `feed.boost_max_per_user`.
+    label: "Boosted post — max times shown per viewer",
     description:
-      "How many times the same boosted post may be shown to one user · 0 = unlimited",
-    href: "/admin/settings/feed?tab=general",
-    where: "Feed settings → General",
-    key: "feed.boost_max_per_user",
-    status: "live",
+      "How many times the same boosted post may be shown to one person · 0 = unlimited. With the boost prices and limits.",
+    href: "/admin/boosts?tab=pricing",
+    where: "Post boosts → Pricing",
   },
   {
     label: "Withdrawal limits, fee & switches",

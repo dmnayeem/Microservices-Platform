@@ -45,7 +45,8 @@ const getOptionLists = unstable_cache(
 );
 
 // POST /api/ads/audience — live reach estimate for a targeting object + the
-// data-driven option lists. Usable by admins (ads.view) and advertisers.
+// data-driven option lists. Usable by admins (ads.view), advertisers, and
+// members who can boost a post (the boost composer reuses the same builder).
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
   const role = session.user.role as UserRole | undefined;
   const allowed =
     hasPermission(role, "ads.view") ||
-    (await userCanFeature(session.user.id, "advertiser"));
+    (await userCanFeature(session.user.id, "advertiser")) ||
+    (await userCanFeature(session.user.id, "boost"));
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

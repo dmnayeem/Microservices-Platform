@@ -87,6 +87,21 @@ export async function GET(request: NextRequest) {
       },
       _sum: { points: true },
     });
+    // Tickets bought with Ad Points / Ad Fund keep their Ad Points figure in
+    // metadata (the ledger points column stays 0 for them).
+    const adBuys = await prisma.transaction.findMany({
+      where: {
+        userId: session.user.id,
+        type: "PURCHASE",
+        OR: [{ reference: { startsWith: "adpts_lottery_" } }, { reference: { startsWith: "adfund_lottery_" } }],
+      },
+      select: { metadata: true },
+      take: 5000,
+    });
+    const adPointsSpent = adBuys.reduce(
+      (n, r) => n + Math.abs(Number((r.metadata as { adPoints?: unknown } | null)?.adPoints) || 0),
+      0
+    );
 
     return NextResponse.json({
       tickets: tickets.map((t) => {
@@ -121,6 +136,8 @@ export async function GET(request: NextRequest) {
       summary: {
         ...summary,
         totalSpent: Math.abs(totalSpent._sum.points || 0),
+        // Ad Points spent on tickets (a different unit from the Earn Points above).
+        totalAdPointsSpent: adPointsSpent,
         netProfit: summary.totalWinnings - Math.abs(totalSpent._sum.points || 0),
       },
     });

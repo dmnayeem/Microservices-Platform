@@ -66,6 +66,13 @@ export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
     label: "Points per USD",
     why: "This revalues every balance on the platform. Below 10 would make a single point worth more than 10 cents.",
   },
+  "wallet.ad_points_per_usd": {
+    min: 1,
+    max: 1_000_000,
+    integer: true,
+    label: "Ad Points per $1",
+    why: "Below 1 an Ad Point would be worth more than a dollar; every Ad Points balance and price is valued with it.",
+  },
   min_withdrawal: {
     min: 0,
     max: 1_000_000,

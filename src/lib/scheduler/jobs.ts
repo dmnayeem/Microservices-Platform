@@ -48,6 +48,7 @@ import { releaseHeldOfferwallCompletions } from "@/lib/offerwall";
 import { runBillReminders, summariseBillReminders } from "@/lib/company-finance/alerts";
 import { closeEndedSpotlights } from "@/lib/spotlight-server";
 import { runAmbassadorPayouts } from "@/lib/ambassadors-server";
+import { sweepBoosts } from "@/lib/boost/core";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -235,6 +236,18 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const r = await closeEndedSpotlights();
       return { ok: true, summary: `${r.awarded} awarded, ${r.empty} closed without bids`, result: r };
+    },
+  },
+  {
+    name: "boost-sweep",
+    label: "End post boosts",
+    description:
+      "Ends every post boost whose run time is over and closes boosts whose post was deleted. Whatever part of the budget was not spent goes back to the member, to the balance it was paid from (Ad Points or Ad Fund). Each boost is settled once — running it again refunds nothing twice.",
+    intervalMs: 5 * MINUTE,
+    leaseMs: 4 * MINUTE,
+    async run() {
+      const r = await sweepBoosts();
+      return { ok: true, summary: `${r.completed} ended, ${r.orphaned} closed (post deleted)`, result: r };
     },
   },
   {

@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/require-active";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { z } from "zod";
 import { recordUserAction } from "@/lib/goal-progress";
+import { chargeBoostEngagement } from "@/lib/boost-feed";
 
 const schema = z.object({
   channel: z.string().max(40).optional(),
@@ -115,6 +116,10 @@ export async function POST(
           targetId: id,
         }),
   ]);
+
+  // A running boost on this post pays for the share when the sharer reached
+  // it through the boost. Only a FIRST share gets here.
+  after(() => chargeBoostEngagement(id, sharerId, "SHARE"));
 
   const updated = await prisma.post.findUnique({
     where: { id },

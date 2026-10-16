@@ -3,14 +3,14 @@ import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/require-active";
-import {
-  TransactionType,
-  TransactionStatus,
-  NotificationType,
-} from "@/generated/prisma/client";
+import { NotificationType } from "@/generated/prisma/client";
 import { z } from "zod";
-import { getPointsPerUsd } from "@/lib/economy";
-import { awardSocialEarning } from "@/lib/social-earning";
+import {
+  creditAdPoints,
+  debitAdPoints,
+  getAdPointsPerUsd,
+  InsufficientBalanceError,
+} from "@/lib/ad-wallet";
 
 const schema = z.object({
   points: z.number().int().min(1).max(100000),
@@ -72,78 +72,67 @@ export async function POST(
 
   const donor = await prisma.user.findUnique({
     where: { id: donorId },
-    select: { pointsBalance: true },
+    select: { adPointsBalance: true },
   });
-  if (!donor || donor.pointsBalance < v.data.points) {
+  if (!donor || donor.adPointsBalance < v.data.points) {
     return NextResponse.json(
-      { error: "Insufficient points balance" },
+      { error: "Insufficient Ad Points balance" },
       { status: 400 }
     );
   }
 
-  const pointsPerUsd = await getPointsPerUsd();
-  // Debit the donor with an atomic CAS (`pointsBalance >= points`) so two
-  // concurrent donations can't overspend (the pre-check above is check-then-act).
-  // Donation is legitimately repeatable, so the reference stays per-occurrence.
+  // Donations move AD POINTS only (owner rule, 2026-10-16). Earn Points may
+  // only be withdrawn or converted to Ad Points, never transferred — and paying
+  // the author in Earn Points (or Cash) would launder deposits: Add fund → Ad
+  // Points → donate to a second account → Earn Points → withdraw. Ad Points in,
+  // Ad Points out, so nothing donated can ever reach a withdrawable balance.
+  //
+  // Lifetime EARNINGS do not move either: `totalEarnings` is what the
+  // leaderboard ranks on and what achievements pay against, and a peer
+  // transfer is not earning. Both ledger rows carry `points: 0` (ad-wallet.ts),
+  // so no "points earned" figure reads them.
+  //
+  // Finance: both rows sit under a `donation_` inner reference, which
+  // adWalletKind() files as "peer" — member-to-member, internal. The donor's
+  // debit is not platform revenue and the author's credit is not a cost.
+  const rate = await getAdPointsPerUsd();
   let donation: { id: string };
   let updated: { donationCollected: number; donationGoal: number | null };
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const debit = await tx.user.updateMany({
-        where: { id: donorId, pointsBalance: { gte: v.data.points } },
-        data: { pointsBalance: { decrement: v.data.points } },
-      });
-      if (debit.count === 0) throw new Error("INSUFFICIENT");
-
-      // Points move, lifetime EARNINGS do not.
-      //
-      // A donation is a peer-to-peer transfer of points that were already
-      // counted as earned once — by whoever earned them. Crediting the
-      // recipient's `totalEarnings` on top counted them a second time, and
-      // nothing decremented the donor, so the pair's combined lifetime
-      // earnings rose by the donated amount on every hop. Two accounts
-      // donating the same points back and forth therefore pumped
-      // `totalEarnings` without bound at zero cost — and `totalEarnings` is
-      // what `/api/leaderboard` ranks on, what the admin leaderboard reset
-      // pays prizes on, and what the `total_earned` achievements (which pay
-      // real points) are measured against.
-      //
-      // The GIFT ledger row below still records the receipt, so the donation
-      // remains fully visible in the recipient's history.
-      await tx.user.update({
-        where: { id: post.userId },
-        data: { pointsBalance: { increment: v.data.points } },
-      });
-      await tx.transaction.create({
-        data: {
-          userId: donorId,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          points: -v.data.points,
-          amount: v.data.points / pointsPerUsd,
-          description: `Donation to post`,
-          reference: `donation_${id}_${Date.now()}`,
-          metadata: { postId: id, recipientId: post.userId },
-        },
-      });
-      // Recipient-side ledger row so the received donation shows in THEIR
-      // history (it is a transfer, so it does NOT touch totalEarnings — see above).
-      await tx.transaction.create({
-        data: {
-          userId: post.userId,
-          type: TransactionType.GIFT,
-          status: TransactionStatus.COMPLETED,
-          points: v.data.points,
-          amount: v.data.points / pointsPerUsd,
-          description: `Donation received`,
-          reference: `donation_recv_${id}_${donorId}_${Date.now()}`,
-          metadata: { postId: id, donorId },
-        },
-      });
+      // Created first so its id makes both ledger references unique per
+      // occurrence (a donation is legitimately repeatable). Rolled back with
+      // everything else if the debit below fails.
       const d = await tx.donation.create({
         data: { postId: id, donorId, points: v.data.points },
         select: { id: true },
       });
+      // CAS debit (`adPointsBalance >= points`): two concurrent donations can't
+      // overspend — the pre-check above is only check-then-act.
+      await debitAdPoints(
+        tx,
+        {
+          userId: donorId,
+          points: v.data.points,
+          reference: `donation_${id}_${d.id}`,
+          description: "Donation to post",
+          purpose: "donation",
+          metadata: { postId: id, recipientId: post.userId, donationId: d.id },
+        },
+        rate
+      );
+      await creditAdPoints(
+        tx,
+        {
+          userId: post.userId,
+          points: v.data.points,
+          reference: `donation_recv_${id}_${d.id}`,
+          description: "Donation received",
+          purpose: "donation",
+          metadata: { postId: id, donorId, donationId: d.id },
+        },
+        rate
+      );
       const u = await tx.post.update({
         where: { id },
         data: { donationCollected: { increment: v.data.points } },
@@ -154,9 +143,9 @@ export async function POST(
     donation = result.donation;
     updated = result.updated;
   } catch (err) {
-    if (err instanceof Error && err.message === "INSUFFICIENT") {
+    if (err instanceof InsufficientBalanceError) {
       return NextResponse.json(
-        { error: "Insufficient points balance" },
+        { error: "Insufficient Ad Points balance" },
         { status: 400 }
       );
     }
@@ -168,27 +157,15 @@ export async function POST(
       userId: post.userId,
       type: NotificationType.WALLET,
       title: "💝 New donation",
-      message: `Someone donated ${v.data.points} pts to your post.`,
+      message: `Someone donated ${v.data.points.toLocaleString()} Ad Points to your post.`,
       data: { postId: id, points: v.data.points, donationId: donation.id },
     },
   });
 
-  // DONATION_RECEIVED was configurable on the admin page but nothing ever fired
-  // it — a dead setting. It ships disabled, so this changes nothing until an
-  // admin turns it on. Note the bonus is on TOP of the donation itself, which
-  // has already moved points 1:1 above.
-  //
-  // `eventKey` is required: without it both sides reuse one reference per
-  // (donor, post), so a repeat donation to the same post would pay nothing.
-  // The money is already committed at this point, so a failure here must never
-  // surface as an error.
-  await awardSocialEarning({
-    postOwnerUserId: post.userId,
-    actorUserId: donorId, // the donor is the actor
-    action: "DONATION_RECEIVED",
-    postId: id,
-    eventKey: donation.id,
-  }).catch((e) => console.error("[donate] social earning failed:", e));
+  // No DONATION_RECEIVED Earn Points bonus (owner, 2026-10-17): donations are
+  // paid in Ad Points, and Ad Points must never turn into Earn Points — a bonus
+  // here would let deposit money → Ad Points → donation to a second account →
+  // withdrawable Earn Points.
 
   return NextResponse.json({
     success: true,

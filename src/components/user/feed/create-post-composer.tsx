@@ -293,7 +293,7 @@ export function CreatePostComposer({
       }
     }
     if (mode === "donation" && donationGoal < 1) {
-      toast.error("Donation goal must be at least 1 pt");
+      toast.error("Donation goal must be at least 1 Ad Point");
       return;
     }
     setBusy(true);
@@ -1009,7 +1009,7 @@ function DonationComposer({
         className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-base sm:text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <div className="flex items-center gap-2">
-        <span className="text-sm text-(--app-ink-2)">Goal (pts):</span>
+        <span className="text-sm text-(--app-ink-2)">Goal (Ad Points):</span>
         <input
           type="number"
           min={100}

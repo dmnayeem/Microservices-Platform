@@ -14,6 +14,7 @@ import {
   getMarketplaceTaxConfig,
   computeCommissionTax,
 } from "@/lib/marketplace-selling";
+import { debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
 
 export type AuctionCloseResult =
   | { listingId: string; outcome: "sold"; winnerId: string; amount: number }
@@ -168,8 +169,18 @@ export async function settleAuction(
     const { tax, pct: taxPct } = computeCommissionTax(fee, taxCfg);
     const winnerTotal = Math.round((amount + tax) * 100) / 100;
 
-    // Settle atomically. The winner debit is a CAS (`cashBalance >= total`) so
-    // the platform never pays the seller from a buyer who can't cover the bid.
+    // Settle atomically. The winner debit is a CAS so the platform never pays
+    // the seller from a buyer who can't cover the bid.
+    //
+    // Which balance pays (owner, 2026-10-16: marketplace buys take Cash OR Ad
+    // Fund). The winner is charged here, long after bidding, and a bid row has
+    // no column to remember a choice — so the rule is fixed: Cash if it covers
+    // the total, else Ad Fund if it does, else this bidder can't pay. Ad Points
+    // never pay for this. The Ad Fund debit is written further down, once the
+    // purchase id exists for its ledger metadata (a dispute refund finds it by
+    // `metadata.purchaseId` and returns it to Ad Fund); a short Ad Fund throws
+    // InsufficientBalanceError, rolls the whole sale back, and is caught below
+    // as "can't cover".
     let purchase: { id: string } | null;
     try {
       purchase = await prisma.$transaction(async (tx) => {
@@ -177,7 +188,7 @@ export async function settleAuction(
           where: { id: bid.bidderId, cashBalance: { gte: winnerTotal } },
           data: { cashBalance: { decrement: winnerTotal } },
         });
-        if (paid.count === 0) return null; // can't cover — try the next bidder
+        const payWith: "CASH" | "AD_FUND" = paid.count > 0 ? "CASH" : "AD_FUND";
 
         // Claim the listing. The Inngest close and the backstop sweep can
         // both reach a due auction; only one may sell it.
@@ -225,17 +236,30 @@ export async function settleAuction(
           amount: toNum(sellerAmount),
           hold,
         });
-        await tx.transaction.create({
-          data: {
+        if (payWith === "AD_FUND") {
+          // CAS debit + the winner's one ledger row
+          // (`adfund_marketplace_auction_<listingId>`).
+          await debitAdFund(tx, {
             userId: bid.bidderId,
-            type: TransactionType.PURCHASE,
-            status: TransactionStatus.COMPLETED,
-            amount: -winnerTotal,
-            points: 0,
-            description: `Auction won — "${listing.title}"`,
+            usd: winnerTotal,
             reference: `marketplace_auction_${listing.id}`,
-          },
-        });
+            description: `Auction won — "${listing.title}"`,
+            purpose: "marketplace",
+            metadata: { listingId: listing.id, bidId: bid.id, purchaseId: p.id },
+          });
+        } else {
+          await tx.transaction.create({
+            data: {
+              userId: bid.bidderId,
+              type: TransactionType.PURCHASE,
+              status: TransactionStatus.COMPLETED,
+              amount: -winnerTotal,
+              points: 0,
+              description: `Auction won — "${listing.title}"`,
+              reference: `marketplace_auction_${listing.id}`,
+            },
+          });
+        }
         // Written on release instead when the money is held.
         if (!held.held) {
           await tx.transaction.create({
@@ -256,7 +280,13 @@ export async function settleAuction(
       if (e instanceof Error && e.message === "AUCTION_ALREADY_SETTLED") {
         return { listingId: listing.id, outcome: "expired", reason: "Already settled" };
       }
-      throw e;
+      // Neither Cash nor Ad Fund covered it — everything rolled back; try the
+      // next bidder, exactly as a short Cash balance always did.
+      if (e instanceof InsufficientBalanceError) {
+        purchase = null;
+      } else {
+        throw e;
+      }
     }
 
     if (purchase) {
@@ -274,7 +304,7 @@ export async function settleAuction(
           userId,
           type: NotificationType.SYSTEM,
           title: "Auction payment failed",
-          message: `Your winning bid on "${listing.title}" couldn't be charged — your wallet didn't cover it — so the item went to the next bidder.`,
+          message: `Your winning bid on "${listing.title}" couldn't be charged — neither your Cash nor your Ad Fund covered it — so the item went to the next bidder.`,
           data: { listingId: listing.id },
         })),
       })

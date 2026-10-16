@@ -16,6 +16,7 @@ import { toNum } from "@/lib/money";
 import { resolveUserTimezone, localStartOfDayUtc } from "@/lib/user-day";
 import { getTeamSummary } from "@/lib/team";
 import { summarizeEarnings } from "@/lib/dashboard-earnings";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
 
 export default async function WalletPage() {
   const session = await auth();
@@ -29,6 +30,8 @@ export default async function WalletPage() {
       pointsBalance: true,
       cashBalance: true,
       adCreditBalance: true,
+      adPointsBalance: true,
+      adFundBalance: true,
       taskCreditPoints: true,
       totalEarnings: true,
       country: true,
@@ -65,6 +68,7 @@ export default async function WalletPage() {
     monthlyAgg,
     todayRefAgg,
     wcfg,
+    adPointsPerUsd,
   ] = await Promise.all([
       userP,
       // The last 30 days of the ledger, read once: the earnings breakdown
@@ -155,6 +159,7 @@ export default async function WalletPage() {
       // Effective withdrawal fee % (admin setting − package discount) so the
       // wallet Withdraw tab can show it too, matching the /withdrawal page.
       getWithdrawalConfig(userId),
+      getAdPointsPerUsd(),
     ]);
 
   if (!user) redirect("/login");
@@ -233,6 +238,12 @@ export default async function WalletPage() {
         pointsPerUsd={pointsPerUsd}
         convertThreshold={convertThreshold}
         withdrawalFeePct={wcfg.feePct}
+        adPointsBalance={user.adPointsBalance}
+        adFundBalance={toNum(user.adFundBalance)}
+        adPointsPerUsd={adPointsPerUsd}
+        // Earn → Ad Points opens at the member's OWN minimum withdrawal (the
+        // same effective minimum the withdrawal route enforces).
+        minWithdrawalUsd={wcfg.min}
       />
     </>
   );

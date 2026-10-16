@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
 
 /**
  * GET /api/spotlight — open auctions (current top bid, your bid), your recent
@@ -28,7 +30,7 @@ export async function GET() {
       take: 20,
       select: { id: true, content: true, createdAt: true },
     }),
-    prisma.user.findUnique({ where: { id: userId }, select: { pointsBalance: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { adPointsBalance: true, adFundBalance: true } }),
   ]);
   const ids = open.map((a) => a.id);
   const [tops, mine, counts] = await Promise.all([
@@ -43,7 +45,10 @@ export async function GET() {
   const name = new Map(winnerUsers.map((u) => [u.id, u.name ?? "A member"]));
   const bidders = new Map((counts as unknown as Array<{ auctionId: string; _count: { _all: number } }>).map((c) => [c.auctionId, c._count._all]));
   return NextResponse.json({
-    balance: me?.pointsBalance ?? 0,
+    // Bids are in Ad Points, paid from Ad Points or Ad Fund (at adPointsPerUsd).
+    balance: me?.adPointsBalance ?? 0,
+    adFund: toNum(me?.adFundBalance ?? 0),
+    adPointsPerUsd: await getAdPointsPerUsd(),
     auctions: open.map((a) => {
       const top = tops.find((t) => t.auctionId === a.id);
       const my = mine.find((m) => m.auctionId === a.id);

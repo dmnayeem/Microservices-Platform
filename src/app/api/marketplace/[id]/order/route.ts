@@ -6,10 +6,13 @@ import { withIdempotency } from "@/lib/idempotency";
 import { userCanFeature } from "@/lib/packages";
 import { AFFILIATE_COOKIE } from "@/lib/affiliate";
 import { placeServiceOrder } from "@/lib/service-order";
+import { parseShopSource } from "@/lib/pay-source";
 
 const schema = z.object({
   tier: z.string().max(32).nullable().optional(),
   answers: z.record(z.string(), z.string().max(4000)).optional(),
+  // Cash (default) or Ad Fund — anything else falls back to Cash.
+  paySource: z.unknown().optional(),
 });
 
 // POST /api/marketplace/:id/order — order a SERVICE. Always escrow: creates
@@ -51,10 +54,11 @@ export async function POST(
       tierId: v.data.tier ?? null,
       answers: v.data.answers ?? {},
       affiliateCookie: request.cookies.get(AFFILIATE_COOKIE)?.value,
+      paySource: parseShopSource(v.data.paySource),
     });
     if (!r.ok) {
       return NextResponse.json(
-        { error: r.error, threadId: r.threadId, shortBy: r.shortBy },
+        { error: r.error, threadId: r.threadId, shortBy: r.shortBy, addFund: r.addFund },
         { status: r.status }
       );
     }

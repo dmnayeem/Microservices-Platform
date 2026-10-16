@@ -130,7 +130,7 @@ export function MyPackageView({
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       toast.success(on ? "Auto-renew is on" : "Auto-renew is off", {
         description: on
-          ? "At expiry your plan renews from your cash balance."
+          ? "At expiry your plan renews from your Ad Fund, else your Ad Points."
           : "Your plan stays active until its end date, then stops.",
       });
       setShowCancelModal(false);
@@ -482,7 +482,7 @@ function OverviewTab({
         {hasActivePaidSubscription && !isFree && (
           <p className="t-meta text-center text-(--app-ink-2)">
             {autoRenew
-              ? "Auto-renew is on: at expiry the plan renews from your cash balance (never points). If there is not enough cash, it simply ends."
+              ? "Auto-renew is on: at expiry the plan renews from your Ad Fund, else your Ad Points. If neither covers it, it simply ends."
               : "Auto-renew is off: the plan ends on its expiry date."}
           </p>
         )}

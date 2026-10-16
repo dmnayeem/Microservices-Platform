@@ -7,9 +7,10 @@ import { getBuyerSettings } from "@/lib/buyer-settings";
 import { FeatureLock } from "@/components/user/primitives/feature-lock";
 import { BuyPointsView } from "@/components/user/buyer/buy-points-view";
 import { toNum } from "@/lib/money";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
 
 /**
- * Turn wallet cash into task credit.
+ * Buy task credit with Ad Fund or Ad Points (owner, 2026-10-16).
  *
  * Deliberately its own page rather than a step inside task creation: a buyer
  * usually tops up once and then runs several tasks from the same pot, and
@@ -26,12 +27,13 @@ export default async function BuyPointsPage() {
     return <FeatureLock title="Credit" applyHref="/profile/become-creator" />;
   }
 
-  const [buyer, pointsPerUsd, me] = await Promise.all([
+  const [buyer, pointsPerUsd, adPointsPerUsd, me] = await Promise.all([
     getBuyerSettings(),
     getPointsPerUsd(),
+    getAdPointsPerUsd(),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { cashBalance: true, taskCreditPoints: true },
+      select: { adFundBalance: true, adPointsBalance: true, taskCreditPoints: true },
     }),
   ]);
 
@@ -46,7 +48,9 @@ export default async function BuyPointsPage() {
 
   return (
     <BuyPointsView
-      cashBalance={toNum(me?.cashBalance ?? 0)}
+      adFundBalance={toNum(me?.adFundBalance ?? 0)}
+      adPointsBalance={me?.adPointsBalance ?? 0}
+      adPointsPerUsd={adPointsPerUsd}
       taskCredit={me?.taskCreditPoints ?? 0}
       pointsPerUsd={pointsPerUsd}
       minPoints={buyer.minPurchasePoints}

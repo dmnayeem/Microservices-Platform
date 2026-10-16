@@ -106,10 +106,12 @@ const DEFAULTS: SettingsBag = {
   currency: "USD",
   points_per_usd: 1000,
   points_convert_threshold: 1000,
+  "wallet.ad_points_per_usd": 100,
   "bkash.usdToBdtRate": 123,
   vat_enabled: false,
   vat_pct: 15,
   "plans.auto_renew_enabled": true,
+  "promotions.require_review": true,
   // Buyer & task funding
   "buyer.enabled": true,
   "buyer.fee_percent": 0,
@@ -538,6 +540,22 @@ export function SystemSettingsForm({
         />
       </Row>
     ),
+    "wallet.ad_points_per_usd": () => (
+      <Row
+        settingKey="wallet.ad_points_per_usd"
+        hint={`$1 = ${Number(values["wallet.ad_points_per_usd"] ?? 100).toLocaleString()} Ad Points — 1 Ad Point = ${(1 / Math.max(1, Number(values["wallet.ad_points_per_usd"] ?? 100))).toFixed(4)} USD`}
+      >
+        <input
+          type="number"
+          min={1}
+          step={1}
+          value={Number(values["wallet.ad_points_per_usd"] ?? 100)}
+          onChange={(e) => set("wallet.ad_points_per_usd", parseInt(e.target.value))}
+          disabled={!canEdit}
+          className={numInp}
+        />
+      </Row>
+    ),
     points_convert_threshold: () => (
       <Row settingKey="points_convert_threshold">
         <input
@@ -580,6 +598,13 @@ export function SystemSettingsForm({
       <SwitchRow settingKey="plans.auto_renew_enabled"
         checked={values["plans.auto_renew_enabled"] !== false}
         onChange={(v) => set("plans.auto_renew_enabled", v)}
+        disabled={!canEdit}
+      />
+    ),
+    "promotions.require_review": () => (
+      <SwitchRow settingKey="promotions.require_review"
+        checked={values["promotions.require_review"] !== false}
+        onChange={(v) => set("promotions.require_review", v)}
         disabled={!canEdit}
       />
     ),

@@ -51,6 +51,8 @@ import {
 import { loginHref, registerHref } from "@/lib/public-catalog";
 import { readPackages, readRequirements, resolveServiceTier } from "@/lib/service-packages";
 import { ServiceOrderSheet, ServicePackagePicker } from "./service-order-panel";
+import { ShopPayChooser } from "@/components/user/shop-pay-chooser";
+import type { ShopSource } from "@/lib/pay-source";
 
 interface Listing {
   id: string;
@@ -200,6 +202,9 @@ export function ListingDetailView({
     : 0;
   const payable = Math.round((effectivePrice + taxAmount) * 100) / 100;
   const [addingToCart, setAddingToCart] = useState(false);
+  // Which balance pays for Buy now — Cash (default) or Ad Fund.
+  const [paySource, setPaySource] = useState<ShopSource>("CASH");
+  const [addFundUrl, setAddFundUrl] = useState<string | null>(null);
   const [watched, setWatched] = useState(initialWatched);
   const [watchCount, setWatchCount] = useState(listing.watchCount);
   const [watchBusy, setWatchBusy] = useState(false);
@@ -271,7 +276,7 @@ export function ListingDetailView({
     // is purchased the status flips to SOLD and the spend is final.
     const ok = await confirmDialog({
       title: service ? "Confirm order" : "Confirm purchase",
-      description: `${service ? "Order" : "Buy"} "${listing.title}"${selectedTier ? ` (${selectedTier.name})` : ""} for $${payable.toLocaleString()}${taxAmount > 0 ? ` (incl. $${taxAmount.toLocaleString()} ${listing.tax.label})` : ""}? The amount will be debited from your wallet immediately.`,
+      description: `${service ? "Order" : "Buy"} "${listing.title}"${selectedTier ? ` (${selectedTier.name})` : ""} for $${payable.toLocaleString()}${taxAmount > 0 ? ` (incl. $${taxAmount.toLocaleString()} ${listing.tax.label})` : ""}? The amount will be debited from your ${paySource === "AD_FUND" ? "Ad Fund" : "Cash"} immediately.`,
       tone: "info",
       confirmLabel: service ? "Order now" : "Buy now",
     });
@@ -281,10 +286,16 @@ export function ListingDetailView({
       const res = await fetch(`/api/marketplace/${listing.id}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
-        body: JSON.stringify(tierId ? { tier: tierId } : {}),
+        body: JSON.stringify(tierId ? { tier: tierId, paySource } : { paySource }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // 402 with `addFund` = Ad Fund shortage: keep the Add fund link on screen.
+        if (res.status === 402 && d.addFund) {
+          setAddFundUrl(d.addFund);
+          toast.error("Not enough Ad Fund", { description: d.error ?? "Add fund and try again." });
+          return;
+        }
         // 402 = wallet shortage. Surface the actual amount + nudge to /wallet.
         if (res.status === 402) {
           toast.error("Not enough in your wallet", {
@@ -644,6 +655,18 @@ export function ListingDetailView({
                     : "Ordering a service uses escrow deals, which aren't unlocked for your account yet."}
                 </p>
               </div>
+            )}
+            {!isOwner && !guest && !service && (
+              <ShopPayChooser
+                className="pt-2"
+                value={paySource}
+                onChange={(v) => {
+                  setPaySource(v);
+                  setAddFundUrl(null);
+                }}
+                amountUsd={payable}
+                addFundUrl={addFundUrl}
+              />
             )}
             {!isOwner && !guest && !service && (
               <div className="flex gap-2 pt-2">

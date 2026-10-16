@@ -15,9 +15,10 @@ import { fetchLinkPreview, firstUrl } from "@/lib/link-preview";
 import { isEmbeddableVideoUrl } from "@/lib/video-url";
 import { screenLinks } from "@/lib/link-safety";
 import { dayKey, FEED_WINDOW, streamScore } from "@/lib/feed-ranking";
+import { effectiveCountry } from "@/lib/effective-country";
+import { loadBoostViewer, pickFeedBoosts, type BoostViewer } from "@/lib/boost-feed";
 import { getUserDayContext } from "@/lib/user-day";
 import { getAdDensity } from "@/lib/ad-density";
-import { getSetting } from "@/lib/system-settings";
 import type { Prisma } from "@/generated/prisma/client";
 import { recordUserAction } from "@/lib/goal-progress";
 import { publicAudienceEpochMs } from "@/lib/public-post";
@@ -186,6 +187,9 @@ export async function GET(request: NextRequest) {
     let latestActivityAt: Date | null = null;
     // Main feed only: where the next page continues (null = this round is done).
     let nextCursor: string | null = null;
+    // Main feed only: boosted posts for this page (BoostCampaign), shown as
+    // "Sponsored" between the organic posts.
+    let sponsored: { row: FeedPostRow; campaignId: string }[] = [];
 
     if (isMainFeed) {
       // ── Endless random feed, paged by cursor ─────────────────────────────
@@ -202,7 +206,6 @@ export async function GET(request: NextRequest) {
         userId: true,
         isPinned: true,
         createdAt: true,
-        boostedUntil: true,
         lastActivityAt: true,
       } as const;
       const [windowRows, cnt] = await Promise.all([
@@ -232,21 +235,45 @@ export async function GET(request: NextRequest) {
         for (const p of mine) if (!inPool.has(p.id)) pool.push(p);
       }
 
-      // Everyone the viewer follows (a small ranking edge).
+      // Everyone the viewer follows (a small ranking edge), and the viewer's
+      // profile: their country for "my country first", the rest for boost
+      // targeting.
       let follows = new Set<string>();
+      let boostViewer: BoostViewer | null = null;
       if (viewer) {
-        const f = await prisma.follow.findMany({
-          where: { followerId: viewer },
-          select: { followingId: true },
-          take: 5000,
-        });
+        const [f, bv] = await Promise.all([
+          prisma.follow.findMany({
+            where: { followerId: viewer },
+            select: { followingId: true },
+            take: 5000,
+          }),
+          loadBoostViewer(viewer).catch(() => null),
+        ]);
         follows = new Set(f.map((x) => x.followingId));
+        boostViewer = bv;
+      }
+
+      // Authors in the viewer's country rank higher (COUNTRY_MULT). Country is
+      // the same `effectiveCountry` rule targeting uses (profile, else IP).
+      // The author list only changes when the window does, so the read caches.
+      let localAuthors: Set<string> | undefined;
+      const viewerCountry = boostViewer?.country ?? null;
+      if (viewerCountry) {
+        const authorIds = [...new Set(pool.map((p) => p.userId))].sort();
+        const authors = await prisma.user
+          .findMany({
+            where: { id: { in: authorIds } },
+            select: { id: true, country: true, lastCountry: true, signupCountry: true },
+            cacheStrategy: { ttl: 300, swr: 600 },
+          })
+          .catch(() => []);
+        localAuthors = new Set(authors.filter((a) => effectiveCountry(a) === viewerCountry).map((a) => a.id));
       }
 
       const jitterSeed = seed || dayKey(now);
       const scored = pool.map((p) => ({
         row: p,
-        score: streamScore(p, { follows, now: rankNow, seed: jitterSeed }),
+        score: streamScore(p, { follows, now: rankNow, seed: jitterSeed, localAuthors }),
       }));
       scored.sort((a, b) => {
         if (a.row.isPinned !== b.row.isPinned) return Number(b.row.isPinned) - Number(a.row.isPinned);
@@ -274,38 +301,43 @@ export async function GET(request: NextRequest) {
       const last = slice[slice.length - 1];
       nextCursor = last && start + limit < scored.length ? `${last.score.toFixed(12)}~${last.row.id}` : null;
 
-      // Boosted posts recirculate on the first page of each visit — until the
-      // viewer has seen each one `boost_max_per_user` times.
-      let boostedFirst: string[] = [];
-      if (firstPage && viewer) {
-        const boostedIds = pool.filter((p) => p.boostedUntil != null && p.boostedUntil > now).map((p) => p.id);
-        if (boostedIds.length > 0) {
-          const boostCap = Math.max(0, Number(await getSetting<number>("feed.boost_max_per_user", 20)) || 20);
-          const views = await prisma.postBoostView.findMany({
-            where: { userId: viewer, postId: { in: boostedIds } },
-            select: { postId: true, count: true },
-          });
-          const seenCount = new Map(views.map((v) => [v.postId, v.count]));
-          boostedFirst = boostedIds.filter((id) => boostCap === 0 || (seenCount.get(id) ?? 0) < boostCap).slice(0, 3);
-          for (const pid of boostedFirst) {
-            void prisma.postBoostView
-              .upsert({
-                where: { userId_postId: { userId: viewer, postId: pid } },
-                create: { userId: viewer, postId: pid, count: 1 },
-                update: { count: { increment: 1 }, lastShownAt: new Date() },
-              })
-              .catch(() => {});
-          }
-        }
-      }
-
-      // Full rows for just this page, in the ranked order.
-      const pageIds = [...boostedFirst, ...slice.map((s) => s.row.id).filter((id) => !boostedFirst.includes(id))];
-      const rows = pageIds.length
-        ? await prisma.post.findMany({ where: { ...organicWhere, id: { in: pageIds } }, select: FEED_POST_SELECT })
+      // Boosts: every page of the main feed may carry a few, drawn fairly from
+      // ALL running boosts that target this viewer (lib/boost-feed.ts). Only
+      // for a signed-in viewer: an anonymous view cannot be counted or billed.
+      const picks = boostViewer
+        ? await pickFeedBoosts({
+            viewer: boostViewer,
+            hiddenAuthors,
+            exclude: new Set(),
+            max: Math.max(1, Math.floor(limit / 10)),
+          }).catch((e) => {
+            console.error("pickFeedBoosts failed:", e);
+            return [];
+          })
         : [];
+      const sponsoredIds = new Set(picks.map((p) => p.postId));
+
+      // Full rows for just this page, in the ranked order. A post that is
+      // sponsored on this page is not also shown as an organic one.
+      const pageIds = slice.map((s) => s.row.id).filter((id) => !sponsoredIds.has(id));
+      const [rows, sRows] = await Promise.all([
+        pageIds.length
+          ? prisma.post.findMany({ where: { ...organicWhere, id: { in: pageIds } }, select: FEED_POST_SELECT })
+          : Promise.resolve([] as FeedPostRow[]),
+        picks.length
+          ? prisma.post.findMany({
+              where: { ...where, isAnnouncement: false, id: { in: [...sponsoredIds] } },
+              select: FEED_POST_SELECT,
+            })
+          : Promise.resolve([] as FeedPostRow[]),
+      ]);
       const byId = new Map(rows.map((r) => [r.id, r]));
       posts = pageIds.map((id) => byId.get(id)).filter((r): r is FeedPostRow => !!r);
+      const sById = new Map(sRows.map((r) => [r.id, r]));
+      sponsored = picks.flatMap((p) => {
+        const row = sById.get(p.postId);
+        return row ? [{ row, campaignId: p.campaignId }] : [];
+      });
       total = cnt;
     } else {
       // Filtered feeds (profile, group, hashtag, search) → chronological.
@@ -330,8 +362,11 @@ export async function GET(request: NextRequest) {
     type FeedPost = (typeof posts)[number];
     let announcements: FeedPost[] = [];
     let promoted: FeedPost[] = [];
+    // One promoted post every N organic entries (admin-configurable, default 4).
+    const promoEvery = Math.max(1, (await getAdDensity()).feedPromoInterval);
     if (firstPage && isMainFeed) {
-      [announcements, promoted] = await Promise.all([
+      const sponsoredIds = new Set(sponsored.map((s) => s.row.id));
+      const [ann, promoIds] = await Promise.all([
         prisma.post.findMany({
           where: { ...where, isAnnouncement: true },
           orderBy: [{ createdAt: "desc" }],
@@ -339,23 +374,43 @@ export async function GET(request: NextRequest) {
           select: FEED_POST_SELECT,
           cacheStrategy: { ttl: 30, swr: 120 },
         }),
+        // Ids only, then a fair draw. This used to take the newest 5 and
+        // silently drop every other promoted post: an admin could promote a
+        // sixth and it simply never appeared. Now every active promotion is in
+        // the draw, and each page load shows a different random subset.
         prisma.post.findMany({
-          select: FEED_POST_SELECT,
+          select: { id: true },
           where: {
             ...where,
             isPromoted: true,
-            OR: [{ promotedUntil: null }, { promotedUntil: { gt: now } }],
+            OR: [{ promotedUntil: null }, { promotedUntil: { gt: promoCutoff } }],
           },
           orderBy: [{ createdAt: "desc" }],
-          take: 5,
+          take: 500,
+          cacheStrategy: { ttl: 30, swr: 60 },
         }),
       ]);
+      announcements = ann;
+      const ids = promoIds.map((p) => p.id).filter((id) => !sponsoredIds.has(id));
+      for (let i = ids.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      const chosen = ids.slice(0, Math.max(1, Math.floor(limit / promoEvery)));
+      if (chosen.length > 0) {
+        const rows = await prisma.post.findMany({
+          select: FEED_POST_SELECT,
+          where: { ...where, id: { in: chosen } },
+        });
+        const byId = new Map(rows.map((r) => [r.id, r]));
+        promoted = chosen.map((id) => byId.get(id)).filter((r): r is FeedPostRow => !!r);
+      }
     }
 
     // Combine for downstream lookups (users, likes, votes). We include
     // announcements + promoted in the union so badges/likes/votes resolve
     // for them too.
-    const allPosts = [...announcements, ...posts, ...promoted];
+    const allPosts = [...announcements, ...posts, ...promoted, ...sponsored.map((s) => s.row)];
 
     const userIds = [...new Set(allPosts.map((p) => p.userId))];
     // Which reaction did the viewer leave, and what does the post's cluster look
@@ -467,11 +522,10 @@ export async function GET(request: NextRequest) {
       formatFeedPost(post, viewerCtx);
 
     // Interleave: announcements at top → organic posts with one promoted
-    // injected every N entries (admin-configurable, default 4).
-    const promoEvery = Math.max(1, (await getAdDensity()).feedPromoInterval);
+    // injected every N entries (promoEvery, above).
     const organic = posts.map(formatPost);
     const promotedFormatted = promoted.map(formatPost);
-    const interleaved: ReturnType<typeof formatPost>[] = [];
+    const interleaved: (ReturnType<typeof formatPost> & { sponsored?: boolean; boostCampaignId?: string })[] = [];
     let promoIdx = 0;
     organic.forEach((p, i) => {
       interleaved.push(p);
@@ -483,6 +537,18 @@ export async function GET(request: NextRequest) {
     while (promoIdx < promotedFormatted.length) {
       interleaved.push(promotedFormatted[promoIdx++]);
     }
+    // Sponsored (boosted) posts are spread evenly through the page: never all
+    // on top, never first. `boostCampaignId` is what the card reports its
+    // impression / view / click against (hooks/use-boost-tracking.ts).
+    const base = interleaved.length;
+    sponsored.forEach((sp, j) => {
+      const at = Math.max(1, Math.round(((j + 1) * base) / (sponsored.length + 1)) + j);
+      interleaved.splice(Math.min(at, interleaved.length), 0, {
+        ...formatPost(sp.row),
+        sponsored: true,
+        boostCampaignId: sp.campaignId,
+      });
+    });
 
     const formattedPosts = [
       ...announcements.map(formatPost),

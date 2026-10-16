@@ -890,11 +890,12 @@ export function UserEditForm({
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Approving KYC unlocks higher withdrawal limits and lets you tick the 🔵 Blue Badge below.
+                  Approving KYC unlocks higher withdrawal limits{canGrantBadge ? " and lets you tick the 🔵 Blue Badge below" : ""}.
                 </p>
               </section>
 
               {/* Section 3 — Blue Verified */}
+              {canGrantBadge && (
               <section
                 className={cn(
                   "rounded-xl border p-4 space-y-3",
@@ -903,13 +904,12 @@ export function UserEditForm({
                     : "border-slate-700 bg-slate-900/50"
                 )}
               >
-                {/* Only with users.grant_badge (owner, 2026-10-16): the box was
-                    shown to every editor and the save then failed. */}
-                <label className={cn("flex items-center gap-3", canGrantBadge ? "cursor-pointer" : "cursor-not-allowed opacity-70")}>
+                {/* Only with users.grant_badge (owner, 2026-10-16): hidden from
+                    every other editor, and the only copy on the form. */}
+                <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.isBlueVerified}
-                    disabled={!canGrantBadge}
                     onChange={(e) => set("isBlueVerified", e.target.checked)}
                     className="w-5 h-5 rounded bg-slate-800 border-slate-600 text-sky-500 focus:ring-sky-500"
                   />
@@ -918,9 +918,7 @@ export function UserEditForm({
                       🔵 Blue Badge Verified
                     </p>
                     <p className="text-xs text-slate-400">
-                      {canGrantBadge
-                        ? "Shows the blue checkmark next to the user's name across the platform."
-                        : "Only the super admin — or an admin they allow under Roles → “Grant blue badge” — can change this."}
+                      Shows the blue checkmark next to the user&apos;s name across the platform.
                     </p>
                   </div>
                 </label>
@@ -1015,6 +1013,7 @@ export function UserEditForm({
                   </div>
                 )}
               </section>
+              )}
 
               {/* Section — Two-Factor Authentication (admin can only disable) */}
               <section className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
@@ -1178,20 +1177,6 @@ export function UserEditForm({
                   </p>
                 </Field>
               </div>
-              <label className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600">
-                <input
-                  type="checkbox"
-                  checked={form.isBlueVerified}
-                  onChange={(e) => set("isBlueVerified", e.target.checked)}
-                  className="rounded bg-slate-800 border-slate-600 text-blue-500 focus:ring-blue-500"
-                />
-                <span className="text-sm text-white">
-                  🔵 Blue Badge Verified
-                </span>
-                <span className="ml-auto text-xs text-slate-500">
-                  Visible next to user&apos;s name
-                </span>
-              </label>
             </div>
           )}
 

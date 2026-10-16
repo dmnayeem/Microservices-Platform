@@ -1,14 +1,15 @@
 import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
-import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
-import { getPointsPerUsd, usdToPoints } from "@/lib/economy";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { PlatformPayError, chargePlatform } from "@/lib/platform-pay";
+import { quotePlatformPrice, type PaySource } from "@/lib/pay-source";
 import { getSetting } from "@/lib/system-settings";
 import { toNum } from "@/lib/money";
 
 /**
  * Ad Credits — a non-withdrawable, USD-denominated ad-spend wallet
- * (`User.adCreditBalance`, 1 credit = $1). Advertisers buy credit with wallet
- * cash or points (or admins grant it); campaign budgets are funded FROM credit;
+ * (`User.adCreditBalance`, 1 credit = $1). Advertisers buy credit with Ad Fund
+ * or Ad Points (or admins grant it); campaign budgets are funded FROM credit;
  * per-click billing draws the campaign budget down (unchanged). Every movement
  * is journalled to `AdCreditLedger`.
  */
@@ -82,56 +83,52 @@ export async function creditAdCreditTx(
   return bal;
 }
 
-/** Buy ad credit with wallet cash (1:1) or points (usdToPoints), + optional bonus %. */
+/**
+ * Buy ad credit (1 credit = $1) with Ad Fund (the dollars) or Ad Points (at
+ * the admin rate), + optional bonus %. Owner, 2026-10-16: Cash and Earn Points
+ * no longer buy ad credit. The debit + its ledger row are written by
+ * ad-wallet.ts (`adfund_|adpts_adcredit_buy_*`, purpose "adcredit") — finance
+ * treats it as internal, because the revenue is the ad SPEND (AdDailyStat).
+ */
 export async function buyAdCredits(opts: {
   userId: string;
   amountUsd: number;
-  currency: "cash" | "points";
-}): Promise<CreditResult> {
-  const { userId, currency } = opts;
+  from: PaySource;
+}): Promise<CreditResult & { addFund?: string }> {
+  const { userId, from } = opts;
   const amountUsd = round2(opts.amountUsd);
   if (!Number.isFinite(amountUsd) || amountUsd < 5) {
     return { ok: false, error: "Minimum is $5.", status: 400 };
   }
   const bonus = await creditBonusPct();
   const credited = round6(amountUsd * (1 + bonus / 100));
-  const ppu = await getPointsPerUsd();
-  const pointsCost = usdToPoints(amountUsd, ppu);
+  const adRate = await getAdPointsPerUsd();
+  const quote = quotePlatformPrice({ usd: amountUsd }, adRate);
 
   try {
     const balance = await prisma.$transaction(async (tx) => {
-      if (currency === "cash") {
-        const d = await tx.user.updateMany({
-          where: { id: userId, cashBalance: { gte: amountUsd } },
-          data: { cashBalance: { decrement: amountUsd }, adCreditBalance: { increment: credited } },
-        });
-        if (d.count === 0) throw new Error("INSUFFICIENT");
-      } else {
-        const d = await tx.user.updateMany({
-          where: { id: userId, pointsBalance: { gte: pointsCost } },
-          data: { pointsBalance: { decrement: pointsCost }, adCreditBalance: { increment: credited } },
-        });
-        if (d.count === 0) throw new Error("INSUFFICIENT");
-      }
+      // Per-occurrence by design: an advertiser may top up the same amount
+      // as often as they like, so the reference is keyed on the instant.
+      const paid = await chargePlatform(tx, {
+        userId,
+        quote,
+        from,
+        description: `Ad credits — ${usd(credited)}`,
+        reference: `adcredit_buy_${userId}_${Date.now()}`,
+        purpose: "adcredit",
+        metadata: { creditUsd: credited, bonusPct: bonus },
+        returnTo: "/advertiser",
+      });
+      await tx.user.update({ where: { id: userId }, data: { adCreditBalance: { increment: credited } } });
       const u = await tx.user.findUnique({ where: { id: userId }, select: { adCreditBalance: true } });
       const bal = toNum(u?.adCreditBalance ?? 0);
-      await tx.transaction.create({
-        data: {
-          userId,
-          type: TransactionType.AD_CREDIT_PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: currency === "cash" ? -amountUsd : 0,
-          points: currency === "points" ? -pointsCost : 0,
-          description: `Ad credits — ${usd(credited)}`,
-          // Per-occurrence by design. An advertiser may top up the same
-          // amount of ad credit as often as they like.
-          // A deterministic key would make `Transaction @@unique([userId, reference])`
-          // reject the second one, so this stays keyed on the instant it happened.
-          reference: `adcredit_buy_${userId}_${Date.now()}`,
-          metadata: { creditUsd: credited, currency, bonusPct: bonus },
-        },
+      await journal(tx, userId, credited, "PURCHASE", bal, undefined, {
+        paidFrom: from,
+        bonusPct: bonus,
+        // USD value actually paid (Ad Points at the rate), never the bonused credit.
+        paidUsd: from === "AD_FUND" ? paid.usd : round6(paid.adPoints / paid.rate),
+        ...(from === "AD_POINTS" ? { adPoints: paid.adPoints } : {}),
       });
-      await journal(tx, userId, credited, "PURCHASE", bal, undefined, { currency, bonusPct: bonus, paidUsd: amountUsd });
       return bal;
     });
     // A receipt for the money that just moved, so every payment ends up with a
@@ -149,7 +146,7 @@ export async function buyAdCredits(opts: {
           advertiserId: userId,
           kind: "RECEIPT",
           paid: true,
-          paymentRef: currency === "points" ? "Points" : "Wallet balance",
+          paymentRef: from === "AD_POINTS" ? "Ad Points" : "Ad Fund",
           lines: [
             {
               description:
@@ -172,12 +169,8 @@ export async function buyAdCredits(opts: {
 
     return { ok: true, adCreditBalance: balance };
   } catch (err) {
-    if (err instanceof Error && err.message === "INSUFFICIENT") {
-      return {
-        ok: false,
-        error: currency === "cash" ? "Insufficient wallet cash." : "Insufficient points.",
-        status: 402,
-      };
+    if (err instanceof PlatformPayError) {
+      return { ok: false, error: err.userMessage, status: 402, addFund: err.addFund };
     }
     throw err;
   }

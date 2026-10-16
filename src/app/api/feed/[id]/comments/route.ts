@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { planFeatureGate } from "@/lib/plan-gate";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +6,7 @@ import { requireActiveUser } from "@/lib/require-active";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { recordUserAction } from "@/lib/goal-progress";
+import { chargeBoostEngagement } from "@/lib/boost-feed";
 import { deleteCommentCascade } from "@/lib/content-delete";
 import { screenLinks } from "@/lib/link-safety";
 
@@ -270,6 +271,11 @@ export async function POST(
         );
       }
     }
+
+    // A running boost on this post pays for the comment when the commenter
+    // reached it through the boost (once per viewer per boost).
+    const commenterId = session.user.id;
+    after(() => chargeBoostEngagement(id, commenterId, "COMMENT"));
 
     return NextResponse.json({
       comment: {

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { toNum } from "@/lib/money";
-import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
+import { creditAdFund } from "@/lib/ad-wallet";
 import { deliverToUser } from "@/lib/notify";
 import { getPaymentProvider } from "@/lib/payments";
 
@@ -77,20 +77,16 @@ export async function POST(request: NextRequest) {
           data: { status: "APPROVED", reviewedAt: new Date() },
         });
         if (flip.count === 0) return false;
-        await tx.user.update({
-          where: { id: deposit.userId },
-          data: { cashBalance: { increment: deposit.amount } },
-        });
-        await tx.transaction.create({
-          data: {
-            userId: deposit.userId,
-            type: TransactionType.DEPOSIT,
-            status: TransactionStatus.COMPLETED,
-            points: 0,
-            amount: deposit.amount,
-            description: `Deposit via ${provider.label}`,
-            reference: `deposit_${deposit.id}`,
-          },
+        // Deposits land in Ad Fund (owner, 2026-10-16), never Cash: creditAdFund
+        // is that balance's only writer and writes the DEPOSIT row here, under
+        // `adfund_deposit_<id>` — still unique per member, so still the backstop.
+        await creditAdFund(tx, {
+          userId: deposit.userId,
+          usd: toNum(deposit.amount),
+          purpose: "deposit",
+          description: `Add fund via ${provider.label}`,
+          reference: `deposit_${deposit.id}`,
+          metadata: { depositId: deposit.id, provider: provider.label },
         });
         return true;
       });
@@ -98,7 +94,7 @@ export async function POST(request: NextRequest) {
         void deliverToUser({ category: "money",
           userId: deposit.userId,
           title: "Deposit approved",
-          message: `${usd(deposit.amount)} has been added to your balance.`,
+          message: `${usd(deposit.amount)} has been added to your Ad Fund.`,
           link: "/wallet",
         });
       }

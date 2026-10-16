@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import { writeAudit } from "@/lib/audit";
-import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
+import { creditAdFund } from "@/lib/ad-wallet";
 import { deliverToUser } from "@/lib/notify";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 
@@ -16,7 +16,7 @@ interface RouteParams {
 const ALREADY_REVIEWED =
   "This deposit was already reviewed by someone else. Reload to see its current status.";
 
-/** Admin: approve (credit cashBalance) or reject a pending deposit. */
+/** Admin: approve (credit Ad Fund) or reject a pending deposit. */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user) {
@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true });
   }
 
-  // Approve → credit cash balance + record transaction.
+  // Approve → credit Ad Fund + record transaction.
   //
   // The status predicate on the deposit update is what makes this idempotent —
   // the comment here used to claim "idempotent via status guard" above a plain
@@ -129,29 +129,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       });
       if (claimed.count === 0) throw new Error("ALREADY_REVIEWED");
 
-      await tx.user.update({
-        where: { id: deposit.userId },
-        data: { cashBalance: { increment: creditedAmount } },
-      });
-      await tx.transaction.create({
-        data: {
-          userId: deposit.userId,
-          type: TransactionType.DEPOSIT,
-          status: TransactionStatus.COMPLETED,
-          points: 0,
-          amount: creditedAmount,
-          description: `Deposit via ${deposit.method}`,
-          // Unchanged, and the whole idempotency story: a deposit already
-          // credited collides here whatever amount the second attempt names.
-          reference: `deposit_${deposit.id}`,
+      // Deposits land in Ad Fund (owner, 2026-10-16): spendable on platform
+      // items and shop purchases, never withdrawable. creditAdFund is the only
+      // writer of that balance and writes the DEPOSIT ledger row in this same
+      // transaction.
+      await creditAdFund(tx, {
+        userId: deposit.userId,
+        usd: creditedAmount,
+        purpose: "deposit",
+        description: `Add fund via ${deposit.method}`,
+        // Unchanged, and the whole idempotency story: a deposit already
+        // credited collides here (stored as `adfund_deposit_<id>`) whatever
+        // amount the second attempt names.
+        reference: `deposit_${deposit.id}`,
+        metadata: {
+          depositId: deposit.id,
           ...(wasCorrected
-            ? {
-                metadata: {
-                  correctedBy: session.user.id,
-                  requestedAmount,
-                  creditedAmount,
-                },
-              }
+            ? { correctedBy: session.user.id, requestedAmount, creditedAmount }
             : {}),
         },
       });
@@ -161,8 +155,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           type: "WALLET",
           title: "Deposit approved",
           message: wasCorrected
-            ? `${usd(creditedAmount)} has been added to your balance. You submitted ${usd(requestedAmount)}; an admin adjusted it to the amount actually received.`
-            : `${usd(creditedAmount)} has been added to your balance.`,
+            ? `${usd(creditedAmount)} has been added to your Ad Fund. You submitted ${usd(requestedAmount)}; an admin adjusted it to the amount actually received.`
+            : `${usd(creditedAmount)} has been added to your Ad Fund.`,
         },
       });
     });
@@ -180,8 +174,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     userId: deposit.userId,
     title: "Deposit approved",
     message: wasCorrected
-      ? `${usd(creditedAmount)} has been added to your balance (adjusted from the ${usd(requestedAmount)} you submitted).`
-      : `${usd(creditedAmount)} has been added to your balance.`,
+      ? `${usd(creditedAmount)} has been added to your Ad Fund (adjusted from the ${usd(requestedAmount)} you submitted).`
+      : `${usd(creditedAmount)} has been added to your Ad Fund.`,
     link: "/wallet",
   });
 
@@ -222,7 +216,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     entity: "Deposit",
     entityId: id,
     targetUserId: deposit.userId,
-    summary: `Approved a ${usd(creditedAmount)} deposit (credited cash)${wasCorrected ? ` — user submitted ${usd(requestedAmount)}` : ""}`,
+    summary: `Approved a ${usd(creditedAmount)} deposit (credited Ad Fund)${wasCorrected ? ` — user submitted ${usd(requestedAmount)}` : ""}`,
     meta: {
       amount: creditedAmount,
       requestedAmount,

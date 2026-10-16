@@ -15,6 +15,8 @@ import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { ShopPayChooser } from "@/components/user/shop-pay-chooser";
+import type { ShopSource } from "@/lib/pay-source";
 
 interface OfferRow {
   id: string;
@@ -42,6 +44,9 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
+  // Taking a seller's counter pays at once — from Cash (default) or Ad Fund.
+  const [paySource, setPaySource] = useState<ShopSource>("CASH");
+  const [addFundUrl, setAddFundUrl] = useState<string | null>(null);
   const [counterDraft, setCounterDraft] = useState<{
     offerId: string;
     amount: string;
@@ -108,11 +113,16 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(
+            payload.action === "accept_counter" ? { ...payload, paySource } : payload
+          ),
         }
       );
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
+      if (!r.ok) {
+        if (r.status === 402 && d.addFund) setAddFundUrl(d.addFund);
+        throw new Error(d.error ?? `HTTP ${r.status}`);
+      }
       toast.success(
         payload.action === "accept"
           ? "Offer accepted — listing sold"
@@ -208,6 +218,10 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
             maxLength={500}
             className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-emerald-500"
           />
+          <p className="text-[11px] text-(--app-ink-3)">
+            If the seller accepts, it&apos;s paid from your Cash — or from your Ad Fund if your Cash
+            doesn&apos;t cover it.
+          </p>
           <button
             type="button"
             onClick={() => setShowForm(false)}
@@ -306,6 +320,18 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                     <p className="text-xs text-(--app-ink-2) mt-1">
                       &ldquo;{o.counterMessage}&rdquo;
                     </p>
+                  )}
+                  {!isOwner && o.isOwnOffer && (
+                    <ShopPayChooser
+                      className="mt-2"
+                      value={paySource}
+                      onChange={(v) => {
+                        setPaySource(v);
+                        setAddFundUrl(null);
+                      }}
+                      amountUsd={o.counterAmount}
+                      addFundUrl={addFundUrl}
+                    />
                   )}
                 </div>
               )}

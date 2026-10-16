@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import type { LedgerDb } from "@/lib/ledger";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { PlatformPayError, chargePlatform } from "@/lib/platform-pay";
+import { quotePlatformPrice, type PaySource } from "@/lib/pay-source";
 
 /**
  * Task credit — points bought to fund tasks, kept strictly apart from points
@@ -19,7 +22,8 @@ import type { LedgerDb } from "@/lib/ledger";
  * the same time.
  *
  * So `taskCreditPoints` has exactly one way in and one way out:
- *   IN  — `purchaseTaskCredit`, paid for with wallet cash.
+ *   IN  — `purchaseTaskCredit`, paid for with Ad Fund or Ad Points (owner,
+ *         2026-10-16; it used to be wallet cash).
  *   OUT — `chargeTaskCompletion`, one approved completion at a time.
  *
  * Credit is charged **as it is used**, not reserved when the task is created.
@@ -51,20 +55,29 @@ export const TASK_SPEND_REF = "taskspend_";
 
 export type PurchaseResult =
   | { ok: true; points: number; costUsd: number; newBalance: number }
-  | { ok: false; reason: "INSUFFICIENT_CASH" | "TOO_SMALL" | "TOO_LARGE"; shortByUsd?: number };
+  | {
+      ok: false;
+      reason: "INSUFFICIENT_CASH" | "TOO_SMALL" | "TOO_LARGE";
+      shortByUsd?: number;
+      /** The user-facing shortfall message and Add fund link (INSUFFICIENT_CASH). */
+      message?: string;
+      addFund?: string;
+    };
 
 /**
- * Buy task credit with wallet cash.
+ * Buy task credit with Ad Fund (the dollars) or Ad Points (at the admin rate).
  *
- * Atomic and no-overdraft: the cash debit is a CAS (`cashBalance >= cost`), so
- * two concurrent purchases cannot both pass on the same balance. The credit and
- * the ledger row are written in the same transaction, so a crash cannot leave
- * the user charged with nothing to show for it.
+ * Atomic and no-overdraft: the debit is ad-wallet.ts's CAS (`balance >= cost`),
+ * so two concurrent purchases cannot both pass on the same balance. The credit
+ * and the ledger row (`adfund_|adpts_taskcredit_buy_*`) are written in the same
+ * transaction, so a crash cannot leave the user charged with nothing to show.
+ * (`INSUFFICIENT_CASH` keeps its name for the route; it now means the chosen
+ * spend balance was short.)
  */
 export async function purchaseTaskCredit(
   userId: string,
   points: number,
-  opts: { minPoints: number; maxPoints: number }
+  opts: { minPoints: number; maxPoints: number; from: PaySource }
 ): Promise<PurchaseResult> {
   const amount = Math.floor(points);
   if (!Number.isFinite(amount) || amount < opts.minPoints) {
@@ -72,33 +85,27 @@ export async function purchaseTaskCredit(
   }
   if (amount > opts.maxPoints) return { ok: false, reason: "TOO_LARGE" };
 
-  const rate = await getPointsPerUsd();
+  // Task credit pays workers Earn Points, so it is priced at the Earn Points
+  // rate; that USD price is what Ad Fund pays (Ad Points at their rate).
+  const [rate, adRate] = await Promise.all([getPointsPerUsd(), getAdPointsPerUsd()]);
   const costUsd = amount / rate;
+  const quote = quotePlatformPrice({ usd: costUsd }, adRate);
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const debited = await tx.user.updateMany({
-        where: { id: userId, cashBalance: { gte: costUsd } },
-        data: {
-          cashBalance: { decrement: costUsd },
-          taskCreditPoints: { increment: amount },
-        },
+      await chargePlatform(tx, {
+        userId,
+        quote,
+        from: opts.from,
+        description: `Task credit — ${amount.toLocaleString()} points`,
+        reference: `${TASK_CREDIT_PURCHASE_REF}${userId}_${Date.now()}`,
+        purpose: "taskcredit",
+        metadata: { kind: "task_credit_purchase", points: amount, pointsPerUsd: rate },
+        returnTo: "/buy-points",
       });
-      if (debited.count === 0) throw new Error("INSUFFICIENT_CASH");
-
-      await tx.transaction.create({
-        data: {
-          userId,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: -costUsd,
-          // `points` records what was bought. It is NOT an earning: the row is
-          // a PURCHASE, and nothing reads it as income.
-          points: amount,
-          description: `Task credit — ${amount.toLocaleString()} points`,
-          reference: `${TASK_CREDIT_PURCHASE_REF}${userId}_${Date.now()}`,
-          metadata: { kind: "task_credit_purchase", points: amount, rate },
-        },
+      await tx.user.update({
+        where: { id: userId },
+        data: { taskCreditPoints: { increment: amount } },
       });
 
       const after = await tx.user.findUnique({
@@ -113,16 +120,19 @@ export async function purchaseTaskCredit(
       };
     });
   } catch (e) {
-    if (e instanceof Error && e.message === "INSUFFICIENT_CASH") {
+    if (e instanceof PlatformPayError) {
       const me = await prisma.user.findUnique({
         where: { id: userId },
-        select: { cashBalance: true },
+        select: { adFundBalance: true, adPointsBalance: true },
       });
-      const have = Number(me?.cashBalance ?? 0);
+      const haveUsd =
+        opts.from === "AD_FUND" ? Number(me?.adFundBalance ?? 0) : (me?.adPointsBalance ?? 0) / adRate;
       return {
         ok: false,
         reason: "INSUFFICIENT_CASH",
-        shortByUsd: Math.max(0, costUsd - have),
+        shortByUsd: Math.max(0, costUsd - haveUsd),
+        message: e.userMessage,
+        addFund: e.addFund,
       };
     }
     throw e;

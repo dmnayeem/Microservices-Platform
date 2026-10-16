@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { BALANCE_INFO } from "@/lib/pay-source";
 import {
   Wallet,
   Users,
@@ -103,6 +104,13 @@ export interface WalletViewProps {
   withdrawalFeePct?: number;
   /** Recent withdrawals: the status cards and the record on the Withdraw tab. */
   withdrawals?: MyWithdrawal[];
+  /** Spend-only balances (src/lib/ad-wallet.ts). */
+  adPointsBalance?: number;
+  adFundBalance?: number;
+  /** Admin rate: $1 = N Ad Points. */
+  adPointsPerUsd?: number;
+  /** The member's effective minimum withdrawal — gates Earn → Ad Points. */
+  minWithdrawalUsd?: number;
 }
 
 type Tab = "balance" | "history" | "deposits" | "referral" | "withdraw";
@@ -157,7 +165,12 @@ export function WalletView(props: WalletViewProps) {
         pointsPerUsd={pointsPerUsd}
         addFundsHref="/deposit"
         withdrawHref="/withdrawal"
+        adPoints={props.adPointsBalance ?? 0}
+        adFund={props.adFundBalance ?? 0}
+        convertAdPointsHref="/wallet?tab=balance#convert-ad-points"
       />
+
+      <BalancesExplainer />
 
       {/* Pending (orange), paid (green) and rejected (red, with the reason). */}
       <WithdrawalStatusCards
@@ -218,6 +231,8 @@ export function WalletView(props: WalletViewProps) {
           convertThreshold={props.convertThreshold ?? 10000}
           pointsPerUsd={pointsPerUsd}
           onSeeAll={() => setTab("history")}
+          adPointsPerUsd={props.adPointsPerUsd ?? 100}
+          minWithdrawalUsd={props.minWithdrawalUsd ?? 0}
         />
       )}
 
@@ -386,6 +401,129 @@ function ConvertCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// The four balances, one line each (owner, 2026-10-16)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BalancesExplainer() {
+  const rows = [BALANCE_INFO.EARN_POINTS, BALANCE_INFO.CASH, BALANCE_INFO.AD_POINTS, BALANCE_INFO.AD_FUND];
+  return (
+    <details className="app-card group">
+      <summary className="t-section text-white cursor-pointer list-none flex items-center justify-between gap-2">
+        What each balance is for
+        <span className="t-meta text-(--app-ink-3) group-open:hidden">Show</span>
+      </summary>
+      <ul className="mt-3 space-y-2">
+        {rows.map((r) => (
+          <li key={r.name} className="t-meta text-(--app-ink-2)">
+            <span className="font-bold text-white">{r.name}</span> — {r.meaning}
+          </li>
+        ))}
+      </ul>
+      <Link href="/deposit" className="mt-3 inline-flex t-meta font-bold text-(--app-accent-ink) hover:underline">
+        Add fund →
+      </Link>
+    </details>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Convert Earn Points → Ad Points
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AdPointsConvertCard({
+  points,
+  pointsPerUsd,
+  adPointsPerUsd,
+  minWithdrawalUsd,
+}: {
+  points: number;
+  pointsPerUsd: number;
+  adPointsPerUsd: number;
+  minWithdrawalUsd: number;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [amountStr, setAmountStr] = useState<string>(String(points));
+  const ppu = pointsPerUsd || 1;
+  // Same gate as the server (convertEarnToAdPoints): the WHOLE Earn balance
+  // must be worth at least the member's minimum withdrawal.
+  const eligible = points / ppu >= minWithdrawalUsd;
+  const amount = Math.min(points, Math.max(0, Math.floor(Number(amountStr) || 0)));
+  // Mirrors the server: Earn Points → USD → Ad Points, rounded down.
+  const previewAd = Math.floor((amount / ppu) * adPointsPerUsd);
+  const valid = eligible && amount > 0 && previewAd >= 1;
+
+  if (points <= 0) return null;
+
+  const convert = async () => {
+    if (!valid || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/wallet/convert-ad-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+        body: JSON.stringify({ points: amount }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      toast.success(d.message ?? "Converted to Ad Points");
+      router.refresh();
+    } catch (err) {
+      toast.error("Couldn't convert", { description: err instanceof Error ? err.message : "Try again" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div id="convert-ad-points" className="app-card scroll-mt-20">
+      <p className="t-section text-white flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-(--app-ink-3) shrink-0" />
+        Convert to Ad Points
+      </p>
+      <p className="t-meta text-(--app-ink-3) mt-1">
+        Ad Points pay for boosts, ads, tasks, lottery, plans and the badge. They can&apos;t be withdrawn
+        or turned back into Earn Points. Rate: {pointsPerUsd.toLocaleString()} Earn Points = $1 ={" "}
+        {adPointsPerUsd.toLocaleString()} Ad Points.
+      </p>
+      {eligible ? (
+        <>
+          <div className="mt-3 flex items-stretch gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amountStr}
+              onChange={(e) => setAmountStr(e.target.value.replace(/[^\d]/g, "").replace(/^0+(?=\d)/, ""))}
+              aria-label="Earn Points to convert to Ad Points"
+              className="app-tap-row flex-1 min-w-0 px-3.5 bg-(--app-surface-2) border border-(--app-line) rounded-(--app-r-control) text-(--app-ink) text-sm font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
+            />
+            <button
+              onClick={convert}
+              disabled={!valid || busy}
+              className="app-accent app-press app-tap-row shrink-0 inline-flex items-center gap-1.5 px-4 rounded-(--app-r-control) text-xs font-extrabold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
+              Convert
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-2 t-meta mt-2">
+            <span className="text-(--app-ink-2) min-w-0">Earn Points {points.toLocaleString()}</span>
+            <span className="t-in font-bold tabular-nums shrink-0">
+              You get {previewAd.toLocaleString()} Ad Points
+            </span>
+          </div>
+        </>
+      ) : (
+        <p className="t-meta mt-3 text-(--app-ink-2)">
+          Opens once your Earn Points are worth your minimum withdrawal ({usd(minWithdrawalUsd)}). You
+          have {usd(points / ppu)}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Balance tab
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -401,6 +539,8 @@ function BalanceTab({
   convertThreshold,
   pointsPerUsd,
   onSeeAll,
+  adPointsPerUsd,
+  minWithdrawalUsd,
 }: {
   totalEarnings: number;
   totalWithdrawn: number;
@@ -413,6 +553,8 @@ function BalanceTab({
   convertThreshold: number;
   pointsPerUsd: number;
   onSeeAll: () => void;
+  adPointsPerUsd: number;
+  minWithdrawalUsd: number;
 }) {
   // Aggregate earnings by type for the breakdown chart. Social credits are
   // generic EARNING rows tagged with a `social_` reference — split them out so
@@ -429,6 +571,12 @@ function BalanceTab({
   return (
     <div className="space-y-4">
       <ConvertCard points={points} threshold={convertThreshold} pointsPerUsd={pointsPerUsd} />
+      <AdPointsConvertCard
+        points={points}
+        pointsPerUsd={pointsPerUsd}
+        adPointsPerUsd={adPointsPerUsd}
+        minWithdrawalUsd={minWithdrawalUsd}
+      />
 
       {/* Points earned — the same three windows as the dashboard. */}
       <div className="app-card">

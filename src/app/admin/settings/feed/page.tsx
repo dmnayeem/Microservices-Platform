@@ -67,10 +67,7 @@ export default async function FeedSettingsPage({
     };
     body = <FeedWidgetsForm initial={initial} canEdit={canEdit} />;
   } else if (tab === "general") {
-    const initial = await loadSettingValues([
-      ...keysHomedAt(FEED_HOME.href),
-      "feed.boost_max_per_user",
-    ]);
+    const initial = await loadSettingValues([...keysHomedAt(FEED_HOME.href)]);
     body = <FeedGeneralPanel initial={initial} canEdit={canEdit} />;
   } else {
     // Shared with the API's GET so the two can't drift.

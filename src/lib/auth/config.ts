@@ -87,6 +87,9 @@ export const authConfig: NextAuthConfig = {
         "/forgot-password",
         // A suspended user appeals here with a signed link — no session.
         "/appeal",
+        // "Connect RevType" popup from the game website — the page itself
+        // sends a signed-out visitor to /login and back (relative callback).
+        "/connect/games",
         // How to report abuse / copyright, with a public report form.
         "/abuse",
         "/reset-password",
@@ -174,6 +177,7 @@ export const authConfig: NextAuthConfig = {
         "/api/spaces/media/", // ad creative proxy (images for logged-out visitors) — only proxies URLs stored on an Ad row
         "/api/spaces/m/", // ad viewability beacon (exact path) — signed single-use serve token, IVT-judged, in-memory limited
         "/api/spaces/go/", // ad click redirect (exact path) — destination is the ad's stored URL only; logged-out clicks are real
+        "/api/games/ext/", // game website (SDK standalone) — signed connect token + allowed-origin check, no cookies
       ];
       const isPublicApiRoute =
         publicApiPrefixes.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p)) ||

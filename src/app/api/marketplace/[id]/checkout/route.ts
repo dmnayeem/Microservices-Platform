@@ -36,6 +36,9 @@ import {
   computeCommissionTax,
 } from "@/lib/marketplace-selling";
 import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
+import { debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
+import { parseShopSource } from "@/lib/pay-source";
+import { adFundShortResponse, shopBalance } from "@/lib/shop-pay";
 
 // POST /api/marketplace/:id/checkout
 //
@@ -58,6 +61,9 @@ export async function POST(
   const pageHidden = await assertPageVisible(session.user.id, "/marketplace");
   if (pageHidden) return pageHidden;
   return withIdempotency(_request, session.user.id, async () => {
+  // For the Ad Fund shortfall reply in the catch below.
+  let adFundNeed = 0;
+  let returnTo = "/marketplace";
   try {
     if (!(await userCanFeature(session.user.id, "marketplace"))) {
       return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
@@ -133,7 +139,10 @@ export async function POST(
     // feature off, or on a listing with no tiers, this is simply the listing
     // price — so turning the switch off cannot strand a listing at a price
     // nobody is able to pay.
-    const body = (await _request.json().catch(() => ({}))) as { tier?: string };
+    const body = (await _request.json().catch(() => ({}))) as { tier?: string; paySource?: unknown };
+    // Cash (default) or Ad Fund — never Ad Points / Earn Points.
+    const paySource = parseShopSource(body?.paySource);
+    returnTo = `/marketplace/${id}`;
     const tiersEnabled = await getLicenseTiersEnabled();
     const hold = await getPayoutHoldConfig();
     const taxCfg = await getMarketplaceTaxConfig();
@@ -168,7 +177,13 @@ export async function POST(
     if (!buyer) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    if (lt(buyer.cashBalance, charge)) {
+    adFundNeed = totalNum;
+    if (paySource === "AD_FUND") {
+      const have = await shopBalance(userId, "AD_FUND");
+      if (have == null || lt(have, charge)) {
+        return adFundShortResponse({ needUsd: totalNum, haveUsd: have, returnTo });
+      }
+    } else if (lt(buyer.cashBalance, charge)) {
       return NextResponse.json(
         {
           error: "Insufficient wallet balance",
@@ -301,12 +316,32 @@ export async function POST(
       // transaction. The listing-status flip guards the same listing being sold
       // twice; it does nothing to guard the wallet against a second purchase on
       // a different listing at the same moment.
-      const paid = await tx.user.updateMany({
-        where: { id: userId, cashBalance: { gte: charge } },
-        data: { cashBalance: { decrement: charge } },
-      });
-      if (paid.count === 0) {
-        throw new Error("INSUFFICIENT_BALANCE");
+      // Ad Fund: debitAdFund is the CAS debit AND the buyer's ledger row
+      // (`adfund_marketplace_<id>_<purchaseId>`), so the Cash row below is
+      // skipped — exactly one buyer row per payment.
+      if (paySource === "AD_FUND") {
+        await debitAdFund(tx, {
+          userId,
+          usd: totalNum,
+          reference: `marketplace_${id}_${p.id}`,
+          description: `Marketplace — "${listing.title}"`,
+          purpose: "marketplace",
+          metadata: {
+            listingId: id,
+            purchaseId: p.id,
+            commissionBps: bps,
+            platformFee: fee,
+            sellerAmount,
+          },
+        });
+      } else {
+        const paid = await tx.user.updateMany({
+          where: { id: userId, cashBalance: { gte: charge } },
+          data: { cashBalance: { decrement: charge } },
+        });
+        if (paid.count === 0) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
       }
       // Pay the seller now, or hold it. With the hold off this is the exact
       // update it replaces; with it on the money waits in a payout row, so a
@@ -370,8 +405,8 @@ export async function POST(
         });
       }
 
-      // Ledger
-      await tx.transaction.create({
+      // Ledger (an Ad Fund payment's row was written by debitAdFund above)
+      if (paySource === "CASH") await tx.transaction.create({
         data: {
           userId,
           type: TransactionType.PURCHASE,
@@ -424,8 +459,8 @@ export async function POST(
           userId,
           type: NotificationType.SYSTEM,
           title: "Purchase complete 🎉",
-          message: `You bought "${listing.title}" for $${priceNum.toLocaleString()}.`,
-          data: { listingId: id, purchaseId: purchase.id, amount: charge },
+          message: `You bought "${listing.title}" for $${priceNum.toLocaleString()}${paySource === "AD_FUND" ? " from your Ad Fund" : ""}.`,
+          data: { listingId: id, purchaseId: purchase.id, amount: charge, paySource },
         },
       }),
       prisma.notification.create({
@@ -455,6 +490,7 @@ export async function POST(
             fee,
             sellerAmount,
             commissionBps: bps,
+            paySource,
           },
         },
       }),
@@ -465,6 +501,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       purchaseId: purchase.id,
+      paySource,
       amount: priceNum,
       fee,
       sellerAmount: sellerNet,
@@ -493,6 +530,11 @@ export async function POST(
         },
         { status: 409 }
       );
+    }
+    // Ad Fund's CAS matched nothing — spent between the check above and the
+    // transaction. Rolled back: nothing purchased or charged.
+    if (error instanceof InsufficientBalanceError) {
+      return adFundShortResponse({ needUsd: adFundNeed, returnTo });
     }
     // The debit compare-and-set matched nothing — the balance was spent between
     // the check above and the transaction. Nothing was purchased or charged.

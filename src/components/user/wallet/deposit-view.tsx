@@ -33,9 +33,20 @@ const STATUS_TONE: Record<string, string> = {
   REJECTED: "bg-red-500/10 text-red-400",
 };
 
-export function DepositView({ from }: { from?: string } = {}) {
+export function DepositView({
+  from,
+  initialAmount,
+  returnTo,
+}: { from?: string; initialAmount?: string; returnTo?: string } = {}) {
   const fromAds = from === "ads";
-  const [amount, setAmount] = useState("");
+  // Pre-filled from an "Add fund" link (?amount=) — the shortfall a payment
+  // screen just showed, so the member doesn't have to remember it.
+  const [amount, setAmount] = useState(() => {
+    const n = Number(initialAmount);
+    return Number.isFinite(n) && n > 0 && n <= 1_000_000 ? String(Math.ceil(n * 100) / 100) : "";
+  });
+  // Same-origin paths only (never an open redirect).
+  const backTo = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : null;
   const [methods, setMethods] = useState<DepositMethod[]>([]);
   const [method, setMethod] = useState<string>("");
   const [txnId, setTxnId] = useState("");
@@ -174,8 +185,20 @@ export function DepositView({ from }: { from?: string } = {}) {
           Add Funds
         </h1>
         <p className="text-sm text-(--app-ink-3) mt-1">
-          Top up your balance manually (admin-verified) or via online gateway.
+          Add fund → Ad Fund: spend on boosts, ads, tasks, lottery, plans, badge, and buy
+          products, services and courses. Ad Fund is not withdrawable.
         </p>
+        <p className="text-xs text-(--app-ink-3) mt-1">
+          Pay manually (admin-verified) or via online gateway.
+        </p>
+        {backTo && (
+          <Link
+            href={backTo}
+            className="inline-block mt-2 text-xs font-semibold text-(--app-accent-ink) hover:underline"
+          >
+            ← Back to where you were
+          </Link>
+        )}
       </div>
 
       {fromAds && (
@@ -186,11 +209,11 @@ export function DepositView({ from }: { from?: string } = {}) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-white">Funding your ad credit</p>
             <p className="text-xs text-(--app-ink-3) mt-0.5">
-              This adds money to your wallet first. Once an admin approves it, head back to{" "}
+              This adds money to your Ad Fund first. Once it is credited, head back to{" "}
               <Link href="/advertiser" className="text-sky-300 font-semibold hover:underline">
                 Run Ads → Top up
               </Link>{" "}
-              to convert wallet cash into ad credit.
+              to buy ad credit with your Ad Fund.
             </p>
           </div>
         </div>
@@ -292,7 +315,7 @@ export function DepositView({ from }: { from?: string } = {}) {
               </span>
             </div>
             <p className="t-meta text-(--app-ink-2)">
-              Your wallet is credited {usd(breakdown.amountUsd)} on
+              Your Ad Fund is credited {usd(breakdown.amountUsd)} on
               approval. The {currency?.code} total includes the method charge
               {vat.enabled ? " + VAT" : ""}.
             </p>
@@ -344,7 +367,7 @@ export function DepositView({ from }: { from?: string } = {}) {
           )}
           {methods.length > 0 && (
             <p className="mt-2 t-meta text-(--app-ink-3)">
-              The fee shown is charged on top of what you add — your wallet is
+              The fee shown is charged on top of what you add — your Ad Fund is
               credited the full USD amount.
               {vat.enabled && vat.pct > 0
                 ? ` VAT of ${vat.pct}% is added as well.`

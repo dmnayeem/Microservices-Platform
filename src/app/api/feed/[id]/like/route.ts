@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { planFeatureGate } from "@/lib/plan-gate";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
@@ -7,6 +7,7 @@ import { requireActiveUser } from "@/lib/require-active";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { recordUserAction } from "@/lib/goal-progress";
 import { toReactionType } from "@/lib/reactions";
+import { chargeBoostEngagement } from "@/lib/boost-feed";
 
 // POST /api/feed/:id/like - Like a post
 export async function POST(
@@ -138,6 +139,11 @@ export async function POST(
             targetId: id,
           }),
     ]);
+
+    // A running boost on this post pays for the like when the liker reached
+    // it through the boost. After the response: billing must not slow a tap.
+    const likerId = session.user.id;
+    after(() => chargeBoostEngagement(id, likerId, "LIKE"));
 
     return NextResponse.json({
       liked: true,

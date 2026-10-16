@@ -4,6 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { creditPoints, type LedgerDb } from "@/lib/ledger";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { getPointsPerUsd } from "@/lib/economy";
+import { AD_FUND_REF, AD_POINTS_REF } from "@/lib/ad-wallet";
+import { refundPlatformPayment } from "@/lib/platform-pay";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+
+/**
+ * Tickets are paid in Ad Points, prizes in Earn Points (2026-10-16). Sales are
+ * converted at USD value so a pot never pays out more than its tickets were
+ * worth (lib/lottery-prizes computePool).
+ */
+export async function lotteryTicketValueRatio(): Promise<number> {
+  const [ppu, ad] = await Promise.all([getPointsPerUsd(), getAdPointsPerUsd()]);
+  return ad > 0 ? ppu / ad : 1;
+}
 import { TransactionType } from "@/generated/prisma";
 import {
   computePool,
@@ -175,6 +188,7 @@ export async function drawLottery(
         const { gross, houseCut, pool, overflow } = computePool({
           ticketsSold: n,
           ticketPrice: l.ticketPrice,
+          ticketValueRatio: await lotteryTicketValueRatio(),
           houseCutPercent: l.houseCutPercent,
           seedPoints: l.poolSeedPoints,
           rolloverInPoints: l.rolloverInPoints,
@@ -419,18 +433,56 @@ export async function payRefunds(
 
   const tickets = await prisma.lotteryTicket.findMany({
     where: { lotteryId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, ticketNumber: true },
     orderBy: { id: "asc" },
   });
   if (tickets.length === 0) return { owed: 0, paid: 0 };
 
   // Skip anything already paid, so a resumed run doesn't re-walk the whole
   // lottery. (The unique constraint would catch it anyway; this is just cheap.)
+  // Tickets bought with Ad Points / Ad Fund are refunded under the same
+  // reference with the ad-wallet prefix, so all three shapes count as paid.
+  const refundPrefix = `lottery_refund_${lotteryId}_`;
   const already = await prisma.transaction.findMany({
-    where: { reference: { startsWith: `lottery_refund_${lotteryId}_` } },
+    where: {
+      OR: [
+        { reference: { startsWith: refundPrefix } },
+        { reference: { startsWith: AD_POINTS_REF + refundPrefix } },
+        { reference: { startsWith: AD_FUND_REF + refundPrefix } },
+      ],
+    },
     select: { reference: true },
   });
-  const paidRefs = new Set(already.map((t) => t.reference));
+  const paidRefs = new Set(
+    already.map((t) => (t.reference ?? "").replace(/^(adpts_|adfund_)/, ""))
+  );
+
+  // Which purchase paid for each ticket, when it was paid from Ad Points or
+  // Ad Fund (owner, 2026-10-16): the purchase row lists its ticket numbers.
+  // A ticket refunds its share of that row, to the balance the row took it
+  // from. Tickets with no such row were bought with Earn Points before the
+  // switch and are refunded in Earn Points, as before.
+  const buyPrefix = `lottery_${lotteryId}_`;
+  const buys = await prisma.transaction.findMany({
+    where: {
+      type: TransactionType.PURCHASE,
+      OR: [
+        { reference: { startsWith: AD_POINTS_REF + buyPrefix } },
+        { reference: { startsWith: AD_FUND_REF + buyPrefix } },
+      ],
+    },
+    select: { userId: true, reference: true, metadata: true },
+  });
+  const paidBy = new Map<string, { payReference: string; perTicket: number }>();
+  for (const b of buys) {
+    const meta = (b.metadata ?? {}) as { ticketNumbers?: unknown; ticketCount?: unknown; adPoints?: unknown };
+    const numbers = Array.isArray(meta.ticketNumbers) ? meta.ticketNumbers.map(String) : [];
+    const count = Number(meta.ticketCount) || numbers.length;
+    if (!count) continue;
+    const perTicket = Math.abs(Number(meta.adPoints) || 0) / count;
+    const payReference = (b.reference ?? "").replace(/^(adpts_|adfund_)/, "");
+    for (const n of numbers) paidBy.set(`${b.userId}:${n}`, { payReference, perTicket });
+  }
   const outstanding = tickets.filter(
     (t) => !paidRefs.has(`lottery_refund_${lotteryId}_${t.id}`)
   );
@@ -454,8 +506,21 @@ export async function payRefunds(
     const results = await Promise.all(
       chunk.map(async (t) => {
         try {
+          let unit = "points";
           await prisma.$transaction(async (tx) => {
-            await creditPoints(tx, {
+            const ad = paidBy.get(`${t.userId}:${t.ticketNumber}`);
+            if (ad && ad.perTicket > 0) {
+              const back = await refundPlatformPayment(tx, {
+                userId: t.userId,
+                payReference: ad.payReference,
+                refundReference: `lottery_refund_${lotteryId}_${t.id}`,
+                description: `Lottery refunded (${reason}): ${l.title}`,
+                purpose: "refund:lottery",
+                metadata: { lotteryId, ticketId: t.id },
+                adPoints: ad.perTicket,
+              });
+              unit = back?.from === "AD_FUND" ? "Ad Fund" : "Ad Points";
+            } else await creditPoints(tx, {
               userId: t.userId,
               // Free / earned tickets cost nothing, so they refund nothing.
               points: ((l as { entryMode?: string }).entryMode ?? "PAID") === "PAID" ? l.ticketPrice : 0,
@@ -471,7 +536,10 @@ export async function payRefunds(
                 userId: t.userId,
                 type: "LOTTERY",
                 title: "Lottery refunded",
-                message: `"${l.title}" ended without a draw (${reason}). Your ${l.ticketPrice.toLocaleString()} points have been returned.`,
+                message:
+                  unit === "points"
+                    ? `"${l.title}" ended without a draw (${reason}). Your ${l.ticketPrice.toLocaleString()} points have been returned.`
+                    : `"${l.title}" ended without a draw (${reason}). Your ticket has been refunded to your ${unit}.`,
                 data: { lotteryId, refunded: l.ticketPrice },
               },
             });
@@ -513,6 +581,7 @@ async function rolloverBranch(
   const { gross, houseCut, pool, overflow } = computePool({
     ticketsSold: tickets.length,
     ticketPrice: l.ticketPrice,
+    ticketValueRatio: await lotteryTicketValueRatio(),
     houseCutPercent: l.houseCutPercent,
     seedPoints: l.poolSeedPoints,
     rolloverInPoints: l.rolloverInPoints,
