@@ -5,8 +5,10 @@ import { withIdempotency, isDuplicateLedgerError } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { PaymentMethod, type Package } from "@/generated/prisma/client";
-import { getPointsPerUsd } from "@/lib/economy";
-import { lt, toNum, type MoneyInput } from "@/lib/money";
+import { toNum } from "@/lib/money";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { PlatformPayError, chargePlatform, getSpendBalances, insufficientError } from "@/lib/platform-pay";
+import { defaultPaySourceForQuote, quotePlatformPrice, type PaySource } from "@/lib/pay-source";
 import { ownMediaKey } from "@/lib/media-url";
 import { requireActiveUser } from "@/lib/require-active";
 import { getConfiguredProviders } from "@/lib/payments";
@@ -22,7 +24,9 @@ import {
 const schema = z.object({
   packageId: z.string().min(1),
   duration: z.enum(["MONTHLY", "QUARTERLY", "YEARLY", "LIFETIME"]),
-  method: z.enum(["POINTS", "CASH", "CARD", "BKASH", "NAGAD", "BINANCE", "BITGET"]),
+  // On-platform plans are platform spending: Ad Points or Ad Fund only
+  // (owner, 2026-10-16) — Cash and Earn Points no longer pay for plans.
+  method: z.enum(["AD_POINTS", "AD_FUND", "CARD", "BKASH", "NAGAD", "BINANCE", "BITGET"]),
   // Off-platform only: the payment's transaction id and a screenshot uploaded
   // with the proof uploader (an own key under task-proofs/<userId>/).
   transactionId: z.string().trim().max(120).optional(),
@@ -43,8 +47,6 @@ async function cardAvailable(): Promise<boolean> {
 type PkgRow = Package;
 
 interface UserSnap {
-  cashBalance: MoneyInput;
-  pointsBalance: number;
   packageId: string | null;
   packageExpiresAt: Date | null;
 }
@@ -147,7 +149,7 @@ async function endActiveTerms(tx: Tx, userId: string, now: Date) {
 async function loadUser(userId: string): Promise<UserSnap | null> {
   return prisma.user.findUnique({
     where: { id: userId },
-    select: { cashBalance: true, pointsBalance: true, packageId: true, packageExpiresAt: true },
+    select: { packageId: true, packageExpiresAt: true },
   });
 }
 
@@ -163,12 +165,12 @@ export async function GET(request: NextRequest) {
   if (!(duration in PLAN_DURATION_DAYS)) {
     return NextResponse.json({ error: "Invalid duration" }, { status: 400 });
   }
-  const method = sp.get("method") ?? "CASH";
+  const method = sp.get("method") ?? "AD_FUND";
   const packageId = sp.get("packageId") ?? "";
-  const [pkg, user, pointsPerUsd, card] = await Promise.all([
+  const [pkg, user, adRate, card] = await Promise.all([
     packageId ? prisma.package.findUnique({ where: { id: packageId } }) : null,
     loadUser(session.user.id),
-    getPointsPerUsd(),
+    getAdPointsPerUsd(),
     cardAvailable(),
   ]);
   if (!pkg || !user) {
@@ -180,7 +182,8 @@ export async function GET(request: NextRequest) {
     priceUsd: q.priceUsd,
     creditUsd: q.creditUsd,
     payUsd: q.payUsd,
-    payPoints: Math.ceil(q.payUsd * pointsPerUsd),
+    // Ad Fund pays payUsd; Ad Points pay this many at the admin rate.
+    payAdPoints: quotePlatformPrice({ usd: q.payUsd }, adRate).adPoints,
     samePlan: q.samePlan,
     switching: q.switching,
     endDate: q.endDate.toISOString(),
@@ -338,26 +341,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: q.error }, { status: 400 });
   }
   const { priceUsd, creditUsd, payUsd, samePlan, termStart, endDate } = q;
-  const pointsPerUsd = await getPointsPerUsd();
-  const totalPoints = Math.ceil(payUsd * pointsPerUsd);
+  const adRate = await getAdPointsPerUsd();
+  // The plan price is USD: Ad Fund pays it as dollars, Ad Points at the rate.
+  const quote = quotePlatformPrice({ usd: payUsd }, adRate);
+  const paySource: PaySource | null = isOffPlatform ? null : (method as PaySource);
 
-  // Validate funds for non-redirect methods
-  if (method === "CASH") {
-    if (lt(user.cashBalance, payUsd)) {
+  // Fail fast with the shortfall and an Add fund link (the CAS debit inside
+  // the transaction is still what decides).
+  if (paySource && payUsd > 0) {
+    const bal = await getSpendBalances(userId);
+    const covered =
+      paySource === "AD_POINTS" ? bal.adPoints >= quote.adPoints : bal.adFundUsd + 1e-9 >= quote.usd;
+    if (!covered) {
+      const e = await insufficientError(userId, quote.adPoints, paySource, "/packages", adRate);
+      const alt = defaultPaySourceForQuote(quote, bal);
       return NextResponse.json(
         {
-          error: "Insufficient cash balance",
-          details: `Need ${usd(payUsd)}, have ${usd(toNum(user.cashBalance))}`,
-        },
-        { status: 400 }
-      );
-    }
-  } else if (method === "POINTS") {
-    if (user.pointsBalance < totalPoints) {
-      return NextResponse.json(
-        {
-          error: "Insufficient points",
-          details: `Need ${totalPoints} pts, have ${user.pointsBalance} pts`,
+          error: e.userMessage,
+          details: alt ? `Your ${alt === "AD_FUND" ? "Ad Fund" : "Ad Points"} would cover it.` : undefined,
+          addFund: e.addFund,
         },
         { status: 400 }
       );
@@ -397,21 +399,6 @@ export async function POST(request: NextRequest) {
           data: { packageId: pkg.id, packageExpiresAt: endDate },
         });
         if (cas.count === 0) throw new Error("CONFLICT");
-        // Debits use an atomic CAS (`balance >= amount`) so a concurrent
-        // double-submit can't overspend (the pre-checks above are check-then-act).
-        if (method === "CASH" && payUsd > 0) {
-          const debit = await tx.user.updateMany({
-            where: { id: userId, cashBalance: { gte: payUsd } },
-            data: { cashBalance: { decrement: payUsd } },
-          });
-          if (debit.count === 0) throw new Error("INSUFFICIENT");
-        } else if (method === "POINTS" && totalPoints > 0) {
-          const debit = await tx.user.updateMany({
-            where: { id: userId, pointsBalance: { gte: totalPoints } },
-            data: { pointsBalance: { decrement: totalPoints } },
-          });
-          if (debit.count === 0) throw new Error("INSUFFICIENT");
-        }
       }
 
       // Carry the user's auto-renew choice over when extending the same plan.
@@ -459,29 +446,50 @@ export async function POST(request: NextRequest) {
         select: { id: true },
       });
 
-      await tx.transaction.create({
-        data: {
+      const description =
+        `${pkg.name} subscription (${v.data.duration})` +
+        (creditUsd > 0 ? ` — ${usd(creditUsd)} credit from your previous plan` : "");
+      const metadata = {
+        subscriptionId: subscription.id,
+        packageId: pkg.id,
+        duration: v.data.duration,
+        method,
+        priceUsd,
+        creditUsd,
+        payUsd: isOffPlatform ? priceUsd : payUsd,
+        ...(isOffPlatform ? { transactionId, proofUrl } : {}),
+      };
+      if (paySource && payUsd > 0) {
+        // CAS debit of Ad Points / Ad Fund + its ledger row in one call
+        // (stored as adpts_/adfund_<ref>). A short balance throws and rolls
+        // the plan change back. Revenue reads Subscription.amount for a
+        // first term, so finance skips purpose "plan" rows (no double count).
+        await chargePlatform(tx, {
           userId,
-          type: "PURCHASE",
-          status: isOffPlatform ? "PENDING" : "COMPLETED",
-          amount: isOffPlatform ? priceUsd : payUsd,
-          points: method === "POINTS" ? totalPoints : 0,
-          description:
-            `${pkg.name} subscription (${v.data.duration})` +
-            (creditUsd > 0 ? ` — ${usd(creditUsd)} credit from your previous plan` : ""),
-          reference: isOffPlatform ? `subscription_${subscription.id}` : onPlatformRef(subscription.id),
-          metadata: {
-            subscriptionId: subscription.id,
-            packageId: pkg.id,
-            duration: v.data.duration,
-            method,
-            priceUsd,
-            creditUsd,
-            payUsd: isOffPlatform ? priceUsd : payUsd,
-            ...(isOffPlatform ? { transactionId, proofUrl } : {}),
+          quote,
+          from: paySource,
+          description,
+          reference: onPlatformRef(subscription.id),
+          purpose: "plan",
+          metadata,
+          returnTo: "/packages",
+        });
+      } else {
+        // Off-platform request (PENDING until an admin verifies it), or a
+        // switch fully covered by the old plan's credit ($0).
+        await tx.transaction.create({
+          data: {
+            userId,
+            type: "PURCHASE",
+            status: isOffPlatform ? "PENDING" : "COMPLETED",
+            amount: isOffPlatform ? priceUsd : payUsd,
+            points: 0,
+            description,
+            reference: isOffPlatform ? `subscription_${subscription.id}` : onPlatformRef(subscription.id),
+            metadata,
           },
-        },
-      });
+        });
+      }
 
       // Only an immediately-activated (on-platform) purchase triggers the
       // referrer bonus; off-platform stays pending admin verification.
@@ -491,11 +499,8 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (err) {
-    if (err instanceof Error && err.message === "INSUFFICIENT") {
-      return NextResponse.json(
-        { error: "Insufficient balance" },
-        { status: 400 }
-      );
+    if (err instanceof PlatformPayError) {
+      return NextResponse.json({ error: err.userMessage, addFund: err.addFund }, { status: 400 });
     }
     if (err instanceof Error && err.message === "PENDING_EXISTS") {
       return NextResponse.json(

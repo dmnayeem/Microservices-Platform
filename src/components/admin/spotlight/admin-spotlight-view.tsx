@@ -81,9 +81,9 @@ export function AdminSpotlightView({ canManage }: { canManage: boolean }) {
             <Sparkles className="h-6 w-6 text-amber-400" /> Spotlight
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            An open auction in points for a featured place in the feed. The highest bid when bidding ends wins; its post
-            is promoted for the hours you set. Only the top bid is held — an outbid member gets their points back at
-            once. Winners&apos; points are spent (a points sink). Closed automatically every 10 minutes after the end.
+            An open auction in Ad Points (paid from Ad Points or Ad Fund) for a featured place in the feed. The highest bid when bidding ends wins; its post
+            is promoted for the hours you set. Only the top bid is held — an outbid member gets their bid back at
+            once. The winning bid is spent; if the winner&apos;s post is gone by then, it is returned instead. Closed automatically every 10 minutes after the end.
           </p>
         </div>
         {canManage && (
@@ -99,8 +99,8 @@ export function AdminSpotlightView({ canManage }: { canManage: boolean }) {
           <div className="sm:col-span-2"><label className={label}>Description</label><input className={inp} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
           <div><label className={label}>Bidding ends</label><input type="datetime-local" className={inp} value={f.biddingEndsAt} onChange={(e) => setF({ ...f, biddingEndsAt: e.target.value })} /></div>
           <div><label className={label}>Featured for (hours)</label><input type="number" min={1} max={168} className={inp} value={f.displayHours} onChange={(e) => setF({ ...f, displayHours: e.target.value })} /></div>
-          <div><label className={label}>Starting bid (points)</label><input type="number" min={1} className={inp} value={f.minBid} onChange={(e) => setF({ ...f, minBid: e.target.value })} /></div>
-          <div><label className={label}>Minimum raise (points)</label><input type="number" min={1} className={inp} value={f.bidStep} onChange={(e) => setF({ ...f, bidStep: e.target.value })} /></div>
+          <div><label className={label}>Starting bid (Ad Points)</label><input type="number" min={1} className={inp} value={f.minBid} onChange={(e) => setF({ ...f, minBid: e.target.value })} /></div>
+          <div><label className={label}>Minimum raise (Ad Points)</label><input type="number" min={1} className={inp} value={f.bidStep} onChange={(e) => setF({ ...f, bidStep: e.target.value })} /></div>
           <div className="sm:col-span-2">
             <button type="button" onClick={create} disabled={saving} className={`${btn} bg-red-600 text-white`}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />} Open for bids
@@ -120,7 +120,7 @@ export function AdminSpotlightView({ canManage }: { canManage: boolean }) {
               <div>
                 <p className="font-semibold text-white">{a.title}</p>
                 <p className="text-xs text-slate-400">
-                  {a.status} · {a.bids} bidders · top {a.topBid ?? "—"} pts · ends {new Date(a.biddingEndsAt).toLocaleString()} · featured {a.displayHours}h
+                  {a.status} · {a.bids} bidders · top {a.topBid ?? "—"} Ad Points · ends {new Date(a.biddingEndsAt).toLocaleString()} · featured {a.displayHours}h
                 </p>
               </div>
               {canManage && a.status === "OPEN" && (

@@ -21,7 +21,7 @@ export default async function AdminBadgesPage() {
 
   const now = new Date();
   const since = new Date(now.getTime() - 30 * 86_400_000);
-  const [bought, granted, styleRowsRaw, sales30, rate] = await Promise.all([
+  const [bought, granted, styleRowsRaw, sales30, rate, adSales30] = await Promise.all([
     prisma.user.count({ where: { isBlueVerified: true, blueBadgeExpiresAt: { gt: now } } }),
     prisma.user.count({ where: { isBlueVerified: true, blueBadgeExpiresAt: null } }),
     prisma.badgeStyleSubscription.groupBy({ by: ["style"], where: { expiresAt: { gt: now } }, _count: { _all: true } }),
@@ -31,9 +31,28 @@ export default async function AdminBadgesPage() {
       _count: true,
     }),
     getPointsPerUsd(),
+    // Sales paid from Ad Points / Ad Fund (owner, 2026-10-16): `amount` is the
+    // USD value. Summed apart — their stored sign differs from the old rows.
+    prisma.transaction.aggregate({
+      where: {
+        type: "PURCHASE",
+        status: "COMPLETED",
+        OR: [{ reference: { startsWith: "adpts_badge_" } }, { reference: { startsWith: "adfund_badge_" } }],
+        createdAt: { gte: since },
+      },
+      _sum: { amount: true },
+      _count: true,
+    }),
   ]);
   const recent = await prisma.transaction.findMany({
-      where: { type: "PURCHASE" as const, reference: { startsWith: "badge_" } },
+      where: {
+        type: "PURCHASE" as const,
+        OR: [
+          { reference: { startsWith: "badge_" } },
+          { reference: { startsWith: "adpts_badge_" } },
+          { reference: { startsWith: "adfund_badge_" } },
+        ],
+      },
       orderBy: { createdAt: "desc" as const },
       take: 15,
       select: {
@@ -44,7 +63,11 @@ export default async function AdminBadgesPage() {
   // groupBy inside a Promise.all tuple loses its row type (Prisma generics);
   // restated here.
   const styleRows = styleRowsRaw as unknown as Array<{ style: string; _count: { _all: number } }>;
-  const revenue30 = Math.abs(toNum(sales30._sum.amount)) + Math.abs(sales30._sum.points ?? 0) / rate;
+  const revenue30 =
+    Math.abs(toNum(sales30._sum.amount)) +
+    Math.abs(sales30._sum.points ?? 0) / rate +
+    // Promise.all tuple loses the aggregate type (Prisma generics) — restated.
+    Math.abs(toNum((adSales30 as unknown as { _sum: { amount: unknown } })._sum.amount as never));
   const styleCount = styleRows.reduce((n, r) => n + r._count._all, 0);
 
   const stats = [

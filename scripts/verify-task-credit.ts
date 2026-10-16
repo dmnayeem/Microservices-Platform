@@ -186,8 +186,10 @@ async function main() {
       /taskCreditPoints:\s*\{\s*gte:/.test(code(CREDIT_LIB))
     );
     check(
-      "the purchase is a CAS too, so two buys cannot spend the same cash",
-      /cashBalance:\s*\{\s*gte:/.test(code(CREDIT_LIB))
+      // Bought with Ad Fund / Ad Points since 2026-10-16: the CAS debit lives
+      // in ad-wallet.ts, reached through platform-pay's chargePlatform.
+      "the purchase is a CAS too (ad-wallet via chargePlatform), so two buys cannot spend the same balance",
+      /chargePlatform\(/.test(code(CREDIT_LIB))
     );
     // The advertised promise is drawn down atomically, not overwritten with a
     // number computed from the snapshot the CALLER read. All three payout

@@ -8,6 +8,8 @@ import { BADGE_STYLE_KIND, PAID_STYLE_KEYS, styleLabel, type BadgeConfig } from 
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
+import { PayErrorNote, type PayErrorState } from "@/components/user/primitives/pay-source-picker";
+import { quotePlatformPrice } from "@/lib/pay-source";
 
 interface ShopData {
   config: BadgeConfig;
@@ -19,7 +21,7 @@ interface ShopData {
     currentStyle: string;
     styles: Array<{ style: string; expiresAt: string; autoRenew: boolean; active: boolean }>;
   } | null;
-  wallet: { cash: number; points: number; pointsPerUsd: number };
+  wallet: { adFund: number; adPoints: number; adPointsPerUsd: number };
 }
 
 const fmtDate = (iso: string) =>
@@ -29,6 +31,7 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
   const [d, setD] = useState<ShopData | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [payError, setPayError] = useState<PayErrorState | null>(null);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/badges", { cache: "no-store" });
@@ -46,6 +49,7 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
   const post = async (url: string, body: unknown, key: string, okMsg?: string) => {
     if (busy) return;
     setBusy(key);
+    setPayError(null);
     let idemKey = intentKeys.current.get(key);
     if (!idemKey) {
       idemKey = newIdempotencyKey();
@@ -60,7 +64,13 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
       // Answered (either way): the next click is a new intent.
       intentKeys.current.delete(key);
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error ?? "Try again");
+      if (!r.ok) {
+        if (j.addFund) {
+          setPayError({ message: j.error ?? "Not enough balance.", addFund: j.addFund });
+          return;
+        }
+        throw new Error(j.error ?? "Try again");
+      }
       if (okMsg) toast.success(okMsg);
       await load();
     } catch (e) {
@@ -82,38 +92,30 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
   const active = !!s?.active;
   const shown = preview ?? (active ? s!.currentStyle : "BLUE");
   const owned = new Map((s?.styles ?? []).filter((x) => x.active).map((x) => [x.style, x]));
-  const pts = (usdAmt: number) => Math.ceil(usdAmt * d.wallet.pointsPerUsd);
+  // The price is USD: Ad Fund pays the dollars, Ad Points pay it at the rate.
+  const pts = (usdAmt: number) => quotePlatformPrice({ usd: usdAmt }, d.wallet.adPointsPerUsd).adPoints;
 
   const PayButtons = ({ item, priceUsd, label }: { item: string; priceUsd: number; label: string }) => (
     <div className="grid grid-cols-2 gap-2">
       <button
         type="button"
-        disabled={!!busy || d.wallet.cash < priceUsd}
-        onClick={() => post("/api/badges/buy", { item, method: "CASH" }, `${item}:CASH`, `${label} is yours`)}
+        disabled={!!busy}
+        onClick={() => post("/api/badges/buy", { item, method: "AD_FUND" }, `${item}:AD_FUND`, `${label} is yours`)}
         className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-(--app-cta) px-3 py-2.5 text-sm font-bold text-(--app-on-cta) disabled:opacity-50"
-        title={d.wallet.cash < priceUsd ? "Not enough cash in your wallet" : undefined}
+        title={d.wallet.adFund < priceUsd ? "Not enough Ad Fund" : undefined}
       >
-        {busy === `${item}:CASH` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
-        {usd(priceUsd)}
+        {busy === `${item}:AD_FUND` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
+        {usd(priceUsd)} Ad Fund
       </button>
       <button
         type="button"
-        disabled={!!busy || d.wallet.points < pts(priceUsd)}
-        onClick={() => {
-          // Points pay for THIS month only — renewal is always charged in cash.
-          if (
-            !confirm(
-              `Pay ${pts(priceUsd).toLocaleString()} points for one month of ${label.toLowerCase()}?\n\nRenewal is cash-only: if auto-renew is on, next month is charged ${usd(priceUsd)} from your cash balance (not points). Turn auto-renew off if you don't want that.`
-            )
-          )
-            return;
-          void post("/api/badges/buy", { item, method: "POINTS" }, `${item}:POINTS`, `${label} is yours`);
-        }}
+        disabled={!!busy}
+        onClick={() => post("/api/badges/buy", { item, method: "AD_POINTS" }, `${item}:AD_POINTS`, `${label} is yours`)}
         className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-(--app-surface-2) px-2 py-2.5 text-xs font-bold text-(--app-ink) disabled:opacity-50"
-        title={d.wallet.points < pts(priceUsd) ? "Not enough points" : undefined}
+        title={d.wallet.adPoints < pts(priceUsd) ? "Not enough Ad Points" : undefined}
       >
-        {busy === `${item}:POINTS` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Coins className="h-4 w-4" />}
-        {pts(priceUsd).toLocaleString()} pts
+        {busy === `${item}:AD_POINTS` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Coins className="h-4 w-4" />}
+        {pts(priceUsd).toLocaleString()} Ad Points
       </button>
     </div>
   );
@@ -140,6 +142,7 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      <PayErrorNote error={payError} />
       {/* Live preview */}
       <section className="relative overflow-hidden rounded-3xl border border-sky-500/30 bg-linear-to-br from-sky-500/15 via-(--app-surface) to-violet-500/10 p-5 sm:p-8">
         <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
@@ -190,8 +193,9 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
           <div className="mt-4 max-w-md">
             <PayButtons item="badge" priceUsd={d.config.badgePriceUsd} label="The blue badge" />
             <p className="mt-2 text-[11px] text-(--app-ink-3)">
-              {active ? "Adds another month." : "One month."} Wallet: {usd(d.wallet.cash)} · {d.wallet.points.toLocaleString()} pts.
-              Renewals are paid from your cash balance only — paying with points covers this month, never the renewal.
+              {active ? "Adds another month." : "One month."} Ad Fund: {usd(d.wallet.adFund)} · Ad Points:{" "}
+              {d.wallet.adPoints.toLocaleString()}. Renewals are paid from Ad Fund, else Ad Points; with neither, the
+              badge ends.
             </p>
           </div>
         ) : null}

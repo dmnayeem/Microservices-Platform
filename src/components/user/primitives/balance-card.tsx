@@ -30,6 +30,14 @@ interface BalanceCardProps {
    * shares the ad credit's row: ad credit on the left, team bonus on the right.
    */
   teamBonus?: { totalUsd: number; todayUsd?: number; href?: string };
+  /**
+   * The two spend-only balances (owner, 2026-10-16). When both are set, an
+   * Ad Points tile and an Ad Fund tile show beside Earn Points and Cash.
+   */
+  adPoints?: number;
+  adFund?: number;
+  /** Where "Convert to Ad Points" points (the wallet Overview tab). */
+  convertAdPointsHref?: string;
   className?: string;
   compact?: boolean;
   /** Admin-configurable points-per-$1 rate (default 1000). */
@@ -48,6 +56,9 @@ export function BalanceCard({
   addFundsHref,
   adTopUpHref = "/advertiser",
   teamBonus,
+  adPoints,
+  adFund,
+  convertAdPointsHref,
   className,
   compact = false,
   pointsPerUsd,
@@ -102,7 +113,7 @@ export function BalanceCard({
         <div className="min-w-0 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3">
           <div className="flex items-center gap-1.5 text-white/90 mb-1">
             <Coins className="w-3.5 h-3.5 shrink-0" />
-            <span className="t-eyebrow">Points</span>
+            <span className="t-eyebrow">Earn Points</span>
           </div>
           <p className="t-figure-sm whitespace-nowrap text-white">{pts(points)}</p>
           <p className="t-meta text-white/90">{usd(ptInUsd)}</p>
@@ -115,6 +126,33 @@ export function BalanceCard({
           <p className="t-figure-sm whitespace-nowrap text-white">{usd(cash)}</p>
           <p className="t-meta text-white/90">Withdrawable</p>
         </div>
+
+        {adPoints !== undefined && adFund !== undefined && (
+          <>
+            <div className="min-w-0 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3">
+              <div className="flex items-center gap-1.5 text-white/90 mb-1">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="t-eyebrow whitespace-nowrap">Ad Points</span>
+              </div>
+              <p className="t-figure-sm whitespace-nowrap text-white">{pts(adPoints)}</p>
+              {convertAdPointsHref ? (
+                <Link href={convertAdPointsHref} className="t-meta font-bold text-white underline-offset-2 hover:underline">
+                  Spend on platform · Convert
+                </Link>
+              ) : (
+                <p className="t-meta text-white/90">Spend on platform</p>
+              )}
+            </div>
+            <div className="min-w-0 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3">
+              <div className="flex items-center gap-1.5 text-white/90 mb-1">
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span className="t-eyebrow whitespace-nowrap">Ad Fund</span>
+              </div>
+              <p className="t-figure-sm whitespace-nowrap text-white">{usd(adFund)}</p>
+              <p className="t-meta text-white/90">Spend & shop · not withdrawable</p>
+            </div>
+          </>
+        )}
 
         {showTaskCredit && (
           <div className="col-span-2 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3 flex items-center justify-between gap-3">
@@ -226,7 +264,7 @@ export function BalanceCard({
               href={addFundsHref}
               className="app-press app-tap-row inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-white/15 border border-white/40 text-white text-sm font-extrabold hover:bg-white/25"
             >
-              <Plus className="w-4 h-4" /> Add funds
+              <Plus className="w-4 h-4" /> Add fund
             </Link>
           )}
           <Link

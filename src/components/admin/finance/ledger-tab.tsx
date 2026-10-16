@@ -26,6 +26,7 @@ const DIRECTION_TONE: Record<string, string> = {
   revenue: "text-emerald-400",
   cost: "text-red-400",
   internal: "text-slate-400",
+  refund: "text-amber-400",
 };
 
 interface LedgerRow {
@@ -33,7 +34,7 @@ interface LedgerRow {
   type: string;
   status: string;
   source: SourceKey;
-  direction: "revenue" | "cost" | "internal";
+  direction: "revenue" | "cost" | "internal" | "refund";
   amountUsd: number;
   magnitudeUsd: number;
   points: number;

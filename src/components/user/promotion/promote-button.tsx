@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
-import { Megaphone, Loader2, Coins, DollarSign } from "lucide-react";
+import { Megaphone, Loader2 } from "lucide-react";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { cn, usd } from "@/lib/utils";
+import { PaySourcePicker, PayErrorNote, useSpendBalances, type PayErrorState } from "@/components/user/primitives/pay-source-picker";
+import { quotePlatformPrice, type PaySource } from "@/lib/pay-source";
 
 interface PromoPackage {
   id: string;
@@ -32,7 +34,12 @@ export function PromoteButton({
   const [packages, setPackages] = useState<PromoPackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [pkgId, setPkgId] = useState("");
-  const [currency, setCurrency] = useState<"cash" | "points">("cash");
+  // Promotions are platform spending: Ad Points or Ad Fund only
+  // (owner, 2026-10-16). The points price is in Ad Points; the dollar price is
+  // what Ad Fund pays.
+  const { balances, reload } = useSpendBalances();
+  const [paySource, setPaySource] = useState<PaySource | null>(null);
+  const [payError, setPayError] = useState<PayErrorState | null>(null);
   const [busy, setBusy] = useState(false);
 
   const activeUntil =
@@ -61,6 +68,7 @@ export function PromoteButton({
   const submit = async () => {
     if (!pkgId) return;
     setBusy(true);
+    setPayError(null);
     try {
       const url =
         kind === "listing"
@@ -72,10 +80,17 @@ export function PromoteButton({
           "Content-Type": "application/json",
           "Idempotency-Key": newIdempotencyKey(),
         },
-        body: JSON.stringify({ packageId: pkgId, currency }),
+        body: JSON.stringify({ packageId: pkgId, ...(paySource ? { paySource } : {}) }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? "Failed");
+      if (!res.ok) {
+        if (d.addFund) {
+          setPayError({ message: d.error ?? "Not enough balance.", addFund: d.addFund });
+          return;
+        }
+        throw new Error(d.error ?? "Failed");
+      }
+      reload();
       toast.success("Promotion active — you're featured!");
       setOpen(false);
       router.refresh();
@@ -89,6 +104,7 @@ export function PromoteButton({
   };
 
   const sel = packages.find((p) => p.id === pkgId);
+  const quote = sel && balances ? quotePlatformPrice({ points: sel.pricePoints, usd: sel.priceCash }, balances.rate) : null;
 
   return (
     <>
@@ -119,8 +135,8 @@ export function PromoteButton({
             className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />}
-            {sel
-              ? `Pay ${currency === "cash" ? `${usd(sel.priceCash)}` : `${sel.pricePoints} pts`} & promote`
+            {quote
+              ? `Pay ${paySource === "AD_FUND" ? usd(quote.usd) : `${quote.adPoints.toLocaleString()} Ad Points`} & promote`
               : "Promote"}
           </button>
         }
@@ -152,33 +168,27 @@ export function PromoteButton({
                 >
                   <p className="text-sm font-semibold text-white">{p.label}</p>
                   <p className="text-[11px] text-(--app-ink-3)">
-                    {usd(p.priceCash)} or {p.pricePoints} pts · {p.days} days
+                    {[
+                      p.pricePoints > 0 ? `${p.pricePoints.toLocaleString()} Ad Points` : null,
+                      p.priceCash > 0 ? `${usd(p.priceCash)} Ad Fund` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" or ")}{" "}
+                    · {p.days} days
                   </p>
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
-              {(["cash", "points"] as const).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCurrency(c)}
-                  className={cn(
-                    "flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition-colors",
-                    currency === c
-                      ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-accent-ink)"
-                      : "border-(--app-line) bg-(--app-page) text-(--app-ink-3) hover:text-(--app-ink)"
-                  )}
-                >
-                  {c === "cash" ? (
-                    <DollarSign className="w-3.5 h-3.5" />
-                  ) : (
-                    <Coins className="w-3.5 h-3.5" />
-                  )}
-                  {c === "cash" ? "Pay with cash" : "Pay with points"}
-                </button>
-              ))}
-            </div>
+            {quote && (
+              <PaySourcePicker
+                adPoints={quote.adPoints}
+                usdPrice={quote.usd}
+                balances={balances}
+                value={paySource}
+                onChange={setPaySource}
+              />
+            )}
+            <PayErrorNote error={payError} />
           </div>
         )}
       </BottomSheet>

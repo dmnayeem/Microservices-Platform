@@ -29,6 +29,11 @@ import { lt, sub, toNum } from "@/lib/money";
 import { isServiceType, requiresDeliverable } from "@/lib/marketplace-categories";
 import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
 import { CART_MAX_ITEMS } from "@/lib/marketplace-cart";
+import { debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
+import { parseShopSource } from "@/lib/pay-source";
+import { adFundShortResponse, shopBalance } from "@/lib/shop-pay";
+
+const CART_RETURN_TO = "/marketplace/cart";
 
 // POST /api/cart/checkout
 //
@@ -44,11 +49,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return withIdempotency(request, session.user.id, async () => {
+  // For the Ad Fund shortfall reply in the catch below.
+  let adFundNeed = 0;
   try {
     if (!(await userCanFeature(session.user.id, "marketplace"))) {
       return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
     }
     const userId = session.user.id;
+    // Cash (default) or Ad Fund — never Ad Points / Earn Points. The body
+    // used to be ignored entirely, so an empty / missing body stays Cash.
+    const reqBody = (await request.json().catch(() => ({}))) as { paySource?: unknown } | null;
+    const paySource = parseShopSource(reqBody?.paySource);
 
     const itemsRaw = await prisma.cartItem.findMany({
       where: { userId },
@@ -188,7 +199,13 @@ export async function POST(request: NextRequest) {
     if (!buyer) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    if (lt(buyer.cashBalance, total)) {
+    adFundNeed = total;
+    if (paySource === "AD_FUND") {
+      const have = await shopBalance(userId, "AD_FUND");
+      if (have == null || have < total) {
+        return adFundShortResponse({ needUsd: total, haveUsd: have, returnTo: CART_RETURN_TO });
+      }
+    } else if (lt(buyer.cashBalance, total)) {
       return NextResponse.json(
         {
           error: "Insufficient wallet balance",
@@ -346,32 +363,52 @@ export async function POST(request: NextRequest) {
       // course enrolment, say — both passed their own check against the same
       // balance and both debited it, leaving the user negative while two sellers
       // were credited real cash.
-      const paid = await tx.user.updateMany({
-        where: { id: userId, cashBalance: { gte: total } },
-        data: { cashBalance: { decrement: total } },
-      });
-      if (paid.count === 0) {
-        throw new Error("INSUFFICIENT_BALANCE");
-      }
-      await tx.transaction.create({
-        data: {
+      // Per-occurrence by design. A second checkout of a refilled cart
+      // with the same contents is a normal thing to do.
+      // A deterministic key would make `Transaction @@unique([userId, reference])`
+      // reject the second one, so this stays keyed on the instant it happened.
+      const cartRef = `cart_${Date.now()}_${userId}`;
+      const cartDescription = `Cart checkout (${cart.length} listing${cart.length > 1 ? "s" : ""})`;
+      if (paySource === "AD_FUND") {
+        // One Ad Fund debit for the whole cart — CAS + its own ledger row
+        // (`adfund_cart_…`). `purchaseIds` is how a later dispute refund on
+        // any one line finds that this order was paid from Ad Fund.
+        await debitAdFund(tx, {
           userId,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: -total,
-          points: 0,
-          description: `Cart checkout (${cart.length} listing${cart.length > 1 ? "s" : ""})`,
-          // Per-occurrence by design. A second checkout of a refilled cart
-          // with the same contents is a normal thing to do.
-          // A deterministic key would make `Transaction @@unique([userId, reference])`
-          // reject the second one, so this stays keyed on the instant it happened.
-          reference: `cart_${Date.now()}_${userId}`,
+          usd: total,
+          reference: cartRef,
+          description: cartDescription,
+          purpose: "marketplace",
           metadata: {
             listingIds: cart.map((c) => c.listing.id),
+            purchaseIds: created.map((c) => c.purchaseId),
             total,
           },
-        },
-      });
+        });
+      } else {
+        const paid = await tx.user.updateMany({
+          where: { id: userId, cashBalance: { gte: total } },
+          data: { cashBalance: { decrement: total } },
+        });
+        if (paid.count === 0) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+        await tx.transaction.create({
+          data: {
+            userId,
+            type: TransactionType.PURCHASE,
+            status: TransactionStatus.COMPLETED,
+            amount: -total,
+            points: 0,
+            description: cartDescription,
+            reference: cartRef,
+            metadata: {
+              listingIds: cart.map((c) => c.listing.id),
+              total,
+            },
+          },
+        });
+      }
 
       // Clear the cart on success.
       await tx.cartItem.deleteMany({ where: { userId } });
@@ -387,10 +424,11 @@ export async function POST(request: NextRequest) {
           userId,
           type: NotificationType.SYSTEM,
           title: `Cart purchase complete 🎉`,
-          message: `You bought ${result.length} listing${result.length > 1 ? "s" : ""} for $${total.toLocaleString()}.`,
+          message: `You bought ${result.length} listing${result.length > 1 ? "s" : ""} for $${total.toLocaleString()}${paySource === "AD_FUND" ? " from your Ad Fund" : ""}.`,
           data: {
             purchaseIds: result.map((r) => r.purchaseId),
             total,
+            paySource,
           },
         },
       }),
@@ -423,6 +461,7 @@ export async function POST(request: NextRequest) {
               amount: r.amount,
             })),
             total,
+            paySource,
           },
         },
       }),
@@ -438,6 +477,7 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       })),
       total,
+      paySource,
     });
   } catch (error) {
     if (
@@ -454,6 +494,11 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+    // Ad Fund's CAS matched nothing — spent between the check above and the
+    // transaction. Rolled back: nothing purchased or charged.
+    if (error instanceof InsufficientBalanceError) {
+      return adFundShortResponse({ needUsd: adFundNeed, returnTo: CART_RETURN_TO });
     }
     // The debit compare-and-set matched nothing — the balance was spent between
     // the check above and the transaction. Nothing was purchased or charged.

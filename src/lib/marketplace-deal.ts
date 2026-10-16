@@ -17,6 +17,10 @@ import {
 import { notifyUser } from "@/lib/notify";
 import { inngest, EVENTS } from "@/lib/inngest/client";
 import { toNum } from "@/lib/money";
+import { debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
+import { addFundHref, type ShopSource } from "@/lib/pay-source";
+import { isServiceType } from "@/lib/marketplace-categories";
+import { adFundPaidFor, refundToPayingBalance, refundedToLabel } from "@/lib/shop-pay";
 import {
   DELIVERY_SENDER_TYPE,
   ORDER_SENDER_TYPE,
@@ -42,7 +46,8 @@ const AUTO_RELEASE_DAYS = 3;
 
 export type DealResult =
   | { ok: true; dealId: string }
-  | { ok: false; error: string; status?: number };
+  // `addFund` / `shortBy`: set when Ad Fund was chosen and can't cover it.
+  | { ok: false; error: string; status?: number; addFund?: string; shortBy?: number };
 
 // The interactive-transaction client type, derived from the (Accelerate-
 // extended) prisma client so it matches what `$transaction` hands the callback.
@@ -214,8 +219,11 @@ export async function fundDeal(opts: {
   dealId: string;
   buyerId: string;
   affiliateCookie?: string;
+  /** Cash (default) or Ad Fund. Refunds go back to whichever paid. */
+  paySource?: ShopSource;
 }): Promise<DealResult> {
   const { dealId, buyerId, affiliateCookie } = opts;
+  const paySource: ShopSource = opts.paySource === "AD_FUND" ? "AD_FUND" : "CASH";
 
   const deal = await prisma.marketplaceDeal.findUnique({
     where: { id: dealId },
@@ -330,38 +338,64 @@ export async function fundDeal(opts: {
       });
       if (claimed.count === 0) throw new Error("ALREADY_FUNDED");
 
-      // Atomic buyer debit (principal + fee).
-      const debited = await tx.user.updateMany({
-        where: { id: buyerId, cashBalance: { gte: total } },
-        data: { cashBalance: { decrement: total } },
-      });
-      if (debited.count === 0) throw new Error("INSUFFICIENT");
-
-      await tx.transaction.create({
-        data: {
+      if (paySource === "AD_FUND") {
+        // Same two buyer rows as the Cash path, each written by debitAdFund
+        // (CAS + row): `adfund_deal_<id>` for the principal and
+        // `adfund_deal_adminfee_<id>` for the fee. A short balance on either
+        // throws and rolls the whole funding back.
+        const purpose = isServiceType(deal.listing.assetType) ? "service" : "marketplace";
+        await debitAdFund(tx, {
           userId: buyerId,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: -amount,
-          points: 0,
-          description: `Escrow funded — "${deal.listing.title}"`,
+          usd: amount,
           reference: `deal_${dealId}`,
+          description: `Escrow funded — "${deal.listing.title}"`,
+          purpose,
           metadata: { dealId, listingId: deal.listingId, kind: "escrow_hold" },
-        },
-      });
-      if (adminFee > 0) {
+        });
+        if (adminFee > 0) {
+          await debitAdFund(tx, {
+            userId: buyerId,
+            usd: adminFee,
+            reference: `deal_adminfee_${dealId}`,
+            description: `Admin mediation fee — "${deal.listing.title}"`,
+            purpose,
+            metadata: { dealId, listingId: deal.listingId, kind: "admin_fee" },
+          });
+        }
+      } else {
+        // Atomic buyer debit (principal + fee).
+        const debited = await tx.user.updateMany({
+          where: { id: buyerId, cashBalance: { gte: total } },
+          data: { cashBalance: { decrement: total } },
+        });
+        if (debited.count === 0) throw new Error("INSUFFICIENT");
+
         await tx.transaction.create({
           data: {
             userId: buyerId,
-            type: TransactionType.ADMIN_FEE,
+            type: TransactionType.PURCHASE,
             status: TransactionStatus.COMPLETED,
-            amount: -adminFee,
+            amount: -amount,
             points: 0,
-            description: `Admin mediation fee — "${deal.listing.title}"`,
-            reference: `deal_adminfee_${dealId}`,
-            metadata: { dealId, listingId: deal.listingId },
+            description: `Escrow funded — "${deal.listing.title}"`,
+            reference: `deal_${dealId}`,
+            metadata: { dealId, listingId: deal.listingId, kind: "escrow_hold" },
           },
         });
+        if (adminFee > 0) {
+          await tx.transaction.create({
+            data: {
+              userId: buyerId,
+              type: TransactionType.ADMIN_FEE,
+              status: TransactionStatus.COMPLETED,
+              amount: -adminFee,
+              points: 0,
+              description: `Admin mediation fee — "${deal.listing.title}"`,
+              reference: `deal_adminfee_${dealId}`,
+              metadata: { dealId, listingId: deal.listingId },
+            },
+          });
+        }
       }
 
       await systemMessage(
@@ -371,6 +405,20 @@ export async function fundDeal(opts: {
       );
     });
   } catch (err) {
+    if (err instanceof InsufficientBalanceError) {
+      const have = await prisma.user
+        .findUnique({ where: { id: buyerId }, select: { adFundBalance: true } })
+        .then((u) => toNum(u?.adFundBalance))
+        .catch(() => 0);
+      const shortBy = Math.max(0, Math.round((total - have) * 100) / 100) || total;
+      return {
+        ok: false,
+        error: `Not enough Ad Fund — this costs ${usd(total)}, you have ${usd(have)}. Nothing was charged.`,
+        status: 402,
+        shortBy,
+        addFund: addFundHref(shortBy, `/marketplace/messages/${deal.threadId}`),
+      };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "ALREADY_FUNDED") return { ok: true, dealId };
     if (msg === "UNAVAILABLE") {
@@ -681,7 +729,7 @@ export async function refundDeal(opts: {
   const { dealId, actor, reason } = opts;
   const deal = await prisma.marketplaceDeal.findUnique({
     where: { id: dealId },
-    include: { listing: { select: { title: true } } },
+    include: { listing: { select: { title: true, assetType: true } } },
   });
   if (!deal) return { ok: false, error: "Deal not found.", status: 404 };
 
@@ -700,6 +748,7 @@ export async function refundDeal(opts: {
   const refundFee =
     opts.refundAdminFee ?? deal.status === MarketplaceDealStatus.FUNDED;
   const refundTotal = Math.round((held + (refundFee ? adminFee : 0)) * 100) / 100;
+  let refundedTo = { adFund: 0, cash: 0 };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -710,21 +759,23 @@ export async function refundDeal(opts: {
       if (claimed.count === 0) throw new Error("RACE");
 
       if (refundTotal > 0) {
-        await tx.user.update({
-          where: { id: deal.buyerId },
-          data: { cashBalance: { increment: refundTotal } },
-        });
-        await tx.transaction.create({
-          data: {
-            userId: deal.buyerId,
-            type: TransactionType.REFUND,
-            status: TransactionStatus.COMPLETED,
-            amount: refundTotal,
-            points: 0,
-            description: `Escrow refund — "${deal.listing.title}"`,
-            reference: `deal_refund_${dealId}`,
-            metadata: { dealId, listingId: deal.listingId, reason: reason ?? null, refundedFee: refundFee },
-          },
+        // Back to the balance that paid. Funded from Ad Fund → the
+        // `adfund_deal_<id>` (+ `adfund_deal_adminfee_<id>`) rows exist, and
+        // up to their total returns to Ad Fund. Anything above that (only a
+        // later mediation fee, charged in Cash) and every Cash-funded deal
+        // refunds to Cash exactly as before.
+        const adFundPaid =
+          (await adFundPaidFor(tx, deal.buyerId, `deal_${dealId}`)) +
+          (await adFundPaidFor(tx, deal.buyerId, `deal_adminfee_${dealId}`));
+        refundedTo = await refundToPayingBalance(tx, {
+          userId: deal.buyerId,
+          usd: refundTotal,
+          adFundPaid,
+          reference: `deal_refund_${dealId}`,
+          description: `Escrow refund — "${deal.listing.title}"`,
+          purpose: isServiceType(deal.listing.assetType) ? "refund:service" : "refund:marketplace",
+          cashType: TransactionType.REFUND,
+          metadata: { dealId, listingId: deal.listingId, reason: reason ?? null, refundedFee: refundFee },
         });
       }
 
@@ -744,7 +795,7 @@ export async function refundDeal(opts: {
     userId: deal.buyerId,
     type: "WALLET",
     title: "Refund issued",
-    message: `You were refunded ${usd(refundTotal)} for "${deal.listing.title}".`,
+    message: `You were refunded ${usd(refundTotal)} to ${refundedToLabel(refundedTo)} for "${deal.listing.title}".`,
     link: `/marketplace/messages/${deal.threadId}`,
   }).catch(() => {});
   notifyUser({

@@ -1,4 +1,4 @@
-import { deriveSource, type SourceKey } from "@/lib/tx-sources";
+import { adWalletKind, deriveSource, isAdWalletRef, type SourceKey } from "@/lib/tx-sources";
 
 /**
  * One rule for reading the sign and the meaning of a ledger row.
@@ -39,7 +39,13 @@ export type Direction =
   /** The platform receives: real revenue. */
   | "revenue"
   /** Money moves between users, or changes shape. Nets to zero for the house. */
-  | "internal";
+  | "internal"
+  /**
+   * Platform spending given back (an Ad Points / Ad Fund refund of a boost,
+   * spotlight bid, lottery ticket…): it REDUCES revenue — neither a cost paid
+   * to the member nor nothing.
+   */
+  | "refund";
 
 export interface LedgerRow {
   type: string;
@@ -70,6 +76,7 @@ const INTERNAL_SOURCES = new Set<SourceKey>([
  * `EARNING`, `daily_` for check-in), so this only has to decide direction.
  */
 export function direction(row: LedgerRow): Direction {
+  if (isAdWalletRef(row.reference)) return adWalletDirection(row);
   const source = deriveSource(row.type, row.reference);
   if (INTERNAL_SOURCES.has(source)) return "internal";
 
@@ -121,6 +128,32 @@ export function direction(row: LedgerRow): Direction {
 }
 
 /**
+ * Ad Points / Ad Fund rows (src/lib/ad-wallet.ts, owner 2026-10-16). Their
+ * `amount` is always the USD value and `points` is always 0 (the Earn Points
+ * leg of a conversion aside), so they never read as points earned.
+ *
+ * - Add fund (DEPOSIT) is money HELD for the member — a liability, internal.
+ * - Earn → Ad Points (POINTS_CONVERSION) changes shape — internal.
+ * - Spending on platform items is revenue; its refunds reduce it.
+ * - Products / services / courses paid from Ad Fund follow their cash twins:
+ *   user-to-user is internal (the fee is counted on the domain row); a course
+ *   purchase is revenue like COURSE_PURCHASE, its refund internal like
+ *   COURSE_REFUND; the escrow mediation fee is revenue like ADMIN_FEE.
+ * - Ad credit / task credit bought with them is internal: revenue lands when
+ *   that credit is SPENT, exactly as when it was bought with cash.
+ */
+function adWalletDirection(row: LedgerRow): Direction {
+  if (row.type === "DEPOSIT" || row.type === "POINTS_CONVERSION") return "internal";
+  const kind = adWalletKind(row.reference);
+  if (kind === "shop" || kind === "adcredit" || kind === "taskcredit") return "internal";
+  if (row.type === "PURCHASE") return "revenue";
+  if (row.type === "REFUND") return kind === "course" ? "internal" : "refund";
+  // creditAdPoints writes BONUS for an Ad Points grant: the platform giving value.
+  if (row.type === "BONUS") return "cost";
+  return "internal";
+}
+
+/**
  * The row's USD magnitude, always positive.
  *
  * Direction is decided by `direction()`, never by the stored sign — the stored
@@ -148,6 +181,7 @@ export function signedUsd(row: LedgerRow): number {
   const d = direction(row);
   if (d === "internal") return 0;
   const mag = magnitudeUsd(row);
+  // A refund of platform spending and a cost both lower the platform's money.
   return d === "revenue" ? mag : -mag;
 }
 

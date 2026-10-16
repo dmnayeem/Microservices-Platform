@@ -496,8 +496,10 @@ function OverviewTab({
         />
         <StatCard
           title="Owed to users"
-          value={usd(balances.real.walletLiabilityUsd)}
-          subtext={`real users · all accounts ${usd(balances.all.walletLiabilityUsd)}`}
+          value={usd(balances.real.memberLiabilityUsd)}
+          subtext={`real users · withdrawable ${usd(balances.real.walletLiabilityUsd)} + Ad Fund/Ad Points ${usd(
+            balances.real.adFundUsd + balances.real.adPointsUsd
+          )}`}
           icon={Wallet}
           tone="purple"
         />
@@ -1019,7 +1021,25 @@ async function UsersTab({
               "Wallet liability",
               usd(balances.real.walletLiabilityUsd),
               usd(balances.all.walletLiabilityUsd),
-              "cash plus points at the current rate"
+              "cash plus points at the current rate — the withdrawable part"
+            )}
+            {row(
+              "Ad Fund",
+              usd(balances.real.adFundUsd),
+              usd(balances.all.adFundUsd),
+              "deposits held for members — spendable, not withdrawable, not revenue until spent"
+            )}
+            {row(
+              "Ad Points",
+              pts(balances.real.adPoints),
+              pts(balances.all.adPoints),
+              `${usd(balances.real.adPointsUsd)} at ${balances.adPointsPerUsd.toLocaleString()} Ad Points per USD — spend-only`
+            )}
+            {row(
+              "Member liability",
+              usd(balances.real.memberLiabilityUsd),
+              usd(balances.all.memberLiabilityUsd),
+              "wallet liability + Ad Fund + Ad Points value"
             )}
           </tbody>
         </table>

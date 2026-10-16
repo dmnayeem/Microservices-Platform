@@ -5,6 +5,7 @@ import { WithdrawalStatus } from "@/generated/prisma";
 import { getSubscriptionStatus } from "@/lib/packages";
 import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { toNum, type MoneyInput } from "@/lib/money";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
 
 // GET /api/wallet - Get user wallet details
 export async function GET() {
@@ -22,6 +23,8 @@ export async function GET() {
         pointsBalance: true,
         cashBalance: true,
         adCreditBalance: true,
+        adPointsBalance: true,
+        adFundBalance: true,
         totalEarnings: true,
         totalWithdrawals: true,
         level: true,
@@ -88,9 +91,10 @@ export async function GET() {
       },
     });
 
-    const [pointsPerUsd, convertThreshold] = await Promise.all([
+    const [pointsPerUsd, convertThreshold, adPointsPerUsd] = await Promise.all([
       getPointsPerUsd(),
       getPointsConvertThreshold(),
+      getAdPointsPerUsd(),
     ]);
     // Withdrawable is now the CASH balance (pending withdrawals already decrement
     // it at request time). Points convert to cash once they reach the threshold.
@@ -105,6 +109,11 @@ export async function GET() {
         points: user.pointsBalance,
         cash,
         adCredit: toNum(user.adCreditBalance),
+        // The two spend-only balances (src/lib/ad-wallet.ts) — payment choosers
+        // read them here.
+        adPoints: user.adPointsBalance,
+        adFund: toNum(user.adFundBalance),
+        adPointsPerUsd,
         withdrawable: cash,
         pointsAsUsd,
         cashEquivalent: pointsAsUsd,

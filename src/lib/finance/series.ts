@@ -176,6 +176,8 @@ export async function getLedgerTotals(range: Range = {}): Promise<{
     const usd = platformUsd(row, pointsPerUsd);
     const d = direction(row);
     if (d === "revenue") bucket.revenueUsd += usd;
+    // An Ad Points / Ad Fund refund of platform spending gives revenue back.
+    else if (d === "refund") bucket.revenueUsd -= usd;
     // A PENALTY is points taken back: it LOWERS what was paid out (signing.ts
     // says so), but it used to be added to cost by magnitude.
     else if (d === "cost") bucket.costUsd += row.type === "PENALTY" ? -usd : usd;
@@ -229,6 +231,7 @@ export async function getDailySeries(range: Range = {}): Promise<DayPoint[]> {
     const usd = platformUsd(row, pointsPerUsd);
     const d = direction(row);
     if (d === "revenue") day.revenue += usd;
+    else if (d === "refund") day.revenue -= usd;
     else if (d === "cost") day.cost += row.type === "PENALTY" ? -usd : usd;
   }
 

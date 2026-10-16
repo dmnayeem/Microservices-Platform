@@ -4,9 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
-import { LotteryStatus, TransactionType, TransactionStatus, NotificationType } from "@/generated/prisma";
-import { getPointsPerUsd } from "@/lib/economy";
+import { LotteryStatus, NotificationType } from "@/generated/prisma";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { PlatformPayError, getSpendBalances, insufficientError, payPlatformOrThrow } from "@/lib/platform-pay";
+import { defaultPaySource, parsePaySource } from "@/lib/pay-source";
 import { recordUserAction } from "@/lib/goal-progress";
+import { lotteryTicketValueRatio } from "@/lib/lottery";
 import {
   computePool,
   parsePrizeTiers,
@@ -92,6 +95,8 @@ export async function GET(request: NextRequest) {
       : [];
     const rolloverTitle = new Map(rolloverTargets.map((r) => [r.id, r.title]));
 
+    // Tickets in Ad Points, prizes in Earn Points — the pot shown is at USD value.
+    const valueRatio = await lotteryTicketValueRatio();
     // Format lotteries for frontend
     const formattedLotteries = lotteries.map((lottery) => {
       const sold = ticketCountMap.get(lottery.id) || 0;
@@ -106,6 +111,7 @@ export async function GET(request: NextRequest) {
       const pool = computePool({
         ticketsSold: sold,
         ticketPrice: lottery.ticketPrice,
+        ticketValueRatio: valueRatio,
         houseCutPercent: lottery.houseCutPercent,
         seedPoints: lottery.poolSeedPoints,
         rolloverInPoints: lottery.rolloverInPoints,
@@ -227,6 +233,9 @@ export async function POST(request: NextRequest) {
     // `selectedNumbers` is no longer read — LotteryTicket.numbers was generated
     // and stored but the draw is a shuffle over tickets and never looked at it.
     const { lotteryId, quantity } = body;
+    // Tickets are priced in Ad Points and paid from Ad Points or Ad Fund
+    // (owner, 2026-10-16) — never Earn Points. Omitted = whichever covers it.
+    const chosen = parsePaySource(body.paySource);
 
     // Validate quantity
     // A whole number only: 1.5 tickets made 1 ticket row (Array.from floors)
@@ -239,7 +248,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pointsPerUsd = await getPointsPerUsd();
+    const adRate = await getAdPointsPerUsd();
 
     /**
      * Everything below runs INSIDE one interactive transaction that opens by
@@ -273,7 +282,7 @@ export async function POST(request: NextRequest) {
         const [soldTotal, userTicketCount, user] = await Promise.all([
           tx.lotteryTicket.count({ where: { lotteryId } }),
           tx.lotteryTicket.count({ where: { lotteryId, userId } }),
-          tx.user.findUnique({ where: { id: userId }, select: { pointsBalance: true } }),
+          getSpendBalances(userId, tx),
         ]);
 
         if (lottery.maxTickets && soldTotal + ticketCount > lottery.maxTickets) {
@@ -329,8 +338,9 @@ export async function POST(request: NextRequest) {
 
         // Free / earned entry costs nothing — no debit, no purchase row.
         const totalCost = entryMode === "PAID" ? lottery.ticketPrice * ticketCount : 0;
-        if (!user || user.pointsBalance < totalCost) {
-          return { ok: false as const, error: "Insufficient points balance", status: 400 };
+        const from = totalCost > 0 ? chosen ?? defaultPaySource(totalCost, user, adRate) : null;
+        if (totalCost > 0 && !from) {
+          throw await insufficientError(userId, totalCost, null, "/lottery", adRate);
         }
 
         // Ticket numbers are sequential from the in-lock count, so the
@@ -343,44 +353,34 @@ export async function POST(request: NextRequest) {
         }));
 
         await tx.lotteryTicket.createMany({ data: tickets });
-        // Conditional debit: the lock above is on the lottery, not the user,
-        // so two buys in different lotteries could both pass the read check
-        // and take the balance below zero.
-        if (totalCost > 0) {
-          const paid = await tx.user.updateMany({
-            where: { id: userId, pointsBalance: { gte: totalCost } },
-            data: { pointsBalance: { decrement: totalCost } },
-          });
-          if (paid.count === 0) throw new Error("LOTTERY_INSUFFICIENT");
-        }
-        const updatedUser = (await tx.user.findUnique({
-          where: { id: userId },
-          select: { pointsBalance: true },
-        }))!;
-        await tx.lottery.update({
-          where: { id: lotteryId },
-          data: { ticketsSold: { increment: ticketCount } },
-        });
-        if (totalCost > 0) await tx.transaction.create({
-          data: {
+        // Conditional debit (ad-wallet CAS): the lock above is on the lottery,
+        // not the user, so two buys in different lotteries could both pass the
+        // read check — the CAS is what stops the balance going below zero.
+        // Its ledger row is written in the same call.
+        if (totalCost > 0 && from) {
+          await payPlatformOrThrow(tx, {
             userId,
-            type: TransactionType.PURCHASE,
-            status: TransactionStatus.COMPLETED,
-            points: -totalCost,
-            amount: -totalCost / pointsPerUsd,
+            adPoints: totalCost,
+            from,
             description: `Purchased ${ticketCount} lottery ticket(s) for "${lottery.title}"`,
-            // Keyed to the FIRST ticket number, which is unique per lottery.
-            // The old `_${Date.now()}` suffix made every reference unique and
-            // therefore gave the ledger's @@unique([userId, reference]) nothing
-            // to catch a replay on.
+            // Keyed to the FIRST ticket number, which is unique per lottery
+            // (stored as adpts_/adfund_lottery_<id>_<ticket>). The refund run
+            // (lib/lottery payRefunds) finds this row by its ticket numbers.
             reference: `lottery_${lotteryId}_${tickets[0].ticketNumber}`,
+            purpose: "lottery",
             metadata: {
               lotteryId,
               ticketCount,
               ticketNumbers: tickets.map((t) => t.ticketNumber),
             },
-          },
+            returnTo: "/lottery",
+          });
+        }
+        await tx.lottery.update({
+          where: { id: lotteryId },
+          data: { ticketsSold: { increment: ticketCount } },
         });
+        const after = await getSpendBalances(userId, tx);
 
         return {
           ok: true as const,
@@ -389,7 +389,10 @@ export async function POST(request: NextRequest) {
           tickets,
           totalCost,
           title: lottery.title,
-          newBalance: updatedUser.pointsBalance,
+          // Ad Points left (the page shows the spend balance it was paid from).
+          newBalance: after.adPoints,
+          newAdFund: after.adFundUsd,
+          paidFrom: from,
         };
       },
       // Accelerate refuses any interactive transaction over 15 s (P6005), so
@@ -438,8 +441,8 @@ export async function POST(request: NextRequest) {
       newBalance,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "LOTTERY_INSUFFICIENT") {
-      return NextResponse.json({ error: "Insufficient points balance" }, { status: 400 });
+    if (error instanceof PlatformPayError) {
+      return NextResponse.json({ error: error.userMessage, addFund: error.addFund }, { status: 400 });
     }
     console.error("Error buying lottery tickets:", error);
     return NextResponse.json(

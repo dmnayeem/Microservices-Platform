@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PaySourceToggle, PayErrorNote, useSpendBalances, type PayErrorState } from "@/components/user/primitives/pay-source-picker";
+import type { PaySource } from "@/lib/pay-source";
 import {
   Ticket,
   Trophy,
@@ -95,6 +97,11 @@ const BUNDLES = [
 
 export function LotteryView() {
   const [lotteries, setLotteries] = useState<LotteryItem[]>([]);
+  // Tickets are priced in Ad Points, paid from Ad Points or Ad Fund
+  // (owner, 2026-10-16). null = let the server pick whichever covers it.
+  const { balances, reload: reloadBalances } = useSpendBalances();
+  const [paySource, setPaySource] = useState<PaySource | null>(null);
+  const [payError, setPayError] = useState<PayErrorState | null>(null);
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -118,14 +125,19 @@ export function LotteryView() {
 
   const buy = async (lotteryId: string, quantity: number) => {
     setBusyId(`${lotteryId}-${quantity}`);
+    setPayError(null);
     try {
       const res = await fetch("/api/lottery", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
-        body: JSON.stringify({ lotteryId, quantity }),
+        body: JSON.stringify({ lotteryId, quantity, paySource }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        if (err.addFund) {
+          setPayError({ message: err.error ?? "Not enough balance.", addFund: err.addFund });
+          return;
+        }
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
       await runInterstitial();
@@ -134,6 +146,7 @@ export function LotteryView() {
         "Good luck in the draw 🍀"
       );
       void load();
+      reloadBalances();
     } catch (err) {
       notifyCenter.error(
         "Couldn't buy ticket",
@@ -154,8 +167,10 @@ export function LotteryView() {
           Lottery
         </h1>
         <p className="text-(--app-ink-3) text-sm mt-0.5">
-          Try your luck — every ticket counts.
+          Try your luck — every ticket counts. Tickets cost Ad Points, paid from Ad Points or Ad Fund.
         </p>
+        <PaySourceToggle balances={balances} value={paySource} onChange={setPaySource} className="mt-2" />
+        <PayErrorNote error={payError} className="mt-2" />
       </header>
 
       {loading && <ListSkeleton rows={3} />}
@@ -358,7 +373,7 @@ function FeaturedLotteryCard({
             ? "Free entry"
             : lottery.entryMode === "EARNED"
               ? `1 ticket per ${lottery.tasksPerTicket ?? 1} completed task${(lottery.tasksPerTicket ?? 1) === 1 ? "" : "s"}`
-              : `${lottery.ticketPrice.toLocaleString()} pts/ticket`}
+              : `${lottery.ticketPrice.toLocaleString()} Ad Points/ticket`}
         </span>
       </div>
 
@@ -388,7 +403,7 @@ function FeaturedLotteryCard({
                 <>
                   <p className="text-sm font-bold">{b.label}</p>
                   <p className="text-base font-extrabold mt-0.5 tabular-nums">
-                    {lottery.entryMode && lottery.entryMode !== "PAID" ? "Free" : `${finalCost.toLocaleString()} pts`}
+                    {lottery.entryMode && lottery.entryMode !== "PAID" ? "Free" : `${finalCost.toLocaleString()} Ad Points`}
                   </p>
                   {discount < 1 && (!lottery.entryMode || lottery.entryMode === "PAID") && (
                     <p className="text-[11px] text-amber-300 font-bold">
@@ -472,7 +487,7 @@ function LotteryRow({
         {busyId === `${lottery.id}-1` ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : isActive ? (
-          lottery.entryMode && lottery.entryMode !== "PAID" ? "Get ticket" : `${lottery.ticketPrice.toLocaleString()} pts`
+          lottery.entryMode && lottery.entryMode !== "PAID" ? "Get ticket" : `${lottery.ticketPrice.toLocaleString()} Ad Points`
         ) : (
           lottery.status
         )}

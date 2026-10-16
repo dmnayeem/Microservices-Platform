@@ -36,8 +36,59 @@ export type SourceKey =
   | "admin"
   | "other";
 
+/**
+ * Rows written by src/lib/ad-wallet.ts (Ad Points / Ad Fund) carry the
+ * caller's reference behind an `adpts_` / `adfund_` prefix. Kept in sync with
+ * AD_POINTS_REF / AD_FUND_REF there (not imported: this module is client-safe).
+ */
+const AD_WALLET_PREFIX = /^(adpts_|adfund_)/;
+
+/** True for a ledger row written by ad-wallet.ts. */
+export function isAdWalletRef(reference?: string | null): boolean {
+  return AD_WALLET_PREFIX.test((reference ?? "").toLowerCase());
+}
+
+/** The caller's reference behind the ad-wallet prefix (or the reference itself). */
+export function innerRef(reference?: string | null): string {
+  return (reference ?? "").toLowerCase().replace(AD_WALLET_PREFIX, "");
+}
+
+/**
+ * What an Ad Points / Ad Fund row is, from its inner reference:
+ *   "shop"     — a marketplace / service / course purchase (or its refund),
+ *                user-to-user money; the platform's take is on the domain row.
+ *   "shopfee"  — the escrow mediation fee paid from Ad Fund (platform income).
+ *   "adcredit" / "taskcredit" — balance changing shape; revenue lands on spend.
+ *   "plan"     — a first plan term (revenue.ts counts Subscription.amount).
+ *   "platform" — everything else: platform spending (spotlight, lottery,
+ *                promotions, badge, plan renewals, boosts…) — revenue, and its
+ *                refunds reduce it.
+ */
+export type AdWalletKind = "shop" | "shopfee" | "course" | "adcredit" | "taskcredit" | "plan" | "platform";
+
+export function adWalletKind(reference?: string | null): AdWalletKind {
+  const r = innerRef(reference);
+  if (r.startsWith("deal_adminfee_") || r.startsWith("deal_escalatefee_")) return "shopfee";
+  if (r.startsWith("course_")) return "course";
+  if (
+    r.includes("marketplace") ||
+    r.startsWith("order_") ||
+    r.startsWith("deal_") ||
+    r.startsWith("cart_") ||
+    r.startsWith("dispute_") ||
+    r.startsWith("service_")
+  ) {
+    return "shop";
+  }
+  if (r.startsWith("adcredit_")) return "adcredit";
+  if (r.startsWith("taskcredit_")) return "taskcredit";
+  if (r.startsWith("subscription_")) return "plan";
+  return "platform";
+}
+
 /** Map a transaction (type + optional reference) to its user-facing source. */
 export function deriveSource(type: string, reference?: string | null): SourceKey {
+  if (isAdWalletRef(reference)) return adWalletSource(type, reference);
   const ref = (reference ?? "").toLowerCase();
   const isMarketplaceRef =
     ref.includes("marketplace") || ref.startsWith("order_") || ref.startsWith("deal_");
@@ -95,6 +146,29 @@ export function deriveSource(type: string, reference?: string | null): SourceKey
       return "task";
     default:
       return "other";
+  }
+}
+
+/** deriveSource for ad-wallet rows (see adWalletKind). */
+function adWalletSource(type: string, reference?: string | null): SourceKey {
+  if (type === "DEPOSIT") return "deposit";
+  if (type === "POINTS_CONVERSION") return "convert";
+  const r = innerRef(reference);
+  switch (adWalletKind(reference)) {
+    case "shop":
+      return "marketplace";
+    case "shopfee":
+      return "admin";
+    case "course":
+      return "course";
+    case "adcredit":
+      return "adcredit";
+    case "taskcredit":
+      return "taskcredit";
+    default:
+      if (type === "REFUND") return "refund";
+      if (r.startsWith("lottery_")) return "lottery";
+      return "purchase";
   }
 }
 

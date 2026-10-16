@@ -8,7 +8,8 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { usd } from "@/lib/utils";
 
 /**
- * Buy task credit with wallet cash.
+ * Buy task credit with Ad Fund or Ad Points (owner, 2026-10-16 — no longer
+ * wallet cash).
  *
  * Money moves here, so it is rate-limited in the DATABASE rather than in
  * memory: the in-memory limiter keeps one counter per serverless instance, and
@@ -16,6 +17,7 @@ import { usd } from "@/lib/utils";
  */
 const schema = z.object({
   points: z.number().int().min(1).max(1_000_000_000),
+  paySource: z.enum(["AD_POINTS", "AD_FUND"]).default("AD_FUND"),
 });
 
 export async function POST(req: NextRequest) {
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
   const result = await purchaseTaskCredit(userId, parsed.data.points, {
     minPoints: buyer.minPurchasePoints,
     maxPoints: buyer.maxPurchasePoints,
+    from: parsed.data.paySource,
   });
 
   if (!result.ok) {
@@ -77,9 +80,10 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json(
       {
-        error: `Not enough wallet balance — you need ${usd(result.shortByUsd ?? 0)} more.`,
+        error: result.message ?? `Not enough balance — you need ${usd(result.shortByUsd ?? 0)} more.`,
         shortByUsd: result.shortByUsd ?? 0,
-        depositHref: "/deposit",
+        depositHref: result.addFund ?? "/deposit",
+        addFund: result.addFund ?? "/deposit",
       },
       { status: 402 }
     );

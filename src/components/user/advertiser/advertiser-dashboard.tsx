@@ -1,5 +1,7 @@
 "use client";
 import { usd } from "@/lib/utils";
+import { PaySourcePicker, PayErrorNote, useSpendBalances, type PayErrorState } from "@/components/user/primitives/pay-source-picker";
+import { quotePlatformPrice, type PaySource } from "@/lib/pay-source";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -70,7 +72,10 @@ export function AdvertiserDashboard() {
   const [showLedger, setShowLedger] = useState(false);
   const [buying, setBuying] = useState(false);
   const [buyAmount, setBuyAmount] = useState(20);
-  const [buyCurrency, setBuyCurrency] = useState<"cash" | "points">("cash");
+  // Ad credit is bought with Ad Fund or Ad Points (owner, 2026-10-16).
+  const { balances: spend, reload: reloadSpend } = useSpendBalances();
+  const [buySource, setBuySource] = useState<PaySource | null>(null);
+  const [buyError, setBuyError] = useState<PayErrorState | null>(null);
   const [buyBusy, setBuyBusy] = useState(false);
 
   const loadCredit = async () => {
@@ -107,14 +112,22 @@ export function AdvertiserDashboard() {
       return;
     }
     setBuyBusy(true);
+    setBuyError(null);
     try {
       const res = await fetch("/api/advertiser/credits", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
-        body: JSON.stringify({ amountUsd: buyAmount, currency: buyCurrency }),
+        body: JSON.stringify({ amountUsd: buyAmount, paySource: buySource ?? "AD_FUND" }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      if (!res.ok) {
+        if (d.addFund) {
+          setBuyError({ message: d.error ?? "Not enough balance.", addFund: d.addFund });
+          return;
+        }
+        throw new Error(d.error ?? `HTTP ${res.status}`);
+      }
+      reloadSpend();
       setCredit(d.adCreditBalance ?? credit);
       toast.success(`Ad credit added — balance ${usd((d.adCreditBalance ?? 0))}`);
       setBuying(false);
@@ -494,7 +507,7 @@ export function AdvertiserDashboard() {
       <BottomSheet
         open={buying}
         onOpenChange={setBuying}
-        title="Top up ad credit from wallet"
+        title="Top up ad credit"
         footer={
           <div className="flex gap-2">
             <button
@@ -516,8 +529,8 @@ export function AdvertiserDashboard() {
       >
         <div className="space-y-3">
           <p className="text-xs text-(--app-ink-3)">
-            Convert your existing wallet balance into ad credit (non-withdrawable, funds campaigns).
-            To add new money by bKash / Binance / PayPal, use <b>Add funds</b> instead.
+            Buy ad credit with your Ad Fund (dollar for dollar) or Ad Points (at the platform rate). Ad
+            credit is non-withdrawable and funds campaigns. To add new money, use <b>Add fund</b>.
           </p>
           <div>
             <label className="block text-xs text-(--app-ink-3) mb-1.5">Amount ($)</label>
@@ -541,31 +554,27 @@ export function AdvertiserDashboard() {
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-xs text-(--app-ink-3) mb-1.5">Pay with</label>
-            <div className="flex gap-2">
-              {(["cash", "points"] as const).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setBuyCurrency(c)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold ${buyCurrency === c ? "bg-emerald-500 text-white" : "bg-(--app-surface-2) text-(--app-ink-2)"}`}
-                >
-                  {c === "cash" ? "Wallet cash" : "Points"}
-                </button>
-              ))}
-            </div>
-          </div>
+          {spend && buyAmount >= 5 && (
+            <PaySourcePicker
+              adPoints={quotePlatformPrice({ usd: buyAmount }, spend.rate).adPoints}
+              usdPrice={buyAmount}
+              balances={spend}
+              value={buySource}
+              onChange={setBuySource}
+            />
+          )}
+          <PayErrorNote error={buyError} />
           <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
-            <p className="text-xs font-semibold text-white">Out of wallet balance?</p>
+            <p className="text-xs font-semibold text-white">Out of Ad Fund?</p>
             <p className="text-[11px] text-(--app-ink-3) mt-0.5 leading-relaxed">
-              Add money via bKash, Nagad, Binance or PayPal — it lands in your wallet, then you
+              Add money via bKash, Nagad, Binance or PayPal — it lands in your Ad Fund, then you
               top up ad credit here.
             </p>
             <Link
               href="/deposit?from=ads"
               className="mt-2 w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold"
             >
-              <Plus className="w-3.5 h-3.5" /> Add money to wallet
+              <Plus className="w-3.5 h-3.5" /> Add fund
             </Link>
           </div>
         </div>

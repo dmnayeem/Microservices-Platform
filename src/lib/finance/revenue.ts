@@ -5,6 +5,7 @@ import { adRevenueWindow } from "@/lib/ad-revenue";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
 import { thirdPartyIncome } from "@/lib/finance/platform-income";
+import { adPaidLotteryIds, adPaidSpotlightIds, adWalletSpendRows } from "@/lib/finance/ad-spend";
 
 /**
  * What the platform actually earns, from the columns that already record it.
@@ -103,6 +104,25 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
   const x = <W extends object>(w: NoInfer<W>, fields: string | string[] = "userId", nullable = false): W =>
     withoutUsers<W>(w, testIds, fields, { nullable });
 
+  // Ad Points / Ad Fund (owner, 2026-10-16): spotlight wins and lottery
+  // tickets paid that way are in the "adspend" stream below, so the legacy
+  // streams skip them — each sale is counted once.
+  const [spotWinners, settledLotteries] = await Promise.all([
+    prisma.spotlightAuction.findMany({
+      where: { status: "AWARDED", ...(created ? { awardedAt: created } : {}) },
+      select: { id: true, winnerUserId: true, winnerBid: true },
+    }),
+    prisma.lotterySettlement.findMany({
+      where: created ? { settledAt: created } : {},
+      select: { lotteryId: true },
+    }),
+  ]);
+  const [adSpot, adLottery, adSpend] = await Promise.all([
+    adPaidSpotlightIds(spotWinners),
+    adPaidLotteryIds(settledLotteries.map((l) => l.lotteryId)),
+    adWalletSpendRows(range, testIds),
+  ]);
+
   const [
     marketplace,
     mediation,
@@ -132,7 +152,10 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
       _count: true,
     }),
     prisma.lotterySettlement.aggregate({
-      where: created ? { settledAt: created } : {},
+      where: {
+        ...(created ? { settledAt: created } : {}),
+        ...(adLottery.size ? { lotteryId: { notIn: [...adLottery] } } : {}),
+      },
       _sum: { houseCutPoints: true, overflowToHouse: true },
       _count: true,
     }),
@@ -281,7 +304,15 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     // Spotlight: only the WINNING bid is income — every other bid is held and
     // refunded in full. Dated on the award.
     prisma.spotlightAuction.aggregate({
-      where: x({ status: "AWARDED", ...(created ? { awardedAt: created } : {}) }, "winnerUserId", true),
+      where: x(
+        {
+          status: "AWARDED",
+          ...(created ? { awardedAt: created } : {}),
+          ...(adSpot.size ? { id: { notIn: [...adSpot] } } : {}),
+        },
+        "winnerUserId",
+        true
+      ),
       _sum: { winnerBid: true },
       _count: true,
     }),
@@ -434,6 +465,16 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
       count: promos._count,
       from: "Transaction PURCHASE promo_course_* / promo_marketplace_*",
       measured: promos._count > 0,
+    },
+    {
+      key: "adspend",
+      label: "Ad Points & Ad Fund spending",
+      usd: adSpend.reduce((n, r) => n + r.usd, 0),
+      count: adSpend.length,
+      from: "Transaction PURCHASE − REFUND adpts_* / adfund_* (platform items)",
+      measured: adSpend.length > 0,
+      note:
+        "Boosts, spotlight, lottery tickets, promotions, badge and plan renewals paid from Ad Points (at the rate) or Ad Fund; refunds subtract. Shop purchases, ad/task credit and first plan terms are counted in their own streams.",
     },
     {
       key: "adrentals",

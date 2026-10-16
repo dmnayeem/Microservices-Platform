@@ -3,16 +3,20 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withIdempotency } from "@/lib/idempotency";
 import { resolvePromoPackage } from "@/lib/promotion";
-import { TransactionType, TransactionStatus } from "@/generated/prisma";
 import { z } from "zod";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { PlatformPayError, chargePlatform, getSpendBalances, insufficientError } from "@/lib/platform-pay";
+import { defaultPaySourceForQuote, quotePlatformPrice } from "@/lib/pay-source";
 
 const schema = z.object({
   packageId: z.string().min(1),
-  currency: z.enum(["cash", "points"]),
+  // Ad Points or Ad Fund (owner, 2026-10-16) — never Cash or Earn Points.
+  // Omitted = whichever covers the price.
+  paySource: z.enum(["AD_POINTS", "AD_FUND"]).optional(),
 });
 
-// POST /api/marketplace/listings/:id/promote — owner pays (cash|points) to
-// feature their own listing for the package's duration.
+// POST /api/marketplace/listings/:id/promote — owner pays (Ad Points | Ad Fund)
+// to feature their own listing for the package's duration.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,16 +50,18 @@ export async function POST(
       );
     }
 
-    const isCash = v.data.currency === "cash";
-    const price = isCash ? pkg.priceCash : pkg.pricePoints;
-    // A package priced in only one currency has 0 in the other. Without this
-    // check the CAS below (`balance >= 0`) always passed, so picking the
-    // unpriced currency featured the item for free.
-    if (!(price > 0)) {
-      return NextResponse.json(
-        { error: `This package can't be paid with ${isCash ? "cash" : "points"}.` },
-        { status: 400 }
-      );
+    // Points price → Ad Points; dollar price → Ad Fund dollars (or Ad Points
+    // at the rate when only a dollar price is set). A package with no price
+    // at all can't be bought — never featured for free.
+    const rate = await getAdPointsPerUsd();
+    const quote = quotePlatformPrice({ points: pkg.pricePoints, usd: pkg.priceCash }, rate);
+    if (!(quote.adPoints > 0)) {
+      return NextResponse.json({ error: "This package has no price set." }, { status: 400 });
+    }
+    const from = v.data.paySource ?? defaultPaySourceForQuote(quote, await getSpendBalances(userId));
+    if (!from) {
+      const e = await insufficientError(userId, quote.adPoints, null, `/marketplace/${id}`, rate);
+      return NextResponse.json({ error: e.userMessage, addFund: e.addFund }, { status: 402 });
     }
     const now = Date.now();
     const base =
@@ -66,40 +72,26 @@ export async function POST(
 
     try {
       await prisma.$transaction(async (tx) => {
-        const deducted = isCash
-          ? await tx.user.updateMany({
-              where: { id: userId, cashBalance: { gte: price } },
-              data: { cashBalance: { decrement: price } },
-            })
-          : await tx.user.updateMany({
-              where: { id: userId, pointsBalance: { gte: price } },
-              data: { pointsBalance: { decrement: price } },
-            });
-        if (deducted.count === 0) throw new Error("INSUFFICIENT");
-
+        // CAS debit + its ledger row (adpts_/adfund_promo_marketplace_*) first;
+        // a short balance throws and rolls the feature back.
+        await chargePlatform(tx, {
+          userId,
+          quote,
+          from,
+          description: `Promotion — ${pkg.label} · "${listing.title}"`,
+          reference: `promo_marketplace_${id}_${now}`,
+          purpose: "promotion",
+          metadata: { listingId: id, packageId: pkg.id, days: pkg.days },
+          returnTo: `/marketplace/${id}`,
+        });
         await tx.marketplaceListing.update({
           where: { id },
           data: { isFeatured: true, featuredUntil: until },
         });
-        await tx.transaction.create({
-          data: {
-            userId,
-            type: TransactionType.PURCHASE,
-            status: TransactionStatus.COMPLETED,
-            amount: isCash ? -price : 0,
-            points: isCash ? 0 : -price,
-            description: `Promotion — ${pkg.label} · "${listing.title}"`,
-            reference: `promo_marketplace_${id}_${now}`,
-            metadata: { listingId: id, packageId: pkg.id, days: pkg.days, currency: v.data.currency },
-          },
-        });
       });
     } catch (err) {
-      if (err instanceof Error && err.message === "INSUFFICIENT") {
-        return NextResponse.json(
-          { error: `Not enough ${isCash ? "wallet balance" : "points"}.` },
-          { status: 402 }
-        );
+      if (err instanceof PlatformPayError) {
+        return NextResponse.json({ error: err.userMessage, addFund: err.addFund }, { status: 402 });
       }
       throw err;
     }

@@ -1,24 +1,42 @@
 import "server-only";
 import { NotificationType, TransactionType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { creditPoints, recordTransaction } from "@/lib/ledger";
-import { getPointsPerUsd } from "@/lib/economy";
+import { creditPoints } from "@/lib/ledger";
+import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import {
+  PlatformPayError,
+  getSpendBalances,
+  payPlatformOrThrow,
+  refundPlatformPayment,
+  insufficientError,
+} from "@/lib/platform-pay";
+import { defaultPaySource, type PaySource } from "@/lib/pay-source";
 import { requireActiveUser } from "@/lib/require-active";
 
 /**
- * Spotlight: an open auction, in points, for a featured place in the feed.
+ * Spotlight: an open auction, in Ad Points, for a featured place in the feed.
  *
  * Only the TOP bid is held. A new top bid refunds the previous top bidder at
- * once (they can bid again). When bidding ends the top bid wins: those points
- * are spent, and the winner's chosen post is promoted (the feed's existing
+ * once (they can bid again). When bidding ends the top bid wins: that hold is
+ * spent, and the winner's chosen post is promoted (the feed's existing
  * PROMOTED placement) for `displayHours`. Highest bid wins — no draw, no luck.
  *
+ * Paid from Ad Points or Ad Fund (owner, 2026-10-16) — never Earn Points or
+ * Cash. A held bid is always ONE ledger row for its full amount
+ * (`adpts_|adfund_spotlight_hold_<auction>_<user>_<amount>`): raising your own
+ * bid returns the old hold and holds the new amount, so every refund (outbid,
+ * raise, cancel, unusable post) gives back exactly what that row took, to the
+ * balance it came from. That row is the record of the source — SpotlightBid
+ * has no column for it.
+ *
+ * Bids held in Earn Points before the switch are still returned as Earn Points.
+ *
  * Every bid runs under a row lock on the auction, so two bids can never both
- * become "top", and a refund is written exactly once.
+ * become "top", and a refund is written exactly once (bid status CAS).
  */
 
-type Fail = { ok: false; error: string; status: number };
-const fail = (error: string, status = 400): Fail => ({ ok: false, error, status });
+type Fail = { ok: false; error: string; status: number; addFund?: string };
+const fail = (error: string, status = 400, addFund?: string): Fail => ({ ok: false, error, status, addFund });
 
 class BidError extends Error {
   constructor(public readonly msg: string, public readonly code = 400) {
@@ -26,36 +44,68 @@ class BidError extends Error {
   }
 }
 
-/** Refund a held bid (inside the caller's transaction). */
-async function refundHeld(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+const holdRef = (auctionId: string, userId: string, amount: number) =>
+  `spotlight_hold_${auctionId}_${userId}_${amount}`;
+
+/**
+ * Return a held bid's money (inside the caller's transaction), to the balance
+ * it was held from. The caller has already moved the bid out of HELD with a
+ * CAS, so this runs at most once per hold.
+ */
+async function returnHold(
+  tx: Tx,
   bid: { id: string; userId: string; amount: number; auctionId: string },
-  status: "OUTBID" | "REFUNDED",
+  refundRef: string,
   why: string
 ) {
-  const moved = await tx.spotlightBid.updateMany({ where: { id: bid.id, status: "HELD" }, data: { status } });
-  if (moved.count !== 1) return;
+  const back = await refundPlatformPayment(tx, {
+    userId: bid.userId,
+    payReference: holdRef(bid.auctionId, bid.userId, bid.amount),
+    refundReference: refundRef,
+    description: `Spotlight bid returned — ${why}`,
+    purpose: "refund:spotlight",
+    metadata: { auctionId: bid.auctionId, bidId: bid.id },
+  });
+  if (back) return;
+  // A bid held in Earn Points before the Ad Points switch — its hold may be
+  // several rows (raises held only the difference), so the old full-amount
+  // refund is the right one.
   await creditPoints(tx, {
     userId: bid.userId,
     points: bid.amount,
     type: TransactionType.REFUND,
     description: `Spotlight bid returned — ${why}`,
-    reference: `spotlight_refund_${bid.id}_${bid.amount}`,
+    reference: refundRef,
     metadata: { source: "spotlight", auctionId: bid.auctionId },
     // Getting your own points back is not earning.
     countsAsEarning: false,
   });
 }
 
+/** Refund a held bid and mark it OUTBID / REFUNDED (inside the caller's transaction). */
+async function refundHeld(
+  tx: Tx,
+  bid: { id: string; userId: string; amount: number; auctionId: string },
+  status: "OUTBID" | "REFUNDED",
+  why: string
+) {
+  const moved = await tx.spotlightBid.updateMany({ where: { id: bid.id, status: "HELD" }, data: { status } });
+  if (moved.count !== 1) return;
+  await returnHold(tx, bid, `spotlight_refund_${bid.id}_${bid.amount}`, why);
+}
+
 export async function placeSpotlightBid(
   userId: string,
   auctionId: string,
   postId: string,
-  amount: number
-): Promise<{ ok: true; amount: number } | Fail> {
+  amount: number,
+  chosen: PaySource | null = null
+): Promise<{ ok: true; amount: number; paidFrom: PaySource } | Fail> {
   const active = await requireActiveUser(userId);
   if (!active.ok) return fail(active.message, active.httpStatus);
-  if (!Number.isInteger(amount) || amount <= 0) return fail("Enter a whole number of points.");
+  if (!Number.isInteger(amount) || amount <= 0) return fail("Enter a whole number of Ad Points.");
 
   const post = await prisma.post.findFirst({
     where: { id: postId, userId, isPublic: true, isHidden: false },
@@ -63,7 +113,8 @@ export async function placeSpotlightBid(
   });
   if (!post) return fail("Pick one of your own public posts to feature.");
 
-  const pointsPerUsd = await getPointsPerUsd();
+  const rate = await getAdPointsPerUsd();
+  let from: PaySource = chosen ?? "AD_POINTS";
   let outbid: { userId: string; amount: number } | null = null;
   try {
     await prisma.$transaction(async (tx) => {
@@ -75,26 +126,36 @@ export async function placeSpotlightBid(
       const top = await tx.spotlightBid.findFirst({ where: { auctionId, status: "HELD" } });
       const need = top ? top.amount + a.bidStep : a.minBid;
       if (amount < need) {
-        throw new BidError(top ? `Bid at least ${need.toLocaleString()} points (current top + ${a.bidStep}).` : `The starting bid is ${a.minBid.toLocaleString()} points.`);
+        throw new BidError(
+          top
+            ? `Bid at least ${need.toLocaleString()} Ad Points (current top + ${a.bidStep}).`
+            : `The starting bid is ${a.minBid.toLocaleString()} Ad Points.`
+        );
       }
 
       const mine = await tx.spotlightBid.findUnique({ where: { auctionId_userId: { auctionId, userId } } });
-      // Raising your own top bid holds only the difference.
-      const alreadyHeld = mine && mine.status === "HELD" ? mine.amount : 0;
-      const toHold = amount - alreadyHeld;
-      const debited = await tx.user.updateMany({
-        where: { id: userId, pointsBalance: { gte: toHold } },
-        data: { pointsBalance: { decrement: toHold } },
-      });
-      if (debited.count !== 1) throw new BidError("You don't have enough points for that bid.");
-      await recordTransaction(tx, {
+      // Raising your own top bid: return the old hold to where it came from,
+      // then hold the whole new amount below — one row per hold, one source.
+      // The bid stays HELD throughout (the upsert below rewrites its amount);
+      // the auction lock makes the pair atomic.
+      if (mine && mine.status === "HELD") {
+        await returnHold(tx, mine, `spotlight_raise_${mine.id}_${mine.amount}`, `raised to ${amount.toLocaleString()}`);
+      }
+      // Default source decided AFTER the old hold came back: it must cover the
+      // whole new bid, and the returned hold counts towards that.
+      const picked = chosen ?? defaultPaySource(amount, await getSpendBalances(userId, tx), rate);
+      if (!picked) throw await insufficientError(userId, amount, null, "/spotlight", rate);
+      from = picked;
+
+      await payPlatformOrThrow(tx, {
         userId,
-        type: TransactionType.PURCHASE,
-        points: -toHold,
-        amountUsd: -toHold / pointsPerUsd,
+        adPoints: amount,
+        from,
+        reference: holdRef(auctionId, userId, amount),
         description: `Spotlight bid held — ${a.title}`,
-        reference: `spotlight_hold_${auctionId}_${userId}_${amount}`,
-        metadata: { source: "spotlight", auctionId, bid: amount },
+        purpose: "spotlight",
+        metadata: { auctionId, bid: amount },
+        returnTo: "/spotlight",
       });
 
       if (top && top.userId !== userId) {
@@ -109,6 +170,7 @@ export async function placeSpotlightBid(
     });
   } catch (e) {
     if (e instanceof BidError) return fail(e.msg, e.code);
+    if (e instanceof PlatformPayError) return fail(e.userMessage, 400, e.addFund);
     throw e;
   }
 
@@ -120,13 +182,13 @@ export async function placeSpotlightBid(
           userId: o.userId,
           type: NotificationType.SYSTEM,
           title: "You were outbid on the Spotlight",
-          message: `Someone bid ${amount.toLocaleString()} points. Your ${o.amount.toLocaleString()} points are back in your balance — bid again to win the spot.`,
+          message: `Someone bid ${amount.toLocaleString()} Ad Points. Your ${o.amount.toLocaleString()} are back where they came from — bid again to win the spot.`,
           data: { link: "/spotlight" },
         },
       })
       .catch(() => {});
   }
-  return { ok: true, amount };
+  return { ok: true, amount, paidFrom: from };
 }
 
 /**
@@ -165,18 +227,36 @@ export async function awardSpotlight(auctionId: string): Promise<"awarded" | "em
       await tx.spotlightAuction.update({ where: { id: auctionId }, data: { status: "NO_BIDS", awardedAt: new Date() } });
       return { kind: "empty" as const };
     }
+
+    // The winner's post must still be promotable. A post deleted, hidden or
+    // made private after bidding used to be "simply not promoted" while the
+    // bid was still spent — the member paid for nothing. Now the winner gets
+    // the hold back and the auction closes without a winner (CANCELLED, so
+    // finance never counts it as a sale).
     const until = new Date(Date.now() + a.displayHours * 3_600_000);
+    const promoted = await tx.post.updateMany({
+      where: { id: top.postId, userId: top.userId, isPublic: true, isHidden: false },
+      data: { isPromoted: true, promotedUntil: until, promotedNote: "Spotlight" },
+    });
+    if (promoted.count === 0) {
+      await refundHeld(tx, top, "REFUNDED", `your post for "${a.title}" is no longer public`);
+      await tx.spotlightAuction.update({ where: { id: auctionId }, data: { status: "CANCELLED", awardedAt: new Date() } });
+      await tx.notification.create({
+        data: {
+          userId: top.userId,
+          type: NotificationType.SYSTEM,
+          title: "Spotlight bid returned",
+          message: `You had the top bid on "${a.title}", but the post you picked was deleted or is no longer public, so it couldn't be featured. Your ${top.amount.toLocaleString()} Ad Points' worth is back where it came from.`,
+          data: { link: "/spotlight" },
+        },
+      });
+      return { kind: "empty" as const };
+    }
+
     await tx.spotlightBid.update({ where: { id: top.id }, data: { status: "WON" } });
     await tx.spotlightAuction.update({
       where: { id: auctionId },
       data: { status: "AWARDED", winnerUserId: top.userId, winnerPostId: top.postId, winnerBid: top.amount, awardedAt: new Date() },
-    });
-    // The winning bid is spent either way. A post the winner deleted, hid or
-    // made private after bidding is simply not promoted — it used to throw
-    // here, roll the award back, and stall every auction behind it.
-    await tx.post.updateMany({
-      where: { id: top.postId, userId: top.userId, isPublic: true, isHidden: false },
-      data: { isPromoted: true, promotedUntil: until, promotedNote: "Spotlight" },
     });
     await tx.notification.create({
       data: {

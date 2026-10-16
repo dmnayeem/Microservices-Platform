@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { addFundHref } from "@/lib/pay-source";
 import Link from "next/link";
 import { Check, ArrowRight, Loader2, Lock } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
@@ -18,7 +19,7 @@ import {
 } from "@/lib/plan-pricing";
 
 type Duration = "MONTHLY" | "QUARTERLY" | "YEARLY" | "LIFETIME";
-type Method = "POINTS" | "CASH" | "CARD" | "BKASH" | "NAGAD" | "BINANCE" | "BITGET";
+type Method = "AD_POINTS" | "AD_FUND" | "CARD" | "BKASH" | "NAGAD" | "BINANCE" | "BITGET";
 
 interface PackageRow {
   id: string;
@@ -37,15 +38,14 @@ interface PackagesViewProps {
   currentTier: string;
   /** The id of the plan the user is effectively on right now (robust "Current"). */
   currentPackageId?: string | null;
-  cashBalance: number;
-  pointsBalance: number;
+  /** Plans are platform spending: Ad Fund (USD) or Ad Points (owner, 2026-10-16). */
+  adFundBalance: number;
+  adPointsBalance: number;
   /**
-   * Points per USD, from the admin-configurable setting. REQUIRED on purpose —
-   * this used to be a hardcoded ×1000 while the purchase endpoint charged at
-   * `getPointsPerUsd()`, so changing the rate quoted the user one point price
-   * and took another.
+   * Ad Points per USD, from the admin setting. REQUIRED on purpose — a
+   * hardcoded rate here once quoted one price and charged another.
    */
-  pointsPerUsd: number;
+  adPointsPerUsd: number;
   /** Plan cards + comparison, from lib/plans-display (real plan columns). */
   cards: PlanCardData[];
 }
@@ -56,8 +56,8 @@ function isFreePkg(p: PackageRow): boolean {
 }
 
 const PAY_METHOD_LABEL: Record<string, string> = {
-  CASH: "Cash balance",
-  POINTS: "Points",
+  AD_FUND: "Ad Fund",
+  AD_POINTS: "Ad Points",
   CARD: "Credit card",
   BKASH: "bKash",
   NAGAD: "Nagad",
@@ -72,7 +72,7 @@ interface Quote {
   priceUsd: number;
   creditUsd: number;
   payUsd: number;
-  payPoints: number;
+  payAdPoints: number;
   samePlan: boolean;
   switching: boolean;
   endDate: string;
@@ -83,16 +83,16 @@ export function PackagesView({
   packages,
   currentTier,
   currentPackageId,
-  cashBalance,
-  pointsBalance,
-  pointsPerUsd,
+  adFundBalance,
+  adPointsBalance,
+  adPointsPerUsd,
   cards,
 }: PackagesViewProps) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [duration, setDuration] = useState<Duration>("MONTHLY");
-  const [method, setMethod] = useState<Method>("CASH");
+  const [method, setMethod] = useState<Method>("AD_FUND");
   const [busy, setBusy] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [transactionId, setTransactionId] = useState("");
@@ -110,9 +110,9 @@ export function PackagesView({
   // for the plan being replaced and is what Confirm actually charges.
   const listPrice = selectedPkg ? (planPriceUsd(selectedPkg, duration) ?? 0) : 0;
   const price = quote ? quote.payUsd : listPrice;
-  const ptCost = quote ? quote.payPoints : Math.ceil(price * pointsPerUsd);
-  const insufficientCash = method === "CASH" && cashBalance < price;
-  const insufficientPts = method === "POINTS" && pointsBalance < ptCost;
+  const ptCost = quote ? quote.payAdPoints : Math.ceil(Math.round(price * adPointsPerUsd * 1e6) / 1e6);
+  const insufficientCash = method === "AD_FUND" && adFundBalance + 1e-9 < price;
+  const insufficientPts = method === "AD_POINTS" && adPointsBalance < ptCost;
   const offPlatformIncomplete =
     isOffPlatform && (transactionId.trim().length < 4 || !proofUrl);
 
@@ -144,7 +144,7 @@ export function PackagesView({
   // Card is offered only while a payment gateway is configured.
   const cardAvailable = quote?.cardAvailable ?? false;
   useEffect(() => {
-    if (method === "CARD" && quote && !quote.cardAvailable) setMethod("CASH");
+    if (method === "CARD" && quote && !quote.cardAvailable) setMethod("AD_FUND");
   }, [method, quote]);
 
   const openReview = () => {
@@ -160,7 +160,7 @@ export function PackagesView({
       const res = await fetch("/api/packages/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
-        body: JSON.stringify({ packageId: pkg.id, duration: "MONTHLY", method: "CASH" }),
+        body: JSON.stringify({ packageId: pkg.id, duration: "MONTHLY", method: "AD_FUND" }),
       });
       if (!res.ok) throw new Error(await res.text());
       setStep(5);
@@ -351,8 +351,8 @@ export function PackagesView({
         <div className="space-y-3">
           {(
             [
-              { value: "CASH", label: "Cash Balance", info: `Avail: ${usd(cashBalance)}` },
-              { value: "POINTS", label: "Points", info: `Avail: ${pointsBalance.toLocaleString()} pts` },
+              { value: "AD_FUND", label: "Ad Fund", info: `Avail: ${usd(adFundBalance)}` },
+              { value: "AD_POINTS", label: "Ad Points", info: `Avail: ${adPointsBalance.toLocaleString()} Ad Points` },
               { value: "CARD", label: "Credit Card", info: "Stripe" },
               { value: "BKASH", label: "bKash", info: "Mobile" },
               { value: "NAGAD", label: "Nagad", info: "Mobile" },
@@ -375,7 +375,7 @@ export function PackagesView({
                 onChange={() => setMethod(m.value)}
                 className="h-4.5 w-4.5 shrink-0 accent-(--app-cta)"
               />
-              {m.value !== "CASH" && m.value !== "POINTS" && (
+              {m.value !== "AD_FUND" && m.value !== "AD_POINTS" && (
                 <BrandIcon brand={m.value} colored className="w-5 h-5 shrink-0" />
               )}
               <div className="flex-1 min-w-0">
@@ -387,10 +387,10 @@ export function PackagesView({
           {isOffPlatform && (
             <div className="space-y-2">
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
-                Fastest: <Link href="/deposit" className="font-bold underline">add funds to your wallet</Link> via
-                Binance / bKash / manual, then pay with <b>Cash Balance</b>. Otherwise send the payment, then
+                Fastest: <Link href="/deposit" className="font-bold underline">add fund</Link> via
+                Binance / bKash / manual, then pay with <b>Ad Fund</b>. Otherwise send the payment, then
                 enter its transaction ID and upload a screenshot — an admin verifies it before activating.
-                {quote?.switching && " Credit for your current plan applies to Cash / Points payments only."}
+                {quote?.switching && " Credit for your current plan applies to Ad Fund / Ad Points payments only."}
               </div>
               <input
                 type="text"
@@ -472,8 +472,8 @@ export function PackagesView({
             <div className="flex justify-between pt-2 border-t border-(--app-line)">
               <span className="text-(--app-ink-2) font-semibold">Total</span>
               <span className="font-extrabold text-emerald-400 text-lg tabular-nums">
-                {method === "POINTS"
-                  ? `${ptCost.toLocaleString()} pts`
+                {method === "AD_POINTS"
+                  ? `${ptCost.toLocaleString()} Ad Points`
                   : `${usd(price)}`}
               </span>
             </div>
@@ -484,21 +484,25 @@ export function PackagesView({
               {/* Show both numbers and the way out, not just "Insufficient". */}
               <div role="alert" className="min-w-0 text-sm text-red-300">
                 <p>
-                  Not enough {method === "CASH" ? "cash" : "points"}: you have{" "}
+                  Not enough {method === "AD_FUND" ? "Ad Fund" : "Ad Points"}: you have{" "}
                   <b className="tabular-nums">
-                    {method === "CASH" ? usd(cashBalance) : `${pointsBalance.toLocaleString()} pts`}
+                    {method === "AD_FUND" ? usd(adFundBalance) : `${adPointsBalance.toLocaleString()} Ad Points`}
                   </b>
                   , this costs{" "}
                   <b className="tabular-nums">
-                    {method === "CASH" ? usd(price) : `${ptCost.toLocaleString()} pts`}
+                    {method === "AD_FUND" ? usd(price) : `${ptCost.toLocaleString()} Ad Points`}
                   </b>
                   .
                 </p>
-                {method === "CASH" && (
-                  <Link href="/deposit" className="mt-1 inline-flex min-h-9 items-center font-bold underline">
-                    Add funds
-                  </Link>
-                )}
+                <Link
+                  href={addFundHref(
+                    method === "AD_FUND" ? price - adFundBalance : (ptCost - adPointsBalance) / (adPointsPerUsd || 1),
+                    "/packages"
+                  )}
+                  className="mt-1 inline-flex min-h-9 items-center font-bold underline"
+                >
+                  Add fund
+                </Link>
               </div>
             </div>
           )}

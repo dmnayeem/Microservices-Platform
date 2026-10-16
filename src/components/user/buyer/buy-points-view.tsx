@@ -14,18 +14,25 @@ import {
 import { toast } from "@/lib/toast";
 import { cn, usd, pts } from "@/lib/utils";
 import { TASK_CREDIT } from "@/lib/task-credit-theme";
+import { PaySourcePicker, PayErrorNote, type PayErrorState } from "@/components/user/primitives/pay-source-picker";
+import { addFundHref, quotePlatformPrice, type PaySource } from "@/lib/pay-source";
 
 /** Ready-made amounts, so the common case is one tap rather than typing. */
 const PRESETS = [5_000, 10_000, 25_000, 50_000, 100_000];
 
 export function BuyPointsView({
-  cashBalance,
+  adFundBalance,
+  adPointsBalance,
+  adPointsPerUsd,
   taskCredit,
   pointsPerUsd,
   minPoints,
   maxPoints,
 }: {
-  cashBalance: number;
+  /** Task credit is bought with Ad Fund or Ad Points (owner, 2026-10-16). */
+  adFundBalance: number;
+  adPointsBalance: number;
+  adPointsPerUsd: number;
   taskCredit: number;
   pointsPerUsd: number;
   minPoints: number;
@@ -34,18 +41,26 @@ export function BuyPointsView({
   const router = useRouter();
   const [points, setPoints] = useState(Math.max(minPoints, 10_000));
   const [busy, setBusy] = useState(false);
+  const [paySource, setPaySource] = useState<PaySource | null>(null);
+  const [payError, setPayError] = useState<PayErrorState | null>(null);
 
   const rate = pointsPerUsd > 0 ? pointsPerUsd : 1000;
   const costUsd = points / rate;
-  const affordablePoints = Math.floor(cashBalance * rate);
+  const quote = quotePlatformPrice({ usd: costUsd }, adPointsPerUsd);
+  const balances = { adPoints: adPointsBalance, adFundUsd: adFundBalance, rate: adPointsPerUsd, cashUsd: 0 };
+  const affordablePoints = Math.floor(adFundBalance * rate);
+  const short =
+    paySource === "AD_POINTS" ? adPointsBalance < quote.adPoints : adFundBalance + 1e-9 < quote.usd;
 
   const error =
     points < minPoints
       ? `The smallest purchase is ${pts(minPoints)} points.`
       : points > maxPoints
         ? `You can buy at most ${pts(maxPoints)} points at a time.`
-        : costUsd > cashBalance
-          ? `You need ${usd(costUsd - cashBalance)} more in your wallet.`
+        : short
+          ? paySource === "AD_POINTS"
+            ? `You need ${(quote.adPoints - adPointsBalance).toLocaleString()} more Ad Points.`
+            : `You need ${usd(quote.usd - adFundBalance)} more in your Ad Fund.`
           : null;
 
   const buy = async () => {
@@ -54,10 +69,17 @@ export function BuyPointsView({
       const res = await fetch("/api/task-credit/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ points: Math.floor(points) }),
+        body: JSON.stringify({ points: Math.floor(points), paySource: paySource ?? "AD_FUND" }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Purchase failed");
+      if (!res.ok) {
+        if (data?.addFund) {
+          setPayError({ message: data.error ?? "Not enough balance.", addFund: data.addFund });
+          return;
+        }
+        throw new Error(data?.error || "Purchase failed");
+      }
+      setPayError(null);
       toast.success(`${pts(data.points)} task credit added`, {
         description: `Balance: ${pts(data.balance)} points`,
       });
@@ -105,11 +127,11 @@ export function BuyPointsView({
           <div className="flex items-center gap-1.5 text-emerald-400">
             <Wallet className="h-3.5 w-3.5" />
             <span className="text-[10px] font-bold uppercase tracking-wider">
-              Wallet
+              Ad Fund
             </span>
           </div>
           <p className="mt-1 text-lg font-bold tabular-nums text-white">
-            {usd(cashBalance)}
+            {usd(adFundBalance)}
           </p>
           <p className="text-[10px] text-(--app-ink-3)">
             buys {pts(affordablePoints)} pts
@@ -158,14 +180,25 @@ export function BuyPointsView({
             <span className="tabular-nums text-(--app-ink)">{usd(costUsd)}</span>
           </div>
           <div className="flex justify-between font-bold">
-            <span className="text-white">Charged to your wallet</span>
-            <span className="tabular-nums text-white">{usd(costUsd)}</span>
+            <span className="text-white">You pay</span>
+            <span className="tabular-nums text-white">
+              {paySource === "AD_POINTS" ? `${quote.adPoints.toLocaleString()} Ad Points` : usd(quote.usd)}
+            </span>
           </div>
           <p className="pt-1 text-[11px] leading-relaxed text-(--app-ink-3)">
             No fee to buy. The platform fee, if any, is charged per completion
             and is shown on the task page before you publish.
           </p>
         </div>
+
+        <PaySourcePicker
+          adPoints={quote.adPoints}
+          usdPrice={quote.usd}
+          balances={balances}
+          value={paySource}
+          onChange={setPaySource}
+        />
+        <PayErrorNote error={payError} />
 
         {error && (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
@@ -189,12 +222,15 @@ export function BuyPointsView({
           Buy {pts(points)} points
         </button>
 
-        {costUsd > cashBalance && (
+        {short && (
           <Link
-            href="/deposit"
+            href={addFundHref(
+              paySource === "AD_POINTS" ? (quote.adPoints - adPointsBalance) / adPointsPerUsd : quote.usd - adFundBalance,
+              "/buy-points"
+            )}
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-(--app-line) py-2.5 text-sm font-semibold text-white hover:border-emerald-500/40"
           >
-            <Plus className="h-4 w-4" /> Add funds to your wallet
+            <Plus className="h-4 w-4" /> Add fund
           </Link>
         )}
       </div>

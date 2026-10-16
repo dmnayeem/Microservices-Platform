@@ -47,6 +47,14 @@ export interface PoolInput {
   seedPoints: number;
   rolloverInPoints: number;
   poolCapPoints?: number | null;
+  /**
+   * Earn Points paid out per point of ticket price. Tickets are bought with Ad
+   * Points but prizes are paid in Earn Points (2026-10-16); the two have
+   * different values, so sales are converted at USD value (points_per_usd /
+   * ad_points_per_usd) — otherwise a pot could pay out more than its tickets
+   * brought in. 1 = same currency (the old behaviour).
+   */
+  ticketValueRatio?: number;
 }
 
 export interface PoolResult {
@@ -66,7 +74,10 @@ export function computePool(a: PoolInput): PoolResult {
   const ticketPrice = int(a.ticketPrice);
   const pct = Math.min(90, Math.max(0, Math.floor(a.houseCutPercent || 0)));
 
-  const gross = ticketsSold * ticketPrice;
+  const ratio = a.ticketValueRatio && a.ticketValueRatio > 0 ? a.ticketValueRatio : 1;
+  // In prize points (Earn Points), rounded down: the house never pays more
+  // than the tickets were worth.
+  const gross = Math.floor(ticketsSold * ticketPrice * ratio);
   const houseCut = Math.floor((gross * pct) / 100);
   let pool = gross - houseCut + int(a.seedPoints) + int(a.rolloverInPoints);
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { adPaidLotteryIds, adPaidSpotlightIds, adWalletSpendRows } from "@/lib/finance/ad-spend";
 import { toNum } from "@/lib/money";
 import { getPointsPerUsd } from "@/lib/economy";
 import { isNetworkAdType, utcDay } from "@/lib/ad-revenue";
@@ -103,6 +104,20 @@ export async function getRevenueByDay(from: Date, to: Date): Promise<Map<string,
   const x = <W extends object>(w: NoInfer<W>, fields: string | string[] = "userId", nullable = false): W =>
     withoutUsers<W>(w, testIds, fields, { nullable });
   const created = { gte: from, lte: to };
+  // Same de-duplication as revenue.ts: spotlight wins / lottery tickets paid
+  // from Ad Points or Ad Fund are in the ad-spend rows, not the legacy streams.
+  const [spotWinners, settledLotteries, adSpend] = await Promise.all([
+    prisma.spotlightAuction.findMany({
+      where: { status: "AWARDED", awardedAt: created },
+      select: { id: true, winnerUserId: true, winnerBid: true },
+    }),
+    prisma.lotterySettlement.findMany({ where: { settledAt: created }, select: { lotteryId: true } }),
+    adWalletSpendRows({ from, to }, testIds),
+  ]);
+  const [adSpot, adLottery] = await Promise.all([
+    adPaidSpotlightIds(spotWinners),
+    adPaidLotteryIds(settledLotteries.map((l) => l.lotteryId)),
+  ]);
   const ledger = (where: Record<string, unknown>) =>
     prisma.transaction.findMany({
       where: x({ type: "PURCHASE", status: "COMPLETED", createdAt: created, ...where } as never),
@@ -141,7 +156,7 @@ export async function getRevenueByDay(from: Date, to: Date): Promise<Map<string,
       select: { createdAt: true, fee: true },
     }),
     prisma.lotterySettlement.findMany({
-      where: { settledAt: created },
+      where: { settledAt: created, ...(adLottery.size ? { lotteryId: { notIn: [...adLottery] } } : {}) },
       select: { settledAt: true, houseCutPoints: true, overflowToHouse: true },
     }),
     prisma.offerwallCallback.findMany({
@@ -177,7 +192,11 @@ export async function getRevenueByDay(from: Date, to: Date): Promise<Map<string,
     ledger({ reference: { startsWith: "boost_" } }),
     ledger({ OR: [{ reference: { startsWith: "promo_course_" } }, { reference: { startsWith: "promo_marketplace_" } }] }),
     prisma.spotlightAuction.findMany({
-      where: x({ status: "AWARDED", awardedAt: created }, "winnerUserId", true),
+      where: x(
+        { status: "AWARDED", awardedAt: created, ...(adSpot.size ? { id: { notIn: [...adSpot] } } : {}) },
+        "winnerUserId",
+        true
+      ),
       select: { awardedAt: true, winnerBid: true },
     }),
     prisma.adSlotBooking.findMany({
@@ -238,6 +257,8 @@ export async function getRevenueByDay(from: Date, to: Date): Promise<Map<string,
   for (const r of promos) add(r.createdAt, Math.abs(n(r.amount)) + Math.abs(r.points ?? 0) / pointsPerUsd);
   for (const r of spotlight) add(r.awardedAt, Math.abs(r.winnerBid ?? 0) / pointsPerUsd);
   for (const r of rentals) add(r.startAt, n(r.priceUsd));
+  // Ad Points / Ad Fund platform spending (refunds negative).
+  for (const r of adSpend) add(r.createdAt, r.usd);
   if (third) for (const d of third.days) add(new Date(`${d.date}T00:00:00.000Z`), d.usd);
   return out;
 }

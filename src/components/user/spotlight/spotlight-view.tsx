@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Crown, Gavel, Loader2, Sparkles, Timer } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn, pts } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
+import { PaySourcePicker, PayErrorNote, type PayErrorState, type SpendBalances } from "@/components/user/primitives/pay-source-picker";
+import type { PaySource } from "@/lib/pay-source";
 
 interface Auction {
   id: string;
@@ -20,7 +22,10 @@ interface Auction {
   myBid: { amount: number; status: string; postId: string } | null;
 }
 interface Data {
+  /** Ad Points. */
   balance: number;
+  adFund: number;
+  adPointsPerUsd: number;
   auctions: Auction[];
   winners: { id: string; title: string; bid: number | null; at: string | null; name: string | null }[];
   posts: { id: string; text: string; createdAt: string }[];
@@ -54,8 +59,9 @@ export function SpotlightView() {
           <Sparkles className="h-6 w-6 text-amber-300" /> Spotlight
         </h1>
         <p className="t-body text-(--app-ink-3) mt-1">
-          Bid points to feature one of your posts at the top of the feed. The highest bid when time runs out wins. If
-          someone outbids you, your points come straight back — bid again any time before the end.
+          Bid Ad Points to feature one of your posts at the top of the feed — pay from Ad Points or Ad Fund. The
+          highest bid when time runs out wins. If someone outbids you, your bid goes straight back to where it came
+          from — bid again any time before the end.
         </p>
       </div>
 
@@ -64,12 +70,22 @@ export function SpotlightView() {
       ) : (
         <>
           <p className="t-meta text-(--app-ink-3)">
-            Your balance: <b className="text-white">{pts(data.balance)} pts</b>
+            Ad Points: <b className="text-white">{data.balance.toLocaleString()}</b> · Ad Fund:{" "}
+            <b className="text-white">{usd(data.adFund)}</b>
           </p>
           {data.auctions.length === 0 ? (
             <div className="app-card text-center text-sm text-(--app-ink-3)">No Spotlight is open right now — the next one opens soon.</div>
           ) : (
-            data.auctions.map((a) => <AuctionCard key={a.id} a={a} posts={data.posts} now={now} onDone={load} />)
+            data.auctions.map((a) => (
+              <AuctionCard
+                key={a.id}
+                a={a}
+                posts={data.posts}
+                now={now}
+                onDone={load}
+                balances={{ adPoints: data.balance, adFundUsd: data.adFund, rate: data.adPointsPerUsd, cashUsd: 0 }}
+              />
+            ))
           )}
           {data.winners.length > 0 && (
             <div className="app-card space-y-2">
@@ -77,7 +93,7 @@ export function SpotlightView() {
               {data.winners.map((w) => (
                 <p key={w.id} className="flex items-center gap-2 text-sm text-(--app-ink-2)">
                   <Crown className="h-4 w-4 text-amber-300" />
-                  <b className="text-white">{w.name}</b> won &ldquo;{w.title}&rdquo;{w.bid ? ` with ${pts(w.bid)} pts` : ""}
+                  <b className="text-white">{w.name}</b> won &ldquo;{w.title}&rdquo;{w.bid ? ` with ${w.bid.toLocaleString()}` : ""}
                 </p>
               ))}
             </div>
@@ -88,23 +104,44 @@ export function SpotlightView() {
   );
 }
 
-function AuctionCard({ a, posts, now, onDone }: { a: Auction; posts: Data["posts"]; now: number; onDone: () => void }) {
+function AuctionCard({
+  a,
+  posts,
+  now,
+  onDone,
+  balances,
+}: {
+  a: Auction;
+  posts: Data["posts"];
+  now: number;
+  onDone: () => void;
+  balances: SpendBalances;
+}) {
   const next = a.topBid != null ? a.topBid + a.bidStep : a.minBid;
   const [amount, setAmount] = useState(String(next));
   const [postId, setPostId] = useState(a.myBid?.postId ?? posts[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
+  const [paySource, setPaySource] = useState<PaySource | null>(null);
+  const [payError, setPayError] = useState<PayErrorState | null>(null);
 
   const bid = async () => {
     setBusy(true);
+    setPayError(null);
     try {
       const r = await fetch(`/api/spotlight/${a.id}/bid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId, amount: Number(amount) }),
+        body: JSON.stringify({ postId, amount: Number(amount), paySource }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error ?? "Couldn't bid");
-      toast.success("You're the top bid!", { description: `${pts(d.amount)} pts held until the end — returned if someone outbids you.` });
+      if (!r.ok) {
+        if (d.addFund) {
+          setPayError({ message: d.error ?? "Not enough balance.", addFund: d.addFund });
+          return;
+        }
+        throw new Error(d.error ?? "Couldn't bid");
+      }
+      toast.success("You're the top bid!", { description: `${Number(d.amount).toLocaleString()} Ad Points held until the end — returned if someone outbids you.` });
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't bid");
@@ -127,11 +164,11 @@ function AuctionCard({ a, posts, now, onDone }: { a: Auction; posts: Data["posts
       </div>
       <div className="rounded-xl bg-(--app-surface-2) p-3">
         <p className="t-meta text-(--app-ink-3)">Current top bid</p>
-        <p className="text-2xl font-black text-amber-300">{a.topBid != null ? `${pts(a.topBid)} pts` : "No bids yet"}</p>
+        <p className="text-2xl font-black text-amber-300">{a.topBid != null ? `${a.topBid.toLocaleString()} Ad Points` : "No bids yet"}</p>
         {a.topBid != null && <p className="text-xs text-(--app-ink-3)">{a.topIsMe ? "That's you — you're winning." : `by ${a.topName}`}</p>}
       </div>
       {!a.topIsMe && a.myBid?.status === "OUTBID" && (
-        <p className="text-xs text-amber-300">You were outbid — your {pts(a.myBid.amount)} pts are back. Bid again to win.</p>
+        <p className="text-xs text-amber-300">You were outbid — your {a.myBid.amount.toLocaleString()} Ad Points are back. Bid again to win.</p>
       )}
       {posts.length === 0 ? (
         <p className="text-sm text-(--app-ink-3)">Write a public post on the feed first — that&apos;s what gets featured.</p>
@@ -164,8 +201,16 @@ function AuctionCard({ a, posts, now, onDone }: { a: Auction; posts: Data["posts
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gavel className="h-4 w-4" />} {a.topIsMe ? "Raise" : "Bid"}
             </button>
           </div>
+          <PaySourcePicker
+            adPoints={Math.max(next, Number(amount) || 0)}
+            balances={balances}
+            value={paySource}
+            onChange={setPaySource}
+          />
+          <PayErrorNote error={payError} />
           <p className="text-[11px] text-(--app-ink-3)">
-            Minimum now: {pts(next)} pts. Only the top bid is held; the winner&apos;s points are spent when time runs out.
+            Minimum now: {next.toLocaleString()} Ad Points. Only the top bid is held; the winner&apos;s bid is spent when
+            time runs out.
           </p>
         </div>
       )}

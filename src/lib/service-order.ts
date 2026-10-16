@@ -6,6 +6,7 @@ import { ACTIVE_STATUSES, fundDeal } from "@/lib/marketplace-deal";
 import { isServiceType } from "@/lib/marketplace-categories";
 import { toNum } from "@/lib/money";
 import { usd } from "@/lib/utils";
+import { addFundHref, type ShopSource } from "@/lib/pay-source";
 import {
   ORDER_SENDER_TYPE,
   dueDateFrom,
@@ -28,7 +29,7 @@ import {
 
 export type ServiceOrderResult =
   | { ok: true; dealId: string; threadId: string }
-  | { ok: false; error: string; status: number; threadId?: string; shortBy?: number };
+  | { ok: false; error: string; status: number; threadId?: string; shortBy?: number; addFund?: string };
 
 export async function placeServiceOrder(opts: {
   listingId: string;
@@ -36,8 +37,11 @@ export async function placeServiceOrder(opts: {
   tierId?: string | null;
   answers?: unknown;
   affiliateCookie?: string;
+  /** Cash (default) or Ad Fund — fundDeal debits it; refunds return there. */
+  paySource?: ShopSource;
 }): Promise<ServiceOrderResult> {
   const { listingId, buyerId } = opts;
+  const paySource: ShopSource = opts.paySource === "AD_FUND" ? "AD_FUND" : "CASH";
 
   const listing = await prisma.marketplaceListing.findUnique({
     where: { id: listingId },
@@ -72,15 +76,28 @@ export async function placeServiceOrder(opts: {
 
   // Fast fail before anything is created. fundDeal's debit CAS stays the
   // authority — the balance can still move in between.
-  const buyer = await prisma.user.findUnique({ where: { id: buyerId }, select: { cashBalance: true } });
+  const buyer = await prisma.user.findUnique({
+    where: { id: buyerId },
+    select: { cashBalance: true, adFundBalance: true },
+  });
   if (!buyer) return { ok: false, error: "User not found.", status: 404 };
-  const balance = toNum(buyer.cashBalance);
+  const balance = toNum(paySource === "AD_FUND" ? buyer.adFundBalance : buyer.cashBalance);
   if (balance < tier.price) {
+    const shortBy = Math.round((tier.price - balance) * 100) / 100;
+    if (paySource === "AD_FUND") {
+      return {
+        ok: false,
+        error: `Not enough Ad Fund — this order is ${usd(tier.price)}, you have ${usd(balance)}.`,
+        status: 402,
+        shortBy,
+        addFund: addFundHref(shortBy, `/services/${listingId}`),
+      };
+    }
     return {
       ok: false,
       error: `Not enough in your wallet — this order is ${usd(tier.price)}, you have ${usd(balance)}.`,
       status: 402,
-      shortBy: Math.round((tier.price - balance) * 100) / 100,
+      shortBy,
     };
   }
 
@@ -185,14 +202,28 @@ export async function placeServiceOrder(opts: {
 
   let funded: Awaited<ReturnType<typeof fundDeal>>;
   try {
-    funded = await fundDeal({ dealId: created.dealId, buyerId, affiliateCookie: opts.affiliateCookie });
+    funded = await fundDeal({
+      dealId: created.dealId,
+      buyerId,
+      affiliateCookie: opts.affiliateCookie,
+      paySource,
+    });
   } catch (err) {
     await abandonOrder(created).catch(() => {});
     throw err;
   }
   if (!funded.ok) {
     await abandonOrder(created).catch(() => {});
-    return { ok: false, error: funded.error, status: funded.status ?? 400, threadId };
+    return {
+      ok: false,
+      error: funded.error,
+      status: funded.status ?? 400,
+      threadId,
+      shortBy: funded.shortBy,
+      // fundDeal points Add fund back at the order thread, which was just
+      // abandoned — send the buyer back to the service page instead.
+      addFund: funded.addFund ? addFundHref(funded.shortBy, `/services/${listingId}`) : undefined,
+    };
   }
   return { ok: true, dealId: created.dealId, threadId };
 }

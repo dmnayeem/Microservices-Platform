@@ -26,6 +26,8 @@ import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { uploadUserFile } from "@/lib/user-upload";
 import { listingHref } from "@/lib/marketplace-categories";
 import type { OrderBrief } from "@/lib/service-packages";
+import { ShopPayChooser } from "@/components/user/shop-pay-chooser";
+import type { ShopSource } from "@/lib/pay-source";
 
 type Role = "BUYER" | "SELLER" | "ADMIN";
 type DealStatus =
@@ -96,6 +98,8 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  // Set when funding from Ad Fund came back short — the Add fund link to show.
+  const [fundAddFund, setFundAddFund] = useState<string | null>(null);
   // Service orders: the delivery / revision-request sheets.
   const [sheet, setSheet] = useState<{ kind: "deliver" | "revision"; dealId: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -175,7 +179,11 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
         body: JSON.stringify({ action, reason, ...extra }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? "Action failed");
+      if (!res.ok) {
+        if (res.status === 402 && d.addFund) setFundAddFund(d.addFund);
+        throw new Error(d.error ?? "Action failed");
+      }
+      setFundAddFund(null);
       toast.success("Done");
       await load(true);
       return true;
@@ -186,8 +194,8 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
       setActionBusy(false);
     }
   };
-  const dealAction = (dealId: string, action: string, reason?: string) =>
-    runAction(`/api/marketplace/deals/${dealId}`, action, reason);
+  const dealAction = (dealId: string, action: string, reason?: string, extra?: Record<string, unknown>) =>
+    runAction(`/api/marketplace/deals/${dealId}`, action, reason, extra);
   const adminAction = (dealId: string, action: string, reason?: string) =>
     runAction(`/api/admin/marketplace/deals/${dealId}`, action, reason);
 
@@ -329,6 +337,8 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               viewerId={viewerId}
               busy={actionBusy}
               onAction={dealAction}
+              addFundUrl={fundAddFund}
+              onPaySourceChange={() => setFundAddFund(null)}
               onAdminAction={adminAction}
               onSheet={(kind) => setSheet({ kind, dealId: activeDeal.id })}
             />
@@ -392,6 +402,8 @@ function DealActions({
   viewerId,
   busy,
   onAction,
+  addFundUrl,
+  onPaySourceChange,
   onAdminAction,
   onSheet,
 }: {
@@ -399,7 +411,9 @@ function DealActions({
   role: Role;
   viewerId: string;
   busy: boolean;
-  onAction: (dealId: string, action: string, reason?: string) => void;
+  onAction: (dealId: string, action: string, reason?: string, extra?: Record<string, unknown>) => void;
+  addFundUrl?: string | null;
+  onPaySourceChange?: () => void;
   onAdminAction: (dealId: string, action: string, reason?: string) => void;
   onSheet: (kind: "deliver" | "revision") => void;
 }) {
@@ -408,6 +422,8 @@ function DealActions({
   const isBuyer = role === "BUYER";
   const isSeller = role === "SELLER";
   const isAdmin = role === "ADMIN";
+  // Funding pays from Cash (default) or Ad Fund; a refund returns to the same.
+  const [paySource, setPaySource] = useState<ShopSource>("CASH");
   const btn =
     "w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold disabled:opacity-50";
 
@@ -440,9 +456,20 @@ function DealActions({
         <div className="space-y-2">
           {/* Buyer-proposed terms need the seller's acceptance before funding. */}
           {isBuyer && deal.proposedById !== viewerId && (
-            <button disabled={busy} onClick={() => onAction(deal.id, "fund")} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
-              Fund escrow {usd((deal.amount + deal.adminFee))}
-            </button>
+            <>
+              <ShopPayChooser
+                value={paySource}
+                onChange={(v) => {
+                  setPaySource(v);
+                  onPaySourceChange?.();
+                }}
+                amountUsd={deal.amount + deal.adminFee}
+                addFundUrl={addFundUrl}
+              />
+              <button disabled={busy} onClick={() => onAction(deal.id, "fund", undefined, { paySource })} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
+                Fund escrow {usd((deal.amount + deal.adminFee))}
+              </button>
+            </>
           )}
           {isBuyer && deal.proposedById === viewerId && (
             <p className="text-[11px] text-(--app-ink-3)">Waiting for the seller to accept your proposal.</p>
