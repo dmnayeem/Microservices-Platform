@@ -218,6 +218,10 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
             maxLength={500}
             className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-emerald-500"
           />
+          <p className="text-[11px] text-(--app-ink-3)">
+            If the seller accepts, it&apos;s paid from your Cash — or from your Ad Fund if your Cash
+            doesn&apos;t cover it.
+          </p>
           <button
             type="button"
             onClick={() => setShowForm(false)}

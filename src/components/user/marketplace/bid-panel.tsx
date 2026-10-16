@@ -261,6 +261,10 @@ export function BidPanel({
             maxLength={500}
             className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-purple-500"
           />
+          <p className="text-[11px] text-(--app-ink-3)">
+            If you win, you&apos;re charged when the auction ends — from your Cash, or from your Ad
+            Fund if your Cash doesn&apos;t cover it.
+          </p>
           {buyNowPrice != null && (
             <p className="text-[11px] text-(--app-ink-3)">
               Skip the wait — buy now for{" "}

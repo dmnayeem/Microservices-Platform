@@ -68,11 +68,10 @@ export async function adFundPaidFor(db: LedgerDb, userId: string, originalRef: s
 /**
  * Ad Fund paid for one MarketplacePurchase, whichever way it was bought:
  *  - escrow deal → the deal's `adfund_deal_<dealId>` principal debit;
- *  - direct checkout / accepted counter-offer → the debit carrying
- *    `metadata.purchaseId`;
+ *  - direct checkout / accepted offer or counter-offer / auction win → the
+ *    debit carrying `metadata.purchaseId`;
  *  - cart → the one cart debit listing it in `metadata.purchaseIds`.
- * Returns 0 when the purchase was paid in Cash (or the auction path, which is
- * Cash-only).
+ * Returns 0 when the purchase was paid in Cash.
  */
 export async function adFundPaidForPurchase(
   db: LedgerDb,

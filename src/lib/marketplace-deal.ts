@@ -17,7 +17,7 @@ import {
 import { notifyUser } from "@/lib/notify";
 import { inngest, EVENTS } from "@/lib/inngest/client";
 import { toNum } from "@/lib/money";
-import { debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
+import { AD_FUND_REF, debitAdFund, InsufficientBalanceError } from "@/lib/ad-wallet";
 import { addFundHref, type ShopSource } from "@/lib/pay-source";
 import { isServiceType } from "@/lib/marketplace-categories";
 import { adFundPaidFor, refundToPayingBalance, refundedToLabel } from "@/lib/shop-pay";
@@ -719,6 +719,8 @@ export async function releaseDeal(opts: {
  * held principal to the buyer's wallet — a true clawback, since the seller was
  * never credited. The admin fee is retained by the platform when an admin
  * actually mediated (DISPUTED); refunded on a no-fault pre-funding-only cancel.
+ * A refunded fee goes back to whoever paid it (buyer or seller), to the
+ * balance that paid it (Cash or Ad Fund).
  */
 export async function refundDeal(opts: {
   dealId: string;
@@ -747,8 +749,12 @@ export async function refundDeal(opts: {
   // Default: refund the fee only when nothing was mediated (still FUNDED).
   const refundFee =
     opts.refundAdminFee ?? deal.status === MarketplaceDealStatus.FUNDED;
-  const refundTotal = Math.round((held + (refundFee ? adminFee : 0)) * 100) / 100;
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  // Filled inside the transaction (the fee rows are read under the claim).
+  let buyerRefund = 0;
+  let sellerRefund = 0;
   let refundedTo = { adFund: 0, cash: 0 };
+  let sellerRefundedTo = { adFund: 0, cash: 0 };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -758,31 +764,84 @@ export async function refundDeal(opts: {
       });
       if (claimed.count === 0) throw new Error("RACE");
 
-      if (refundTotal > 0) {
-        // Back to the balance that paid. Funded from Ad Fund → the
-        // `adfund_deal_<id>` (+ `adfund_deal_adminfee_<id>`) rows exist, and
-        // up to their total returns to Ad Fund. Anything above that (only a
-        // later mediation fee, charged in Cash) and every Cash-funded deal
-        // refunds to Cash exactly as before.
+      const purpose = isServiceType(deal.listing.assetType) ? "refund:service" : "refund:marketplace";
+
+      // A refunded fee goes back to WHOEVER PAID IT, to the balance that paid
+      // it. `deal.adminFee` sums the funding fee (always the buyer's,
+      // `deal_adminfee_<id>`) and an escalation fee (the escalating party's —
+      // buyer OR seller — `deal_escalatefee_<id>`); each is a Cash row under
+      // that reference or an Ad Fund row under `adfund_<reference>`, owned by
+      // the payer. Before this, the whole fee went to the buyer, so a fee the
+      // seller paid on escalating was handed to the other party.
+      const fee = { buyerCash: 0, buyerAdFund: 0, sellerCash: 0, sellerAdFund: 0 };
+      if (refundFee && adminFee > 0) {
+        const refs = [`deal_adminfee_${dealId}`, `deal_escalatefee_${dealId}`];
+        const rows = await tx.transaction.findMany({
+          where: {
+            userId: { in: [deal.buyerId, deal.sellerId] },
+            reference: { in: [...refs, ...refs.map((r) => `${AD_FUND_REF}${r}`)] },
+          },
+          select: { userId: true, reference: true, amount: true },
+        });
+        for (const row of rows) {
+          const paid = Math.abs(toNum(row.amount));
+          const adFund = (row.reference ?? "").startsWith(AD_FUND_REF);
+          if (row.userId === deal.buyerId) {
+            if (adFund) fee.buyerAdFund += paid;
+            else fee.buyerCash += paid;
+          } else if (adFund) fee.sellerAdFund += paid;
+          else fee.sellerCash += paid;
+        }
+      }
+      const sellerFee = r2(fee.sellerCash + fee.sellerAdFund);
+      // Any part of the fee with no payer row (only possible on deals older
+      // than these rows) still goes to the buyer, as it always did.
+      const unattributed = refundFee
+        ? Math.max(0, r2(adminFee - sellerFee - fee.buyerCash - fee.buyerAdFund))
+        : 0;
+
+      // Buyer: the held principal (unchanged) + the fees the buyer paid. Ad
+      // Fund share = the principal's `adfund_deal_<id>` debit + the buyer's Ad
+      // Fund fee rows; the rest returns to Cash, exactly as before.
+      buyerRefund = r2(held + fee.buyerCash + fee.buyerAdFund + unattributed);
+      if (buyerRefund > 0) {
         const adFundPaid =
-          (await adFundPaidFor(tx, deal.buyerId, `deal_${dealId}`)) +
-          (await adFundPaidFor(tx, deal.buyerId, `deal_adminfee_${dealId}`));
+          (await adFundPaidFor(tx, deal.buyerId, `deal_${dealId}`)) + fee.buyerAdFund;
         refundedTo = await refundToPayingBalance(tx, {
           userId: deal.buyerId,
-          usd: refundTotal,
+          usd: buyerRefund,
           adFundPaid,
           reference: `deal_refund_${dealId}`,
           description: `Escrow refund — "${deal.listing.title}"`,
-          purpose: isServiceType(deal.listing.assetType) ? "refund:service" : "refund:marketplace",
+          purpose,
           cashType: TransactionType.REFUND,
           metadata: { dealId, listingId: deal.listingId, reason: reason ?? null, refundedFee: refundFee },
+        });
+      }
+
+      // Seller: the escalation fee the seller paid, back to the balance that
+      // paid it. Own reference per payer (`deal_feerefund_<id>` /
+      // `adfund_deal_feerefund_<id>`), unique per user → one refund only.
+      sellerRefund = sellerFee;
+      if (sellerRefund > 0) {
+        sellerRefundedTo = await refundToPayingBalance(tx, {
+          userId: deal.sellerId,
+          usd: sellerRefund,
+          adFundPaid: fee.sellerAdFund,
+          reference: `deal_feerefund_${dealId}`,
+          description: `Mediation fee refund — "${deal.listing.title}"`,
+          purpose,
+          cashType: TransactionType.REFUND,
+          metadata: { dealId, listingId: deal.listingId, reason: reason ?? null, kind: "escalation_fee_refund" },
         });
       }
 
       await systemMessage(
         tx,
         deal.threadId,
-        `Refunded ${usd(refundTotal)} to the buyer${reason ? ` — ${reason}` : ""}. Deal closed.`
+        `Refunded ${usd(buyerRefund)} to the buyer${
+          sellerRefund > 0 ? ` and the ${usd(sellerRefund)} mediation fee to the seller` : ""
+        }${reason ? ` — ${reason}` : ""}. Deal closed.`
       );
     });
   } catch (err) {
@@ -795,14 +854,18 @@ export async function refundDeal(opts: {
     userId: deal.buyerId,
     type: "WALLET",
     title: "Refund issued",
-    message: `You were refunded ${usd(refundTotal)} to ${refundedToLabel(refundedTo)} for "${deal.listing.title}".`,
+    message: `You were refunded ${usd(buyerRefund)} to ${refundedToLabel(refundedTo)} for "${deal.listing.title}".`,
     link: `/marketplace/messages/${deal.threadId}`,
   }).catch(() => {});
   notifyUser({
     userId: deal.sellerId,
-    type: "SYSTEM",
+    type: sellerRefund > 0 ? "WALLET" : "SYSTEM",
     title: "Deal refunded",
-    message: `The deal for "${deal.listing.title}" was refunded to the buyer${actor === "ADMIN" ? " by an admin" : ""}.`,
+    message: `The deal for "${deal.listing.title}" was refunded to the buyer${actor === "ADMIN" ? " by an admin" : ""}.${
+      sellerRefund > 0
+        ? ` Your ${usd(sellerRefund)} mediation fee was refunded to ${refundedToLabel(sellerRefundedTo)}.`
+        : ""
+    }`,
     link: `/marketplace/messages/${deal.threadId}`,
   }).catch(() => {});
 
@@ -890,17 +953,21 @@ export async function cancelDeal(opts: {
 /**
  * Escalate a funded/delivered deal to admin mediation. Marks it DISPUTED, turns
  * on mediation, and charges the mediation fee to the escalating party (best
- * effort — the dispute still opens if their balance can't cover it).
+ * effort — the dispute still opens if their balance can't cover it). The
+ * escalating party picks Cash (default) or Ad Fund; only that balance is
+ * tried. Ad Points never pay for this.
  */
 export async function escalateToAdmin(opts: {
   dealId: string;
   userId: string;
   reason?: string;
+  paySource?: ShopSource;
 }): Promise<DealResult> {
   const { dealId, userId, reason } = opts;
+  const paySource: ShopSource = opts.paySource === "AD_FUND" ? "AD_FUND" : "CASH";
   const deal = await prisma.marketplaceDeal.findUnique({
     where: { id: dealId },
-    include: { listing: { select: { title: true } } },
+    include: { listing: { select: { title: true, assetType: true } } },
   });
   if (!deal) return { ok: false, error: "Deal not found.", status: 404 };
   if (userId !== deal.buyerId && userId !== deal.sellerId) {
@@ -928,7 +995,33 @@ export async function escalateToAdmin(opts: {
     });
     if (claimed.count === 0) throw new Error("RACE");
 
-    if (newFee > 0) {
+    if (newFee > 0 && paySource === "AD_FUND") {
+      // CAS debit + its ledger row (`adfund_deal_escalatefee_<id>`), which
+      // refundDeal reads back so a refunded fee returns to Ad Fund. A short
+      // Ad Fund throws before any row is written (the CAS matched nothing), so
+      // catching it here is safe: same best-effort as Cash — no fee, the
+      // dispute still opens.
+      let charged = true;
+      try {
+        await debitAdFund(tx, {
+          userId,
+          usd: newFee,
+          reference: `deal_escalatefee_${dealId}`,
+          description: `Admin mediation fee — "${deal.listing.title}"`,
+          purpose: isServiceType(deal.listing.assetType) ? "service" : "marketplace",
+          metadata: { dealId, listingId: deal.listingId, kind: "escalation_fee" },
+        });
+      } catch (err) {
+        if (!(err instanceof InsufficientBalanceError)) throw err;
+        charged = false;
+      }
+      if (charged) {
+        await tx.marketplaceDeal.update({
+          where: { id: dealId },
+          data: { adminFee: { increment: newFee } },
+        });
+      }
+    } else if (newFee > 0) {
       const charged = await tx.user.updateMany({
         where: { id: userId, cashBalance: { gte: newFee } },
         data: { cashBalance: { decrement: newFee } },

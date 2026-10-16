@@ -190,14 +190,20 @@ export async function POST(
     // the balance can be spent between bidding and closing. This check exists
     // so a fantasy bid can't sit at the top of an auction and lock out the
     // genuine bidders who *can* pay.
+    //
+    // Settlement pays from Cash if it covers the total, else from Ad Fund, so
+    // either balance on its own covering the bid qualifies (never the two
+    // added together — settlement takes one balance, not a split).
     const bidder = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { cashBalance: true },
+      select: { cashBalance: true, adFundBalance: true },
     });
-    if (!bidder || toNum(bidder.cashBalance) < amount) {
+    const bidderCash = toNum(bidder?.cashBalance ?? 0);
+    const bidderAdFund = toNum(bidder?.adFundBalance ?? 0);
+    if (!bidder || (bidderCash < amount && bidderAdFund < amount)) {
       return NextResponse.json(
         {
-          error: `You need $${amount.toLocaleString()} in your balance to bid this much. Available: $${toNum(bidder?.cashBalance ?? 0).toLocaleString()}.`,
+          error: `You need $${amount.toLocaleString()} in your Cash or your Ad Fund to bid this much. Available: Cash $${bidderCash.toLocaleString()}, Ad Fund $${bidderAdFund.toLocaleString()}.`,
         },
         { status: 400 }
       );

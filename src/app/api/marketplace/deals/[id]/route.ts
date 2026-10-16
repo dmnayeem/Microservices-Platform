@@ -23,7 +23,8 @@ const schema = z.object({
   // deliver: the work itself (message + uploaded files / links).
   message: z.string().max(4000).optional(),
   attachments: z.array(z.string().url().max(2048)).max(10).optional(),
-  // fund: which balance pays — Cash (default) or Ad Fund; parsed by parseShopSource.
+  // fund / escalate (mediation fee): which balance pays — Cash (default) or
+  // Ad Fund; parsed by parseShopSource.
   paySource: z.unknown().optional(),
 });
 
@@ -108,7 +109,14 @@ export async function POST(
       break;
     }
     case "escalate": {
-      result = await escalateToAdmin({ dealId: id, userId, reason: v.data.reason });
+      // The mediation fee pays from Cash (default) or Ad Fund — the escalating
+      // party's choice; never Ad Points.
+      result = await escalateToAdmin({
+        dealId: id,
+        userId,
+        reason: v.data.reason,
+        paySource: parseShopSource(v.data.paySource),
+      });
       break;
     }
     case "refund": {
