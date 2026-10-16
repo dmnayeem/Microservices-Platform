@@ -26,7 +26,7 @@ import {
 } from "@/lib/marketplace-selling";
 import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum } from "@/lib/money";
-import { requiresDeliverable } from "@/lib/marketplace-categories";
+import { isServiceType, requiresDeliverable } from "@/lib/marketplace-categories";
 import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
 import { CART_MAX_ITEMS } from "@/lib/marketplace-cart";
 
@@ -110,6 +110,9 @@ export async function POST(request: NextRequest) {
         issues.push(`"${l.title}" is ${l.status.toLowerCase()}`);
       } else if (l.sellerId === userId) {
         issues.push(`"${l.title}" is your own listing`);
+      } else if (isServiceType(l.assetType)) {
+        // Added before services moved to escrow — order it from its page.
+        issues.push(`"${l.title}" is a service — remove it and order it from its page (escrow)`);
       } else if (l.auctionMode) {
         issues.push(`"${l.title}" is an auction — bid instead`);
       } else if (!Number.isFinite(toNum(l.price)) || toNum(l.price) <= 0) {

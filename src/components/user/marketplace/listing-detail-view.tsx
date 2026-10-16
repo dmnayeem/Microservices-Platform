@@ -49,6 +49,8 @@ import {
   type CategoryField,
 } from "@/lib/marketplace-categories";
 import { loginHref, registerHref } from "@/lib/public-catalog";
+import { readPackages, readRequirements, resolveServiceTier } from "@/lib/service-packages";
+import { ServiceOrderSheet, ServicePackagePicker } from "./service-order-panel";
 
 interface Listing {
   id: string;
@@ -130,6 +132,8 @@ interface Props {
    * that returns here afterwards. Nothing that needs a session is called.
    */
   guest?: boolean;
+  /** Services: the viewer may open an escrow order (package feature `deals`). */
+  canOrder?: boolean;
 }
 
 export function ListingDetailView({
@@ -139,6 +143,7 @@ export function ListingDetailView({
   hideFinancials,
   viewerId,
   guest = false,
+  canOrder = true,
 }: Props) {
   const router = useRouter();
   const here = listingHref(listing);
@@ -146,6 +151,13 @@ export function ListingDetailView({
   const service = isServiceType(listing.assetType);
   const serviceDays = service ? numOrNull(listing.details?.turnaroundDays) : null;
   const serviceRevisions = service ? numOrNull(listing.details?.revisions) : null;
+  // Services are ordered through escrow on a package (or the single price),
+  // never through the cart / instant checkout.
+  const packages = service ? readPackages(listing.details) : [];
+  const requirements = service ? readRequirements(listing.details) : [];
+  const [pkgId, setPkgId] = useState<string>(packages[0]?.id ?? "");
+  const [orderOpen, setOrderOpen] = useState(false);
+  const orderTier = service ? resolveServiceTier(listing.details, listing.price, pkgId || null) : null;
   const signIn = loginHref(here);
   const [zoom, setZoom] = useState<{ list: string[]; idx: number } | null>(null);
   const [showShare, setShowShare] = useState(false);
@@ -182,7 +194,8 @@ export function ListingDetailView({
   // another, so the same arithmetic runs in both places.
   const commission =
     Math.round((effectivePrice * listing.tax.commissionBps) / 10000 * 100) / 100;
-  const taxAmount = listing.tax.enabled
+  // Escrow orders (services) carry no commission tax on top.
+  const taxAmount = listing.tax.enabled && !service
     ? Math.round(commission * (listing.tax.pct / 100) * 100) / 100
     : 0;
   const payable = Math.round((effectivePrice + taxAmount) * 100) / 100;
@@ -458,7 +471,10 @@ export function ListingDetailView({
             <p className="text-3xl font-extrabold text-white tabular-nums">
               ${listing.price.toLocaleString()}
             </p>
-            {(serviceDays != null || serviceRevisions != null) && (
+            {packages.length > 0 && (
+              <ServicePackagePicker packages={packages} selectedId={pkgId} onSelect={setPkgId} />
+            )}
+            {packages.length === 0 && (serviceDays != null || serviceRevisions != null) && (
               <div className="flex flex-wrap gap-3 text-xs text-(--app-ink-2)">
                 {serviceDays != null && (
                   <span className="inline-flex items-center gap-1">
@@ -571,6 +587,7 @@ export function ListingDetailView({
             )}
             {guest && (
               <div className="flex gap-2 pt-2">
+                {!service && (
                 <Link
                   href={signIn}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-bold"
@@ -578,6 +595,7 @@ export function ListingDetailView({
                   <ShoppingCart className="w-4 h-4" />
                   Sign in to add to cart
                 </Link>
+                )}
                 <Link
                   href={signIn}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:opacity-90 text-white text-sm font-bold"
@@ -593,11 +611,41 @@ export function ListingDetailView({
                   Create a free account
                 </Link>{" "}
                 {service
-                  ? "to hire this freelancer, message them or make an offer."
+                  ? "to hire this freelancer or message them."
                   : "to buy, message the seller or make an offer."}
               </p>
             )}
-            {!isOwner && !guest && (
+            {!isOwner && !guest && service && listing.status === "ACTIVE" && (
+              <div className="space-y-1.5 pt-2">
+                {canOrder ? (
+                  <button
+                    onClick={() => {
+                      if (orderTier && !orderTier.ok) return toast.error(orderTier.error);
+                      setOrderOpen(true);
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:opacity-90 text-white text-sm font-bold"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Continue{orderTier?.ok ? ` ($${orderTier.tier.price.toLocaleString()})` : ""}
+                  </button>
+                ) : (
+                  <Link
+                    href="/apply?type=DEALS"
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+                  >
+                    <Lock className="w-4 h-4" />
+                    Apply for escrow orders
+                  </Link>
+                )}
+                <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  {canOrder
+                    ? "Paid into escrow — released to the seller only after you accept the work."
+                    : "Ordering a service uses escrow deals, which aren't unlocked for your account yet."}
+                </p>
+              </div>
+            )}
+            {!isOwner && !guest && !service && (
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={addToCart}
@@ -720,7 +768,9 @@ export function ListingDetailView({
       {guest && listing.status === "ACTIVE" && (
         <section className="glass rounded-xl p-4 sm:p-5 flex flex-wrap items-center gap-3">
           <p className="text-sm text-(--app-ink-2) flex-1 min-w-48">
-            {listing.auctionMode
+            {service
+              ? "Sign in to order this service or message the seller."
+              : listing.auctionMode
               ? "Sign in to place a bid or make the seller an offer."
               : "Sign in to make the seller an offer."}
           </p>
@@ -729,12 +779,23 @@ export function ListingDetailView({
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             {listing.auctionMode ? <Gavel className="w-4 h-4" /> : <Coins className="w-4 h-4" />}
-            {listing.auctionMode ? "Sign in to bid" : "Sign in to make an offer"}
+            {service ? "Sign in to order" : listing.auctionMode ? "Sign in to bid" : "Sign in to make an offer"}
           </Link>
         </section>
       )}
 
       {/* Auction bidding (only when in auction mode) */}
+      {service && orderTier?.ok && !guest && !isOwner && (
+        <ServiceOrderSheet
+          key={orderTier.tier.id}
+          open={orderOpen}
+          onOpenChange={setOrderOpen}
+          listingId={listing.id}
+          tier={orderTier.tier}
+          requirements={requirements}
+        />
+      )}
+
       {listing.auctionMode && !guest && (
         <BidPanel
           listingId={listing.id}
@@ -748,8 +809,10 @@ export function ListingDetailView({
         />
       )}
 
-      {/* Make-an-offer / offers inbox — works for any listing */}
-      {listing.status === "ACTIVE" && !guest && (
+      {/* Make-an-offer / offers inbox. Not on services: an accepted offer
+          settles instantly, and services are paid through escrow only —
+          a custom price is agreed as a deal in the conversation. */}
+      {listing.status === "ACTIVE" && !guest && !service && (
         <OfferPanel
           listingId={listing.id}
           askingPrice={listing.price}

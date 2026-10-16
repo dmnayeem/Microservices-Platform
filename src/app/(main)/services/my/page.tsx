@@ -7,6 +7,8 @@ export default async function MyServicesPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const { listings, pendingPayout } = await loadSellerDashboard(session.user.id, "services");
-  return <SellerDashboardView listings={listings} pendingPayout={pendingPayout} mode="services" />;
+  const { listings, pendingPayout, orders } = await loadSellerDashboard(session.user.id, "services");
+  return (
+    <SellerDashboardView listings={listings} pendingPayout={pendingPayout} orders={orders} mode="services" />
+  );
 }

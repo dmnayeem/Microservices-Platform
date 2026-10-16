@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { proposeDeal } from "@/lib/marketplace-deal";
+import { userCanFeature } from "@/lib/packages";
 import { z } from "zod";
 
 const schema = z.object({
@@ -14,6 +15,13 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // Starting an escrow deal needs the `deals` package feature.
+  if (!(await userCanFeature(session.user.id, "deals"))) {
+    return NextResponse.json(
+      { error: "Escrow deals aren't unlocked for your account yet.", applyHref: "/apply?type=DEALS" },
+      { status: 403 }
+    );
   }
   const v = schema.safeParse(await request.json());
   if (!v.success) {

@@ -2,7 +2,9 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { SERVICE_ASSET_TYPE } from "@/lib/marketplace-categories";
-import type { SellerListing } from "@/components/user/marketplace/seller-dashboard-view";
+import type { SellerListing, SellerOrder } from "@/components/user/marketplace/seller-dashboard-view";
+import { FUNDED_DEAL_STATUSES } from "@/lib/marketplace-deal";
+import { ORDER_SENDER_TYPE, parseOrderBrief, type OrderBrief } from "@/lib/service-packages";
 
 /**
  * A seller's own listings for the seller dashboard — products for
@@ -76,5 +78,72 @@ export async function loadSellerDashboard(sellerId: string, area: "products" | "
     };
   });
 
-  return { listings: sellerListings, pendingPayout };
+  const orders = area === "services" ? await loadActiveOrders(sellerId) : [];
+  return { listings: sellerListings, pendingPayout, orders };
+}
+
+/**
+ * The seller's service orders still in progress (paid into escrow, not yet
+ * released or refunded), soonest due first.
+ */
+async function loadActiveOrders(sellerId: string): Promise<SellerOrder[]> {
+  const serviceIds = await prisma.marketplaceListing.findMany({
+    where: { sellerId, assetType: SERVICE_ASSET_TYPE },
+    select: { id: true, title: true },
+  });
+  if (serviceIds.length === 0) return [];
+  const titles = new Map(serviceIds.map((l) => [l.id, l.title]));
+  const deals = await prisma.marketplaceDeal.findMany({
+    where: {
+      sellerId,
+      status: { in: FUNDED_DEAL_STATUSES },
+      listingId: { in: serviceIds.map((l) => l.id) },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    select: {
+      id: true,
+      threadId: true,
+      status: true,
+      amount: true,
+      buyerId: true,
+      createdAt: true,
+      listingId: true,
+    },
+  });
+  if (deals.length === 0) return [];
+
+  const [briefMsgs, buyers] = await Promise.all([
+    prisma.marketplaceThreadMessage.findMany({
+      where: { threadId: { in: deals.map((d) => d.threadId) }, senderType: ORDER_SENDER_TYPE },
+      select: { body: true },
+    }),
+    prisma.user.findMany({
+      where: { id: { in: Array.from(new Set(deals.map((d) => d.buyerId))) } },
+      select: { id: true, name: true },
+    }),
+  ]);
+  const briefs = new Map<string, OrderBrief>();
+  for (const m of briefMsgs) {
+    const b = parseOrderBrief(m.body);
+    if (b) briefs.set(b.dealId, b);
+  }
+  const buyerName = new Map(buyers.map((u) => [u.id, u.name]));
+
+  return deals
+    .map((d) => {
+      const b = briefs.get(d.id);
+      return {
+        dealId: d.id,
+        threadId: d.threadId,
+        title: titles.get(d.listingId) ?? "Service",
+        status: d.status as SellerOrder["status"],
+        amount: toNum(d.amount),
+        tierName: b?.tier.name ?? null,
+        dueAt: b?.dueAt ?? null,
+        buyerName: buyerName.get(d.buyerId) ?? null,
+        orderedAt: d.createdAt.toISOString(),
+      };
+    })
+    .sort((a, b) => (a.dueAt ?? "9999").localeCompare(b.dueAt ?? "9999"));
 }

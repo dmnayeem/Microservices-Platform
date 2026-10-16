@@ -28,6 +28,7 @@ import { z } from "zod";
 import { screenLinks, stringsIn } from "@/lib/link-safety";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 import { inspectStoredFiles, reportStoredFiles, type StoredFilesSafety } from "@/lib/upload-safety";
+import { normalizeServiceDetails, readPackages, cheapestPackage } from "@/lib/service-packages";
 
 // Cap how many bytes we pull back to analyse a deliverable (bounds bandwidth
 // for large stock video; images/audio are usually far smaller). For a bigger
@@ -87,6 +88,9 @@ function serviceTerms(details: unknown): { deliveryDays: number | null; revision
     const x = typeof v === "number" ? v : Number(v);
     return v != null && v !== "" && Number.isFinite(x) ? x : null;
   };
+  // With packages, the card quotes the cheapest one ("Starting at").
+  const cheapest = cheapestPackage(readPackages(d));
+  if (cheapest) return { deliveryDays: cheapest.deliveryDays, revisions: cheapest.revisions };
   return { deliveryDays: n(d.turnaroundDays), revisions: n(d.revisions) };
 }
 
@@ -452,6 +456,18 @@ export async function POST(request: NextRequest) {
     );
     if (err) return NextResponse.json({ error: err }, { status: 400 });
 
+    // Services: packages + order questions validated, headline price = the
+    // cheapest package. Never an auction — a won bid settles instantly, and
+    // services are paid through escrow only.
+    let servicePrice: number | null = null;
+    if (data.assetType === SERVICE_ASSET_TYPE) {
+      const n = normalizeServiceDetails(data.details ?? {});
+      if (!n.ok) return NextResponse.json({ error: n.error }, { status: 400 });
+      data.details = n.details;
+      servicePrice = n.startingPrice;
+      data.auctionMode = false;
+    }
+
     if (data.auctionMode && !data.auctionEndsAt) {
       return NextResponse.json(
         { error: "Auction mode needs an end date" },
@@ -572,7 +588,7 @@ export async function POST(request: NextRequest) {
         // The headline price IS the cheapest tier when tiers are used. Letting
         // the two drift means the card advertises one number while checkout,
         // or the cart which has no tier to pick, charges another.
-        price: tiers.length > 0 ? tiers[0].price : data.price,
+        price: tiers.length > 0 ? tiers[0].price : servicePrice ?? data.price,
         currency: data.currency,
         affiliateCommissionType:
           data.affiliateCommissionValue && data.affiliateCommissionValue > 0

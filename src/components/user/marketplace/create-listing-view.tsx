@@ -39,6 +39,17 @@ import {
 } from "@/lib/marketplace-categories";
 import { CategoryFieldInput } from "@/components/admin/marketplace/listing-form/CategoryFieldInput";
 import { uploadUserFile } from "@/lib/user-upload";
+import {
+  MAX_REQUIREMENTS,
+  PACKAGE_IDS,
+  PACKAGE_LABEL,
+  REQUIREMENT_TYPES,
+  REQUIREMENT_TYPE_LABEL,
+  readPackages,
+  readRequirements,
+  type PackageId,
+  type RequirementType,
+} from "@/lib/service-packages";
 
 const ICONS: Record<string, LucideIcon> = {
   Globe,
@@ -68,6 +79,60 @@ const DELIVERABLE_ACCEPT: Record<string, string> = {
 
 type Tier = { id: string; name: string; price: number; description?: string };
 
+/** An existing service being edited (services mode only). */
+export interface ServiceEditInitial {
+  id: string;
+  title: string;
+  description: string;
+  subType: string | null;
+  price: number;
+  details: Record<string, unknown> | null;
+  images: string[];
+}
+
+type PkgDraft = {
+  id: PackageId;
+  enabled: boolean;
+  name: string;
+  description: string;
+  price: number;
+  deliveryDays: number;
+  revisions: number;
+  itemsText: string;
+};
+type ReqDraft = { id: string; label: string; type: RequirementType; required: boolean };
+
+const fieldCls =
+  "w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)";
+
+function initialPackages(details: unknown, price: number): PkgDraft[] {
+  const saved = readPackages(details);
+  return PACKAGE_IDS.map((id, i) => {
+    const p = saved.find((x) => x.id === id);
+    return p
+      ? {
+          id,
+          enabled: true,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          deliveryDays: p.deliveryDays,
+          revisions: p.revisions,
+          itemsText: p.items.join("\n"),
+        }
+      : {
+          id,
+          enabled: saved.length === 0 && i === 0,
+          name: PACKAGE_LABEL[id],
+          description: "",
+          price: Math.max(0.5, Math.round(price * [1, 2, 4][i] * 100) / 100),
+          deliveryDays: [3, 5, 7][i],
+          revisions: [1, 2, 3][i],
+          itemsText: "",
+        };
+  });
+}
+
 /** Category screenshot fields are display images (proof-legible, ≤ 100 KB). */
 const uploadListingScreenshot = (file: File) =>
   uploadUserFile(file, "marketplace", { purpose: "proof" });
@@ -79,25 +144,38 @@ export function CreateListingView({
   licenseTiersEnabled = false,
   suggestedTiers = [],
   mode = "products",
+  initial,
 }: {
   licenseTiersEnabled?: boolean;
   suggestedTiers?: Tier[];
   /** "services" fixes the type to SERVICE and words the form for freelancers. */
   mode?: "products" | "services";
+  /** Edit an existing service instead of creating one (services mode). */
+  initial?: ServiceEditInitial;
 } = {}) {
   const router = useRouter();
   const services = mode === "services";
+  const editing = services && !!initial;
 
   const [assetType, setAssetType] = useState<string>(services ? SERVICE_ASSET_TYPE : "");
-  const [subType, setSubType] = useState<string>("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState<number>(9.99);
+  const [subType, setSubType] = useState<string>(initial?.subType ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [price, setPrice] = useState<number>(initial?.price ?? 9.99);
+  // Service packages (Basic / Standard / Premium) + order questions.
+  const [usePackages, setUsePackages] = useState(() => readPackages(initial?.details).length > 0);
+  const [pkgs, setPkgs] = useState<PkgDraft[]>(() => initialPackages(initial?.details, initial?.price ?? 9.99));
+  const [reqs, setReqs] = useState<ReqDraft[]>(() => readRequirements(initial?.details));
   const [exclusive, setExclusive] = useState(false);
   const [tiers, setTiers] = useState<Tier[]>([]);
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [files, setFiles] = useState<string[]>([]); // deliverable(s)
-  const [details, setDetails] = useState<Record<string, unknown>>({});
+  const [details, setDetails] = useState<Record<string, unknown>>(() => {
+    const d = { ...(initial?.details ?? {}) };
+    delete d.packages;
+    delete d.requirements;
+    return d;
+  });
   const [affType, setAffType] = useState<"" | "PERCENT" | "FIXED">("");
   const [affValue, setAffValue] = useState<number>(0);
   const [busy, setBusy] = useState(false);
@@ -106,9 +184,19 @@ export function CreateListingView({
 
   const cat = assetType ? getCategory(assetType) : null;
   const fields: CategoryField[] = useMemo(
-    () => (assetType ? getFieldsFor(assetType, subType || null) : []),
-    [assetType, subType]
+    () =>
+      (assetType ? getFieldsFor(assetType, subType || null) : []).filter(
+        // Each package carries its own delivery time and revisions.
+        (f) => !(services && usePackages && (f.key === "turnaroundDays" || f.key === "revisions"))
+      ),
+    [assetType, subType, services, usePackages]
   );
+  const setPkg = (i: number, patch: Partial<PkgDraft>) =>
+    setPkgs((prev) => prev.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  const setReq = (i: number, patch: Partial<ReqDraft>) =>
+    setReqs((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const enabledPkgs = pkgs.filter((p) => p.enabled);
+  const startingAt = enabledPkgs.length ? Math.min(...enabledPkgs.map((p) => p.price || 0)) : 0;
   const deliverableKind = assetType ? getDeliverableKind(assetType) : null;
   const repeatable = assetType ? canBeUnlimited(assetType) : false;
   const needsDeliverable = assetType ? requiresDeliverable(assetType) : false;
@@ -160,11 +248,67 @@ export function CreateListingView({
     }
   };
 
+  /** Service details as saved: category fields + packages + order questions. */
+  const serviceDetails = () => {
+    const d: Record<string, unknown> = { ...details };
+    if (usePackages) {
+      delete d.turnaroundDays;
+      delete d.revisions;
+    }
+    d.packages = usePackages
+      ? enabledPkgs.map((p) => ({
+          id: p.id,
+          name: p.name.trim() || PACKAGE_LABEL[p.id],
+          description: p.description.trim(),
+          price: p.price,
+          deliveryDays: p.deliveryDays,
+          revisions: p.revisions,
+          items: p.itemsText.split("\n").map((x) => x.trim()).filter(Boolean),
+        }))
+      : [];
+    d.requirements = reqs
+      .filter((r) => r.label.trim())
+      .map((r) => ({ ...r, label: r.label.trim() }));
+    return d;
+  };
+
   const submit = async () => {
     if (!assetType) return toast.error("Pick a category first");
     if (!title.trim() || description.trim().length < 10)
       return toast.error("Add a title and a description (10+ chars)");
-    if (price <= 0) return toast.error("Price must be greater than 0");
+    if (services && usePackages) {
+      if (enabledPkgs.length === 0) return toast.error("Turn on at least one package");
+      const bad = enabledPkgs.find((p) => !(p.price >= 0.5) || !(p.deliveryDays >= 1));
+      if (bad) return toast.error(`${PACKAGE_LABEL[bad.id]}: set a price (min $0.50) and a delivery time (1+ days)`);
+    } else if (price <= 0) return toast.error("Price must be greater than 0");
+    if (editing && initial) {
+      setBusy(true);
+      try {
+        const res = await fetch(`/api/marketplace/listings/${initial.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            description: description.trim(),
+            images,
+            subType: subType || null,
+            details: serviceDetails(),
+            ...(usePackages ? {} : { price }),
+          }),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+        toast.success("Service updated", {
+          description: "Changes to a live service are reviewed before they go live.",
+        });
+        router.push("/services/my");
+      } catch (err) {
+        toast.error("Failed to save", { description: err instanceof Error ? err.message : "Try again" });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (cat?.subTypes?.length && !subType)
       return toast.error(services ? "Choose a service category" : "Choose a sub-type");
     if (needsDeliverable && files.length === 0)
@@ -181,8 +325,10 @@ export function CreateListingView({
           category: cat?.label ?? assetType,
           assetType,
           subType: subType || null,
-          details,
-          price,
+          details: services ? serviceDetails() : details,
+          // A packaged service is priced by its cheapest package (the server
+          // enforces the same).
+          price: services && usePackages ? startingAt : price,
           currency: "USD",
           // Only meaningful for a repeatable category; the server clamps
           // anything else back to ONE_OFF. A service takes any number of orders.
@@ -221,7 +367,7 @@ export function CreateListingView({
     <div className="space-y-4 max-w-3xl mx-auto pb-24">
       {services ? (
         <div>
-          <h1 className="text-xl font-bold text-white">Offer a service</h1>
+          <h1 className="text-xl font-bold text-white">{editing ? "Edit service" : "Offer a service"}</h1>
           <p className="text-sm text-(--app-ink-3) mt-0.5">
             Tell buyers what you will do, how long it takes and how many
             revisions are included. Buyers pay into escrow when they order, and
@@ -338,9 +484,15 @@ export function CreateListingView({
                 className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
               />
             </div>
+            {services && usePackages ? (
+              <p className="text-xs text-(--app-ink-3)">
+                Priced by your packages — buyers see{" "}
+                <strong className="text-white tabular-nums">Starting at ${startingAt.toLocaleString()}</strong>.
+              </p>
+            ) : (
             <div className="w-40">
               <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
-                {services ? "Starting price (USD) *" : "Price (USD) *"}
+                Price (USD) *
               </label>
               <input
                 type="number"
@@ -351,6 +503,7 @@ export function CreateListingView({
                 className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
+            )}
             {/* Licence tiers. Only where the admin has switched them on AND the
                 category is sold repeatedly — a domain has one buyer, so three
                 licence levels would promise something it cannot deliver. */}
@@ -468,6 +621,170 @@ export function CreateListingView({
             </section>
           )}
 
+          {services && (
+            <section className="glass rounded-xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
+                  4 · Packages (optional)
+                </p>
+                <label className="inline-flex items-center gap-2 text-xs text-(--app-ink-2) cursor-pointer">
+                  <input type="checkbox" checked={usePackages} onChange={(e) => setUsePackages(e.target.checked)} />
+                  Offer Basic / Standard / Premium
+                </label>
+              </div>
+              {!usePackages ? (
+                <p className="text-[11px] text-(--app-ink-3)">
+                  One price for everyone. Turn packages on to offer up to three levels, each with its own
+                  price, delivery time, revisions and what&apos;s included.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {pkgs.map((p, i) => (
+                    <div
+                      key={p.id}
+                      className={`rounded-xl border p-3 space-y-2 ${
+                        p.enabled ? "border-(--app-accent-edge)/50" : "border-(--app-line) opacity-70"
+                      }`}
+                    >
+                      <label className="flex items-center justify-between gap-2 cursor-pointer">
+                        <span className="text-sm font-bold text-white">{PACKAGE_LABEL[p.id]}</span>
+                        <input
+                          type="checkbox"
+                          checked={p.enabled}
+                          onChange={(e) => setPkg(i, { enabled: e.target.checked })}
+                        />
+                      </label>
+                      {p.enabled && (
+                        <>
+                          <input
+                            value={p.name}
+                            maxLength={60}
+                            onChange={(e) => setPkg(i, { name: e.target.value })}
+                            placeholder="Package name"
+                            className={fieldCls}
+                          />
+                          <textarea
+                            rows={2}
+                            maxLength={300}
+                            value={p.description}
+                            onChange={(e) => setPkg(i, { description: e.target.value })}
+                            placeholder="What this package covers"
+                            className={`${fieldCls} resize-none`}
+                          />
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <label className="text-[10px] text-(--app-ink-3)">
+                              Price $
+                              <input
+                                type="number"
+                                min={0.5}
+                                step="0.01"
+                                value={p.price}
+                                onChange={(e) => setPkg(i, { price: Number(e.target.value) })}
+                                className={fieldCls}
+                              />
+                            </label>
+                            <label className="text-[10px] text-(--app-ink-3)">
+                              Days
+                              <input
+                                type="number"
+                                min={1}
+                                max={365}
+                                value={p.deliveryDays}
+                                onChange={(e) => setPkg(i, { deliveryDays: Math.floor(Number(e.target.value)) })}
+                                className={fieldCls}
+                              />
+                            </label>
+                            <label className="text-[10px] text-(--app-ink-3)">
+                              Revisions
+                              <input
+                                type="number"
+                                min={0}
+                                max={20}
+                                value={p.revisions}
+                                onChange={(e) => setPkg(i, { revisions: Math.floor(Number(e.target.value)) })}
+                                className={fieldCls}
+                              />
+                            </label>
+                          </div>
+                          <textarea
+                            rows={3}
+                            value={p.itemsText}
+                            onChange={(e) => setPkg(i, { itemsText: e.target.value })}
+                            placeholder={"Included items, one per line\ne.g. Source file\nCommercial use"}
+                            className={`${fieldCls} resize-none`}
+                          />
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {services && (
+            <section className="glass rounded-xl p-4 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
+                5 · Order requirements (optional)
+              </p>
+              <p className="text-[11px] text-(--app-ink-3)">
+                Questions the buyer answers when ordering — the answers appear in the order conversation.
+              </p>
+              {reqs.map((r, i) => (
+                <div key={r.id} className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={r.label}
+                    maxLength={200}
+                    onChange={(e) => setReq(i, { label: e.target.value })}
+                    placeholder="e.g. What is your brand name?"
+                    className={`${fieldCls} flex-1 min-w-48`}
+                  />
+                  <select
+                    value={r.type}
+                    onChange={(e) => setReq(i, { type: e.target.value as RequirementType })}
+                    className="px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm"
+                  >
+                    {REQUIREMENT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {REQUIREMENT_TYPE_LABEL[t]}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="inline-flex items-center gap-1 text-xs text-(--app-ink-2)">
+                    <input
+                      type="checkbox"
+                      checked={r.required}
+                      onChange={(e) => setReq(i, { required: e.target.checked })}
+                    />
+                    Required
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setReqs((prev) => prev.filter((_, j) => j !== i))}
+                    className="p-1.5 text-(--app-ink-3) hover:text-rose-300"
+                    aria-label="Remove question"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {reqs.length < MAX_REQUIREMENTS && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReqs((prev) => [
+                      ...prev,
+                      { id: `q${Date.now().toString(36)}`, label: "", type: "text", required: true },
+                    ])
+                  }
+                  className="text-xs font-semibold text-(--app-accent-ink) hover:underline"
+                >
+                  + Add a question
+                </button>
+              )}
+            </section>
+          )}
+
           {/* Deliverable file (stock media) */}
           {needsDeliverable && (
             <section className="glass rounded-xl p-4 space-y-2">
@@ -516,7 +833,9 @@ export function CreateListingView({
             </section>
           )}
 
-          {/* Affiliate reward — sellers can let others promote for a cut */}
+          {/* Affiliate reward — sellers can let others promote for a cut.
+              Set when the service is created; not part of an edit. */}
+          {!editing && (
           <section className="glass rounded-xl p-4 space-y-2">
             <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
               Affiliate reward (optional)
@@ -555,6 +874,7 @@ export function CreateListingView({
               )}
             </div>
           </section>
+          )}
 
           {/* Gallery images */}
           <section className="glass rounded-xl p-4 space-y-2">
@@ -613,7 +933,7 @@ export function CreateListingView({
             ) : (
               <Upload className="w-4 h-4" />
             )}
-            Submit for review
+            {editing ? "Save changes" : "Submit for review"}
           </button>
         </>
       )}

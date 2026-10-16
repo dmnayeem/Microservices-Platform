@@ -23,6 +23,7 @@ import {
 } from "@/lib/marketplace-commission";
 import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
 import { usd } from "@/lib/utils";
+import { isServiceType } from "@/lib/marketplace-categories";
 
 const patchSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("accept") }),
@@ -106,6 +107,18 @@ export async function PATCH(
       return NextResponse.json(
         { error: "Only the buyer can withdraw their offer" },
         { status: 403 }
+      );
+    }
+
+    // Accepting settles instantly — never for a service (escrow only). Offers
+    // made before services moved to escrow can still be rejected/withdrawn.
+    if (
+      (action.action === "accept" || action.action === "accept_counter") &&
+      isServiceType(offer.listing.assetType)
+    ) {
+      return NextResponse.json(
+        { error: "Services are paid through escrow — agree the price in a deal with the buyer instead." },
+        { status: 400 }
       );
     }
 

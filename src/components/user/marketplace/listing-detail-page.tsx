@@ -27,6 +27,7 @@ import {
 import { breadcrumbLd, listingLd } from "@/lib/public-catalog-schema";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
+import { userCanFeature } from "@/lib/packages";
 
 /**
  * A listing page, shared by /marketplace/[id] (digital products) and
@@ -182,6 +183,10 @@ export async function ListingDetailPage({ id, area }: { id: string; area: Listin
   });
 
   const isOwner = listing.sellerId === session.user.id;
+  // Ordering a service opens an escrow deal — needs the `deals` feature.
+  const canOrder = isServiceType(listing.assetType) && !isOwner
+    ? await userCanFeature(session.user.id, "deals")
+    : true;
   const hideFinancials = listing.ndaGated && !isOwner;
 
   const [isWatched, _viewBumped] = await Promise.all([
@@ -277,6 +282,7 @@ export async function ListingDetailPage({ id, area }: { id: string; area: Listin
         isWatched={isWatched}
         hideFinancials={hideFinancials}
         viewerId={session.user.id}
+        canOrder={canOrder}
       />
     </>
   );

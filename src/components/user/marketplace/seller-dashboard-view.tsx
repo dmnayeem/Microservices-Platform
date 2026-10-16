@@ -14,7 +14,10 @@ import {
   XCircle,
   Hourglass,
   Clock,
+  Pencil,
+  MessageCircle,
 } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { ListingCard } from "@/components/user/primitives/listing-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
@@ -42,6 +45,25 @@ export interface SellerListing {
   featuredUntil?: string | null;
 }
 
+/** A service order in progress (escrow funded, not yet released/refunded). */
+export interface SellerOrder {
+  dealId: string;
+  threadId: string;
+  title: string;
+  status: "FUNDED" | "DELIVERED" | "DISPUTED";
+  amount: number;
+  tierName: string | null;
+  dueAt: string | null;
+  buyerName: string | null;
+  orderedAt: string;
+}
+
+const ORDER_STATUS: Record<SellerOrder["status"], { label: string; cls: string }> = {
+  FUNDED: { label: "In progress", cls: "bg-(--app-cta)/15 text-(--app-accent-ink) border-(--app-accent-edge)/30" },
+  DELIVERED: { label: "Delivered", cls: "bg-blue-500/15 text-blue-300 border-blue-500/30" },
+  DISPUTED: { label: "Disputed", cls: "bg-red-500/15 text-red-300 border-red-500/30" },
+};
+
 const STATUS_FILTERS = [
   { value: "ALL", label: "All" },
   { value: "PENDING_REVIEW", label: "Pending" },
@@ -61,10 +83,14 @@ interface Props {
   pendingPayout?: { amount: number; count: number; nextReleaseAt: string | null };
   /** "services" = the freelancer's own services (/services/my). */
   mode?: "products" | "services";
+  /** Services: orders in progress, soonest due first. */
+  orders?: SellerOrder[];
 }
 
-export function SellerDashboardView({ listings, pendingPayout, mode = "products" }: Props) {
+export function SellerDashboardView({ listings, pendingPayout, mode = "products", orders = [] }: Props) {
   const [filter, setFilter] = useState<FilterKey>("ALL");
+  // Read once per mount — render must stay pure.
+  const [now] = useState(() => Date.now());
   const services = mode === "services";
   const base = services ? "/services" : "/marketplace";
 
@@ -142,6 +168,46 @@ export function SellerDashboardView({ listings, pendingPayout, mode = "products"
           tone="amber"
         />
       </div>
+
+      {services && orders.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold text-white">Active orders ({orders.length})</h2>
+          <div className="space-y-1.5">
+            {orders.map((o) => {
+              const due = o.dueAt ? new Date(o.dueAt) : null;
+              // Late only while the work is still owed (not once delivered).
+              const late = !!due && o.status === "FUNDED" && due.getTime() < now;
+              return (
+                <Link
+                  key={o.dealId}
+                  href={`/marketplace/messages/${o.threadId}`}
+                  className="glass rounded-xl p-3 flex items-center gap-3 hover:border-(--app-accent-edge)/40 border border-transparent"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white truncate">{o.title}</p>
+                    <p className="text-[11px] text-(--app-ink-3) truncate">
+                      {o.tierName ? `${o.tierName} · ` : ""}
+                      {usd(o.amount)}
+                      {o.buyerName ? ` · ${o.buyerName}` : ""}
+                    </p>
+                    {due && (
+                      <p className={cn("text-[11px] inline-flex items-center gap-1", late ? "text-rose-300 font-semibold" : "text-(--app-ink-2)")}>
+                        <Clock className="w-3 h-3" />
+                        Due {format(due, "d MMM")}
+                        {o.status === "FUNDED" && ` · ${late ? "late" : formatDistanceToNow(due, { addSuffix: true })}`}
+                      </p>
+                    )}
+                  </div>
+                  <span className={cn("px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider shrink-0", ORDER_STATUS[o.status]?.cls)}>
+                    {ORDER_STATUS[o.status]?.label ?? o.status}
+                  </span>
+                  <MessageCircle className="w-4 h-4 text-(--app-ink-3) shrink-0" />
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Filters */}
       <FilterChips
@@ -240,6 +306,15 @@ export function SellerDashboardView({ listings, pendingPayout, mode = "products"
                   )}
                 </span>
               </div>
+              {services && ["ACTIVE", "PENDING_REVIEW", "REJECTED"].includes(l.status) && (
+                <Link
+                  href={`/services/create?edit=${l.id}`}
+                  className="mx-1 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-accent-ink) hover:underline"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Edit packages & details
+                </Link>
+              )}
               {l.status === "ACTIVE" && (
                 <div className="px-1">
                   <PromoteButton

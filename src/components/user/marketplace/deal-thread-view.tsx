@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Loader2,
   Send,
@@ -13,9 +13,19 @@ import {
   CheckCircle2,
   AlertTriangle,
   Handshake,
+  Package,
+  Paperclip,
+  RefreshCw,
+  Upload,
+  X,
+  Clock,
 } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
 import { Avatar } from "@/components/user/primitives/avatar";
+import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
+import { uploadUserFile } from "@/lib/user-upload";
+import { listingHref } from "@/lib/marketplace-categories";
+import type { OrderBrief } from "@/lib/service-packages";
 
 type Role = "BUYER" | "SELLER" | "ADMIN";
 type DealStatus =
@@ -30,7 +40,7 @@ type DealStatus =
 interface Message {
   id: string;
   senderId: string;
-  senderType: "USER" | "ADMIN" | "SYSTEM";
+  senderType: "USER" | "ADMIN" | "SYSTEM" | "DELIVERY" | "REVISION";
   body: string;
   attachments: string[];
   createdAt: string;
@@ -47,6 +57,9 @@ interface Deal {
   deliveredAt: string | null;
   releasedAt: string | null;
   createdAt: string;
+  /** Service order: package snapshot + the buyer's answers (null = custom deal). */
+  order: OrderBrief | null;
+  revisionsUsed: number;
 }
 interface Party {
   id: string;
@@ -59,7 +72,7 @@ interface ThreadData {
     role: Role;
     buyer: Party | null;
     seller: Party | null;
-    listing: { id: string; title: string; price: number; status: string } | null;
+    listing: { id: string; title: string; price: number; status: string; assetType: string } | null;
     mediation: { enabled: boolean; feeBps: number };
   };
   messages: Message[];
@@ -83,6 +96,8 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  // Service orders: the delivery / revision-request sheets.
+  const [sheet, setSheet] = useState<{ kind: "deliver" | "revision"; dealId: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(
@@ -146,20 +161,27 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
     }
   };
 
-  const runAction = async (url: string, action: string, reason?: string) => {
+  const runAction = async (
+    url: string,
+    action: string,
+    reason?: string,
+    extra?: Record<string, unknown>
+  ): Promise<boolean> => {
     setActionBusy(true);
     try {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason }),
+        body: JSON.stringify({ action, reason, ...extra }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? "Action failed");
       toast.success("Done");
       await load(true);
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Action failed");
+      return false;
     } finally {
       setActionBusy(false);
     }
@@ -209,7 +231,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               </p>
               {thread.listing && (
                 <Link
-                  href={`/marketplace/${thread.listing.id}`}
+                  href={listingHref(thread.listing)}
                   className="text-xs text-(--app-ink-3) hover:text-(--app-ink) truncate block"
                 >
                   {thread.listing.title}
@@ -221,6 +243,9 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
             {messages.map((m) => {
+              if (m.senderType === "DELIVERY" || m.senderType === "REVISION") {
+                return <OrderEventCard key={m.id} m={m} threadId={threadId} mine={m.senderId === viewerId} />;
+              }
               if (m.senderType === "SYSTEM") {
                 return (
                   <div key={m.id} className="text-center my-2">
@@ -296,6 +321,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
             <h3 className="text-sm font-bold text-white">Escrow deal</h3>
           </div>
 
+          {activeDeal?.order && <OrderBriefCard deal={activeDeal} />}
           {activeDeal ? (
             <DealActions
               deal={activeDeal}
@@ -304,9 +330,11 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               busy={actionBusy}
               onAction={dealAction}
               onAdminAction={adminAction}
+              onSheet={(kind) => setSheet({ kind, dealId: activeDeal.id })}
             />
           ) : (
             <>
+              {lastTerminal?.order && <OrderBriefCard deal={lastTerminal} />}
               {lastTerminal && (
                 <div className="text-xs text-(--app-ink-3)">
                   Last deal:{" "}
@@ -329,6 +357,31 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
           )}
         </div>
       </div>
+
+      {sheet?.kind === "deliver" && (
+        <DeliverSheet
+          requireWork={!!deals.find((d) => d.id === sheet.dealId)?.order}
+          busy={actionBusy}
+          onClose={() => setSheet(null)}
+          onSubmit={async (message, attachments) => {
+            const ok = await runAction(`/api/marketplace/deals/${sheet.dealId}`, "deliver", undefined, {
+              message,
+              attachments,
+            });
+            if (ok) setSheet(null);
+          }}
+        />
+      )}
+      {sheet?.kind === "revision" && (
+        <RevisionSheet
+          busy={actionBusy}
+          onClose={() => setSheet(null)}
+          onSubmit={async (message) => {
+            const ok = await runAction(`/api/marketplace/deals/${sheet.dealId}`, "revision", undefined, { message });
+            if (ok) setSheet(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -340,6 +393,7 @@ function DealActions({
   busy,
   onAction,
   onAdminAction,
+  onSheet,
 }: {
   deal: Deal;
   role: Role;
@@ -347,7 +401,10 @@ function DealActions({
   busy: boolean;
   onAction: (dealId: string, action: string, reason?: string) => void;
   onAdminAction: (dealId: string, action: string, reason?: string) => void;
+  onSheet: (kind: "deliver" | "revision") => void;
 }) {
+  const revisionsAllowed = deal.order?.tier.revisions ?? 0;
+  const revisionsLeft = Math.max(0, revisionsAllowed - deal.revisionsUsed);
   const isBuyer = role === "BUYER";
   const isSeller = role === "SELLER";
   const isAdmin = role === "ADMIN";
@@ -407,8 +464,8 @@ function DealActions({
       {deal.status === "FUNDED" && (
         <div className="space-y-2">
           {isSeller && (
-            <button disabled={busy} onClick={() => onAction(deal.id, "deliver")} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
-              <CheckCircle2 className="w-4 h-4" /> Mark delivered
+            <button disabled={busy} onClick={() => onSheet("deliver")} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
+              <Package className="w-4 h-4" /> Deliver work
             </button>
           )}
           {isSeller && (
@@ -429,8 +486,20 @@ function DealActions({
         <div className="space-y-2">
           {isBuyer && (
             <button disabled={busy} onClick={() => onAction(deal.id, "confirm")} className={cn(btn, "bg-emerald-600 text-white hover:bg-emerald-700")}>
-              <CheckCircle2 className="w-4 h-4" /> Confirm & release
+              <CheckCircle2 className="w-4 h-4" /> {deal.order ? "Accept & release payment" : "Confirm & release"}
             </button>
+          )}
+          {isBuyer && deal.order && revisionsLeft > 0 && (
+            <button disabled={busy} onClick={() => onSheet("revision")} className={cn(btn, "bg-white/10 text-(--app-ink) hover:bg-white/20")}>
+              <RefreshCw className="w-4 h-4" /> Request revision ({revisionsLeft} left)
+            </button>
+          )}
+          {isBuyer && deal.order && revisionsLeft === 0 && (
+            <p className="text-[11px] text-(--app-ink-3)">
+              {revisionsAllowed === 0
+                ? "This package has no revisions — accept the delivery or escalate to an admin."
+                : "All included revisions are used — accept the delivery or escalate to an admin."}
+            </p>
           )}
           {isSeller && <p className="text-[11px] text-(--app-ink-3)">Delivered — waiting for the buyer to confirm.</p>}
           {(isBuyer || isSeller) && (
@@ -550,5 +619,295 @@ function ProposeForm({
         Propose deal
       </button>
     </div>
+  );
+}
+
+/** A delivery (seller) or a revision request (buyer) in a service order. */
+function OrderEventCard({ m, threadId, mine }: { m: Message; threadId: string; mine: boolean }) {
+  const delivery = m.senderType === "DELIVERY";
+  return (
+    <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "max-w-[85%] rounded-2xl px-3 py-2 text-sm border",
+          delivery
+            ? "bg-emerald-500/10 border-emerald-500/30 text-(--app-ink)"
+            : "bg-amber-500/10 border-amber-500/30 text-(--app-ink)"
+        )}
+      >
+        <p
+          className={cn(
+            "text-[10px] font-bold uppercase tracking-wider mb-0.5 inline-flex items-center gap-1",
+            delivery ? "text-emerald-300" : "text-amber-300"
+          )}
+        >
+          {delivery ? <Package className="w-3 h-3" /> : <RefreshCw className="w-3 h-3" />}
+          {delivery ? "Delivery" : "Revision requested"}
+        </p>
+        <p className="whitespace-pre-wrap break-words">{m.body}</p>
+        {m.attachments.length > 0 && (
+          <ul className="mt-1.5 space-y-1">
+            {m.attachments.map((url, i) => (
+              <li key={i}>
+                <a
+                  href={`/api/marketplace/threads/${threadId}/files?m=${m.id}&n=${i}`}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-(--app-accent-ink) hover:underline break-all"
+                >
+                  <Paperclip className="w-3 h-3 shrink-0" />
+                  {fileLabel(url)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-[10px] opacity-60 mt-0.5">
+          {formatDistanceToNow(new Date(m.createdAt), { addSuffix: true })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function fileLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const last = decodeURIComponent(u.pathname.split("/").pop() ?? "");
+    // Uploaded keys are `<timestamp>_<random>_<name>` — show the name.
+    const m = /^\d+_[a-z0-9]+_(.+)$/i.exec(last);
+    return m ? m[1] : last || u.hostname;
+  } catch {
+    return url;
+  }
+}
+
+/** What was ordered: package, price, due date, revisions and the buyer's answers. */
+function OrderBriefCard({ deal }: { deal: Deal }) {
+  // Read once per mount — render must stay pure.
+  const [now] = useState(() => Date.now());
+  const o = deal.order;
+  if (!o) return null;
+  const due = o.dueAt ? new Date(o.dueAt) : null;
+  const waitingOnSeller = deal.status === "FUNDED";
+  const late = !!due && waitingOnSeller && due.getTime() < now;
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold text-white inline-flex items-center gap-1">
+          <Package className="w-3.5 h-3.5 text-(--app-accent-ink)" />
+          {o.tier.name} package
+        </p>
+        <span className="text-xs font-bold text-white tabular-nums">{usd(o.tier.price)}</span>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-(--app-ink-2)">
+        {due && (
+          <span className={cn("inline-flex items-center gap-1", late && "text-rose-300 font-semibold")}>
+            <Clock className="w-3 h-3" />
+            Due {format(due, "d MMM yyyy")}
+            {waitingOnSeller && ` (${late ? "late" : formatDistanceToNow(due, { addSuffix: true })})`}
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1">
+          <RefreshCw className="w-3 h-3" />
+          {o.tier.revisions === 0 ? "No revisions" : `Revisions ${deal.revisionsUsed} / ${o.tier.revisions}`}
+        </span>
+      </div>
+      {o.tier.items.length > 0 && (
+        <ul className="text-[11px] text-(--app-ink-3) list-disc pl-4">
+          {o.tier.items.map((it, i) => (
+            <li key={i}>{it}</li>
+          ))}
+        </ul>
+      )}
+      {o.answers.length > 0 && (
+        <div className="space-y-1.5 pt-1 border-t border-white/10">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">Order requirements</p>
+          {o.answers.map((a) => (
+            <div key={a.id}>
+              <p className="text-[11px] text-(--app-ink-3)">{a.label}</p>
+              {a.type === "url" || a.type === "file" ? (
+                <a
+                  href={a.value}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow ugc"
+                  className="text-xs text-(--app-accent-ink) hover:underline break-all"
+                >
+                  {a.value}
+                </a>
+              ) : (
+                <p className="text-xs text-white whitespace-pre-wrap break-words">{a.value}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const sheetInput =
+  "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)";
+
+/** Seller hands over the work: a message plus uploaded files and/or links. */
+function DeliverSheet({
+  requireWork,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  /** Service orders must hand over something; a plain deal may just confirm. */
+  requireWork: boolean;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (message: string, attachments: string[]) => void;
+}) {
+  const [message, setMessage] = useState("");
+  const [files, setFiles] = useState<string[]>([]);
+  const [links, setLinks] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  const add = async (list: FileList) => {
+    setUploading(true);
+    try {
+      for (const f of Array.from(list).slice(0, 10 - files.length)) {
+        // Private prefix — only the buyer, seller and a mediating admin can open it.
+        const url = await uploadUserFile(f, "marketplace", { purpose: "deliverable" });
+        setFiles((prev) => [...prev, url]);
+      }
+    } catch (err) {
+      toast.error("Upload failed", { description: err instanceof Error ? err.message : "Try again" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const submit = () => {
+    const linkList = links
+      .split(/\s+/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const bad = linkList.find((l) => !/^https?:\/\/\S+$/i.test(l));
+    if (bad) return toast.error(`Not a valid link: ${bad}`);
+    const attachments = [...files, ...linkList].slice(0, 10);
+    if (requireWork && !message.trim() && attachments.length === 0) {
+      return toast.error("Add a message, a file or a link");
+    }
+    onSubmit(message.trim(), attachments);
+  };
+
+  return (
+    <BottomSheet
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Deliver your work"
+      description="The buyer can accept it (which releases the payment) or request a revision."
+      footer={
+        <button
+          onClick={submit}
+          disabled={busy || uploading}
+          className="w-full inline-flex items-center justify-center gap-1.5 py-3 rounded-xl bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+          Deliver
+        </button>
+      }
+    >
+      <div className="space-y-3 px-5 py-4 overflow-y-auto max-h-[60vh]">
+        <textarea
+          rows={4}
+          maxLength={4000}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Describe what you delivered…"
+          className={cn(sheetInput, "resize-none")}
+        />
+        {files.length > 0 && (
+          <ul className="space-y-1">
+            {files.map((f, i) => (
+              <li key={f} className="flex items-center gap-2 text-xs text-(--app-ink-2)">
+                <Paperclip className="w-3 h-3 shrink-0" />
+                <span className="truncate flex-1 min-w-0">{fileLabel(f)}</span>
+                <button
+                  type="button"
+                  onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                  className="text-(--app-ink-3) hover:text-rose-300"
+                  aria-label="Remove file"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {files.length < 10 && (
+          <label className="flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-white/10 hover:border-(--app-accent-edge)/50 cursor-pointer text-sm text-(--app-ink-2)">
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploading ? "Uploading…" : "Attach files"}
+            <input
+              type="file"
+              hidden
+              multiple
+              onChange={(e) => {
+                if (e.target.files) add(e.target.files);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+        )}
+        <textarea
+          rows={2}
+          value={links}
+          onChange={(e) => setLinks(e.target.value)}
+          placeholder="Links (optional, one per line) — e.g. a Google Drive folder"
+          className={cn(sheetInput, "resize-none")}
+        />
+      </div>
+    </BottomSheet>
+  );
+}
+
+/** Buyer sends the delivery back with what to change. */
+function RevisionSheet({
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (message: string) => void;
+}) {
+  const [message, setMessage] = useState("");
+  return (
+    <BottomSheet
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Request a revision"
+      description="The order goes back to the seller. Your payment stays in escrow."
+      footer={
+        <button
+          onClick={() => {
+            if (message.trim().length < 5) return toast.error("Tell the seller what to change");
+            onSubmit(message.trim());
+          }}
+          disabled={busy}
+          className="w-full inline-flex items-center justify-center gap-1.5 py-3 rounded-xl bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Send revision request
+        </button>
+      }
+    >
+      <div className="px-5 py-4">
+        <textarea
+          rows={5}
+          maxLength={2000}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="What should the seller change?"
+          className={cn(sheetInput, "resize-none")}
+        />
+      </div>
+    </BottomSheet>
   );
 }

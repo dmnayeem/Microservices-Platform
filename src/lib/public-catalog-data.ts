@@ -152,6 +152,8 @@ async function readListing(id: string) {
   // Only the fields the category form defines are shown; anything else in the
   // JSON (studio task ids, prompts) is internal.
   const allowedKeys = new Set(getFieldsFor(l.assetType, l.subType).map((f) => f.key));
+  // A service's packages are its price list — public like the price itself.
+  if (l.assetType === "SERVICE") allowedKeys.add("packages");
   const rawDetails = (l.details ?? {}) as Record<string, unknown>;
   const details = Object.fromEntries(
     Object.entries(rawDetails).filter(([k]) => allowedKeys.has(k))

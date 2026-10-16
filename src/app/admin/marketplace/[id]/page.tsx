@@ -11,6 +11,7 @@ import { ListingActions } from "./_components/ListingActions";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import type { MediaMeta } from "@/lib/media-metadata";
 import type { StoredFilesSafety } from "@/lib/upload-safety";
+import { readPackages, readRequirements, REQUIREMENT_TYPE_LABEL } from "@/lib/service-packages";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -132,6 +133,53 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
             <h2 className="text-lg font-semibold text-white mb-4">Description</h2>
             <p className="text-gray-400 whitespace-pre-wrap">{typedListing.description}</p>
           </div>
+
+          {/* Service packages + order questions — what a buyer pays for. */}
+          {(() => {
+            const pkgs = readPackages(listing.details);
+            const reqs = readRequirements(listing.details);
+            if (pkgs.length === 0 && reqs.length === 0) return null;
+            return (
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
+                {pkgs.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-white mb-3">Packages</h2>
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      {pkgs.map((p) => (
+                        <div key={p.id} className="rounded-lg border border-gray-800 p-3 text-sm">
+                          <p className="font-semibold text-white">{p.name}</p>
+                          <p className="text-white font-bold">{usd(p.price)}</p>
+                          <p className="text-gray-400 text-xs">
+                            {p.deliveryDays}d delivery · {p.revisions} revision{p.revisions === 1 ? "" : "s"}
+                          </p>
+                          {p.description && <p className="text-gray-400 text-xs mt-1 whitespace-pre-wrap">{p.description}</p>}
+                          {p.items.length > 0 && (
+                            <ul className="text-gray-400 text-xs mt-1 list-disc pl-4">
+                              {p.items.map((it, i) => (
+                                <li key={i}>{it}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {reqs.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-white mb-2">Order questions</h2>
+                    <ul className="text-sm text-gray-400 space-y-1">
+                      {reqs.map((r) => (
+                        <li key={r.id}>
+                          {r.label} <span className="text-gray-500">({REQUIREMENT_TYPE_LABEL[r.type]}{r.required ? ", required" : ""})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Images */}
           {typedListing.images.length > 0 && (
