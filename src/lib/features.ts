@@ -35,6 +35,7 @@ export type PackageFeatureKey =
   | "createTasks"
   | "sellCourses"
   | "sellMarketplace"
+  | "sellServices"
   | "agencyMode"
   | "shareLinks"
   | "shareYouTube"
@@ -78,6 +79,7 @@ export const FEATURE_TO_COLUMN: Record<PackageFeatureKey, string> = {
   createTasks: "createTasksEnabled",
   sellCourses: "sellCoursesEnabled",
   sellMarketplace: "sellMarketplaceEnabled",
+  sellServices: "sellServicesEnabled",
   agencyMode: "agencyModeEnabled",
   shareLinks: "shareLinksEnabled",
   shareYouTube: "shareYoutubeEnabled",
@@ -139,6 +141,7 @@ export const FEATURES: {
   { key: "createTasks", label: "Create Tasks", group: "creator" , description: "Publish tasks other users complete for money, and fund them from their buyer balance." },
   { key: "sellCourses", label: "Sell Courses / Tutor", group: "creator" , description: "Create and sell courses. Granting this to a plain user also promotes them to Tutor." },
   { key: "sellMarketplace", label: "Sell on Marketplace", group: "creator" , description: "List and sell digital products in the marketplace." },
+  { key: "sellServices", label: "Offer Services", group: "creator" , description: "List freelance services (gigs) on the Services page — separate from selling digital products." },
   { key: "agencyMode", label: "Agency / Moderator Mode", group: "creator" , description: "Run an agency console — manage campaigns and tasks on behalf of several clients." },
   { key: "shareLinks", label: "Share Links in Posts", group: "creator" , description: "Post clickable external links in the feed. Off by default because it is the main spam vector." },
   { key: "shareYouTube", label: "Share YouTube / Video Links", group: "creator" , description: "Post YouTube and other video links that render as an inline player." },

@@ -54,6 +54,7 @@ export default async function NewPackagePage() {
     createTasksEnabled: false,
     sellCoursesEnabled: false,
     sellMarketplaceEnabled: false,
+    sellServicesEnabled: false,
     agencyModeEnabled: false,
     shareLinksEnabled: false,
     shareYoutubeEnabled: false,

@@ -2857,6 +2857,8 @@ model Package {
   createTasksEnabled     Boolean @default(false)
   sellCoursesEnabled     Boolean @default(false)
   sellMarketplaceEnabled Boolean @default(false)
+  /// Offer services (freelance gigs) — separate from selling digital products (2026-10-16).
+  sellServicesEnabled    Boolean @default(false)
   agencyModeEnabled      Boolean @default(false)
   // Post-composer sharing capabilities — default OFF (granted per-user by admin)
   shareLinksEnabled      Boolean @default(false)
@@ -3965,6 +3967,9 @@ enum CreatorApplicationType {
   /// `advertiser`, which is far more than someone who just wants 200 people to
   /// follow their page ever asked for.
   TASK_BUYER
+  /// Offer services (freelance gigs) on /services — separate from the
+  /// marketplace of digital products (2026-10-16).
+  SERVICE_PROVIDER
 }
 
 enum CreatorApplicationStatus {

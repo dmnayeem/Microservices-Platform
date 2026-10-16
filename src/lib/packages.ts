@@ -65,6 +65,7 @@ export interface PackageRow {
   createTasksEnabled: boolean;
   sellCoursesEnabled: boolean;
   sellMarketplaceEnabled: boolean;
+  sellServicesEnabled: boolean;
   agencyModeEnabled: boolean;
   shareLinksEnabled: boolean;
   shareYoutubeEnabled: boolean;

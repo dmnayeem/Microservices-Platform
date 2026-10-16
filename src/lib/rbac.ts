@@ -1561,6 +1561,15 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "COMMERCE",
   },
   {
+    // Every application in one place — seller, services, buyer, advertiser,
+    // tutor, ambassador, blue badge — with the requirements per program.
+    name: "Applications",
+    href: "/admin/applications",
+    icon: "BadgeCheck",
+    permissions: ["creators.review"],
+    category: "COMMERCE",
+  },
+  {
     name: "Creator Applications",
     href: "/admin/creators",
     icon: "BadgeCheck",

@@ -41,6 +41,13 @@ export const CREATOR_TYPES: Record<CreatorApplicationType, CreatorTypeMeta> = {
     grantFeatures: ["agencyMode", "createTasks", "advertiser"],
     dashboardHref: "/agency",
   },
+  SERVICE_PROVIDER: {
+    label: "Service Provider",
+    blurb: "Offer your skills as services (design, writing, video, marketing…) on the Services page and get paid per order.",
+    gateFeature: "sellServices",
+    grantFeatures: ["sellServices"],
+    dashboardHref: "/services/create",
+  },
   TASK_BUYER: {
     label: "Task Buyer",
     blurb:
