@@ -5,7 +5,15 @@ import { rateLimit } from "@/lib/rate-limit";
 import { requireActiveUser } from "@/lib/require-active";
 import { getPointsPerUsd } from "@/lib/economy";
 import { startSession, heartbeat, reportScore, BEAT_INTERVAL_SECONDS } from "@/lib/game-session";
-import { gameCors, gamePreflight, isAllowedGameOrigin, normalizeOrigin, playerKeyFor, verifyGameConnectToken } from "@/lib/game-connect";
+import {
+  absoluteAvatar,
+  gameCors,
+  gamePreflight,
+  isAllowedGameOrigin,
+  normalizeOrigin,
+  playerKeyFor,
+  verifyGameConnectToken,
+} from "@/lib/game-connect";
 
 /**
  * /api/games/ext/:action — the owner's separate game website, via the RevType
@@ -59,12 +67,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ acti
   if (action !== "me") return gameCors(a.origin, { error: "Not found" }, { status: 404 });
 
   const [user, ppu] = await Promise.all([
-    prisma.user.findUnique({ where: { id: a.userId }, select: { name: true, username: true, pointsBalance: true } }),
+    prisma.user.findUnique({ where: { id: a.userId }, select: { name: true, username: true, avatar: true, pointsBalance: true } }),
     getPointsPerUsd(),
   ]);
   if (!user) return gameCors(a.origin, { error: "Account not found", reason: "token" }, { status: 401 });
   return gameCors(a.origin, {
     name: user.name || user.username || "RevType member",
+    // The member's RevType picture, so the game can use it as the profile photo.
+    avatar: absoluteAvatar(user.avatar),
     points: user.pointsBalance,
     usd: ppu > 0 ? Math.floor((user.pointsBalance / ppu) * 100) / 100 : 0,
     withdrawUrl: `${SITE_URL}/withdrawal`,

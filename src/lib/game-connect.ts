@@ -195,3 +195,17 @@ export function verifyPlayerKey(key: string | null | undefined): { userId: strin
     return null;
   }
 }
+
+/**
+ * A member's picture as a full URL a game on another website can load:
+ * absolute URLs (Google, S3) as they are, site paths ("/api/media/...")
+ * prefixed with the RevType address. Anything else → "".
+ */
+export function absoluteAvatar(avatar: string | null | undefined): string {
+  const a = (avatar ?? "").trim();
+  if (/^https?:\/\//i.test(a)) return a;
+  if (a.startsWith("/")) {
+    return `${(process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com").replace(/\/+$/, "")}${a}`;
+  }
+  return "";
+}

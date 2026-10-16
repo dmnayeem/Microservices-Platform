@@ -26,8 +26,17 @@ export interface CatalogGame extends PlayableGame {
 
 const ALL = "__all__";
 
-export function GamesCatalog({ games }: { games: CatalogGame[] }) {
-  const [playing, setPlaying] = useState<CatalogGame | null>(null);
+export function GamesCatalog({
+  games,
+  initialPlayId = null,
+}: {
+  games: CatalogGame[];
+  /** From `/games?play=<id>`: open this game straight away. */
+  initialPlayId?: string | null;
+}) {
+  const [playing, setPlaying] = useState<CatalogGame | null>(
+    () => (initialPlayId ? games.find((g) => g.id === initialPlayId) ?? null : null)
+  );
   const [tab, setTab] = useState<string>(ALL);
 
   // Category tabs, derived from what actually exists — the catalog previously

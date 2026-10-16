@@ -5,7 +5,14 @@ import { getEffectiveFeatures } from "@/lib/packages";
 import { FeatureLock } from "@/components/user/primitives/feature-lock";
 import { GamesCatalog } from "@/components/user/games/games-catalog";
 
-export default async function GamesPage() {
+/**
+ * `/games?play=<gameId>` opens that game straight away in the in-app player —
+ * the link to use from banners, posts and notifications, so a game on its own
+ * website never opens as an outside page (with a browser address bar) inside
+ * the RevType app.
+ */
+export default async function GamesPage({ searchParams }: { searchParams: Promise<{ play?: string }> }) {
+  const { play } = await searchParams;
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -51,6 +58,7 @@ export default async function GamesPage() {
 
   return (
     <GamesCatalog
+      initialPlayId={play ?? null}
       games={games.map((g) => ({
         ...g,
         // The taxonomy name when the game has been categorised, falling back to

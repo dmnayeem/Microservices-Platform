@@ -29,7 +29,8 @@
  *   RevType.init({ gameId, badge: false })        // hide the built-in button
  *   RevType.init({ gameId, position: "top-left" }) // bottom-right (default) / bottom-left / top-right / top-left
  *   RevType.connect()                             // open the sign-in window from your own button
- *   RevType.onReady(fn)  // fn({ connected, earning, name, points })
+ *   RevType.onReady(fn)  // fn({ connected, earning, name, avatar, points, playerKey })
+ *     → use info.name and info.avatar (picture URL) as the player's profile in your game
  *   RevType.onEarn(fn)   // fn({ awarded, sessionPoints })
  *
  * RevType decides what a score is worth and limits it by real play time, so
@@ -64,6 +65,7 @@
     pointsPer1000: 0,
     withdrawUrl: "",
     playerKey: "",
+    avatar: "",
   };
   var readyFns = [];
   var earnFns = [];
@@ -82,6 +84,7 @@
       connected: state.connected,
       earning: state.earning,
       name: state.name,
+      avatar: state.avatar,
       points: state.points,
       pointsPer1000: state.pointsPer1000,
       playerKey: state.playerKey,
@@ -136,6 +139,8 @@
         state.earning = !!d.earning;
         state.pointsPer1000 = Number(d.pointsPer1000) || 0;
         state.playerKey = d.playerKey || "";
+        state.name = d.name || "";
+        state.avatar = d.avatar || "";
         ready();
         if (pending > 0) schedulePlayer();
       } else if (d.type === "earned") {
@@ -224,6 +229,7 @@
       state.points = Number(r.data.points) || 0;
       state.withdrawUrl = r.data.withdrawUrl || "";
       state.playerKey = r.data.playerKey || "";
+      state.avatar = r.data.avatar || "";
       renderBadge();
     });
   }

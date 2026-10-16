@@ -35,6 +35,8 @@ interface SessionInfo {
   };
   /** Games whose own server decides income: the member's key for that game website. */
   playerKey?: string;
+  /** The member's RevType name and picture, handed to the game. */
+  player?: { name: string; avatar: string };
   /** Absent on servers older than the Games SDK. */
   score?: {
     enabled: boolean;
@@ -229,6 +231,8 @@ export function GamePlayer({
         earning: !!s?.score?.enabled || !!s?.playerKey,
         pointsPer1000: s?.score?.pointsPer1000 ?? 0,
         playerKey: s?.playerKey ?? "",
+        name: s?.player?.name ?? "",
+        avatar: s?.player?.avatar ?? "",
       },
       gameOrigin
     );
