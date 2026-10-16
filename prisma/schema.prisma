@@ -374,21 +374,21 @@ model Banner {
 
   /// Audience — the same nine columns (and STRICT matching) as tasks, via
   /// src/lib/task-targeting.ts. Empty array / null age = no constraint.
-  countries    String[] @default([])
-  genders      String[] @default([])
-  regions      String[] @default([])
-  divisions    String[] @default([])
-  districts    String[] @default([])
-  subDistricts String[] @default([])
-  postalCodes  String[] @default([])
-  minAge       Int?
-  maxAge       Int?
+  countries      String[] @default([])
+  genders        String[] @default([])
+  regions        String[] @default([])
+  divisions      String[] @default([])
+  districts      String[] @default([])
+  subDistricts   String[] @default([])
+  postalCodes    String[] @default([])
+  minAge         Int?
+  maxAge         Int?
   /// "ANY" | "VERIFIED" (KYC approved) | "NOT_VERIFIED" (anything else).
-  kycAudience  String   @default("ANY")
+  kycAudience    String   @default("ANY")
   // Device targeting (src/lib/device-target.ts). Empty = any device.
-  deviceTypes  String[] @default([])
-  deviceOses   String[] @default([])
-  deviceBrands String[] @default([])
+  deviceTypes    String[] @default([])
+  deviceOses     String[] @default([])
+  deviceBrands   String[] @default([])
   /// Plan / level / account-age rules — the same as popups (lib/audience-extra.ts).
   planAudience   String   @default("ANY")
   packageIds     String[] @default([])
@@ -455,29 +455,29 @@ model SitePopup {
   // ── Content (2026-10-07) ─────────────────────────────────────────────────
   /// Video links for a VIDEO popup — YouTube, Vimeo or a direct .mp4 (our
   /// uploads included). Several = the viewer switches between them.
-  videos       String[] @default([])
+  videos     String[] @default([])
   /// Raw HTML / ad code for an HTML popup. Rendered in a sandboxed iframe
   /// (scripts run, but with no access to the site or the viewer's session).
-  htmlCode     String?  @db.Text
-  htmlHeight   Int      @default(320)
+  htmlCode   String?  @db.Text
+  htmlHeight Int      @default(320)
   /// Optional second button.
-  cta2Label    String?
-  cta2Url      String?
+  cta2Label  String?
+  cta2Url    String?
   /// SMALL | MEDIUM | LARGE | FULL
-  size         String   @default("MEDIUM")
+  size       String   @default("MEDIUM")
 
   // ── More audience rules ──────────────────────────────────────────────────
   /// ANY | FREE (default plan) | PAID (any paid plan, not expired)
-  planAudience  String   @default("ANY")
+  planAudience   String   @default("ANY")
   /// Only these plans (Package ids). Empty = no plan rule beyond planAudience.
-  packageIds    String[] @default([])
-  minLevel      Int?
-  maxLevel      Int?
+  packageIds     String[] @default([])
+  minLevel       Int?
+  maxLevel       Int?
   /// Account age in days: e.g. max 7 = new users only.
   minAccountDays Int?
   maxAccountDays Int?
   /// MOBILE | TABLET | DESKTOP. Empty = every device.
-  devices       String[] @default([])
+  devices        String[] @default([])
 
   @@index([isActive, priority])
 }
@@ -515,20 +515,20 @@ model BlogPost {
 
 /// Admin-built marketing "offer" pages, viewable by anyone at /offer/[slug].
 model Offer {
-  id           String   @id @default(cuid())
-  slug         String   @unique
+  id           String    @id @default(cuid())
+  slug         String    @unique
   title        String
-  description  String?  @db.Text
+  description  String?   @db.Text
   thumbnailUrl String?
   bgGradient   String?
-  blocks       Json     @default("[]")
-  status       String   @default("DRAFT") // DRAFT | PUBLISHED
+  blocks       Json      @default("[]")
+  status       String    @default("DRAFT") // DRAFT | PUBLISHED
   // A published offer is live only between these (null = no limit).
   startsAt     DateTime?
   endsAt       DateTime?
   createdById  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([slug])
   @@index([status])
@@ -1218,20 +1218,20 @@ model AdMeasureDaily {
 /// (src/lib/finance/platform-income.ts). The platform's OWN income (ads,
 /// marketplace, courses…) is never entered here: the app measures it.
 model IncomePlatform {
-  id         String   @id @default(cuid())
+  id          String   @id @default(cuid())
   /// "Google AdSense". Unique, case-insensitively enforced in the API.
-  name       String   @unique
+  name        String   @unique
   /// "Ad network", "Affiliate", "Sponsorship"… — free text, grouped by it.
-  type       String   @default("Ad network")
+  type        String   @default("Ad network")
   /// Optional link to an ad-network registry id (src/lib/ad-networks/registry.ts),
   /// so Ad Manager's eCPM uses this income. One platform per network.
-  networkKey String?  @unique
-  color      String?
+  networkKey  String?  @unique
+  color       String?
   /// Never deleted (its income rows are the record); switched off instead.
-  isActive   Boolean  @default(true)
+  isActive    Boolean  @default(true)
   createdById String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   entries PlatformIncomeEntry[]
   payouts PlatformPayout[]
@@ -1858,6 +1858,14 @@ model User {
   /// with wallet cash) and one way out (fund a task); no earning path ever
   /// credits it. `src/lib/task-credit.ts` is its only writer.
   taskCreditPoints                  Int                          @default(0)
+  /// Ad Points — spend-only points (src/lib/ad-wallet.ts). In: converting
+  /// Earn Points (pointsBalance) once past the withdrawal minimum, refunds.
+  /// Out: boost, promotion, lottery, spotlight, plans, badge, ad/task credit.
+  /// Never converted back, never withdrawn (2026-10-16).
+  adPointsBalance                   Int                          @default(0)
+  /// Ad Fund — USD from Add fund (deposits). Spent on the platform and on
+  /// marketplace / services / courses. Never withdrawn.
+  adFundBalance                     Decimal                      @default(0) @db.Decimal(18, 6)
   /// Per-buyer suspensions — the task types and social platforms THIS account
   /// may not use, on top of the global buyer settings.
   ///
@@ -1994,6 +2002,7 @@ model User {
   socialRatioTallies                SocialRatioTally[]
   // Per-viewer boosted-post impression caps (feed boost frequency cap).
   postBoostViews                    PostBoostView[]
+  boostCampaigns                    BoostCampaign[]
   // Extended profile fields (admin_oo.md §5.02)
   gender                            String?
   dateOfBirth                       DateTime?
@@ -2437,7 +2446,7 @@ model Task {
   visitConfig         Json? // Visit task config (see lib/visit-tasks.ts VisitConfig)
   /// Refuse this task to members on a VPN / proxy (lib/vpn.ts), even when the
   /// site-wide VPN block is off.
-  blockVpn            Boolean   @default(false)
+  blockVpn            Boolean          @default(false)
   proxyInstructions   String?          @db.Text
   startsAt            DateTime?
   expiresAt           DateTime?
@@ -2454,9 +2463,9 @@ model Task {
   // When users were told about this task (src/lib/task-announce.ts) — once only.
   announcedAt         DateTime?
   // Device targeting (src/lib/device-target.ts). Empty = any device.
-  deviceTypes  String[] @default([])
-  deviceOses   String[] @default([])
-  deviceBrands String[] @default([])
+  deviceTypes         String[]         @default([])
+  deviceOses          String[]         @default([])
+  deviceBrands        String[]         @default([])
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   createdById         String?
@@ -2470,7 +2479,8 @@ model Task {
   // Article-task key-pool relations (only used when articleConfig.useKeyPool=true)
   articleKeys         ArticleTaskKey[]
 
-  articleKeyPool    ArticleKeyPool?
+  articleKeyPool ArticleKeyPool?
+
   @@index([status])
   @@index([type])
   @@index([requiredAccessLevel])
@@ -2842,17 +2852,17 @@ model Package {
   gamesEnabled           Boolean @default(true)
   adFree                 Boolean @default(false)
   // More plan switches (2026-10-11) — default ON so nothing changes until an admin turns one off.
-  browseEarnEnabled        Boolean @default(true)
-  rewardedAdsEnabled       Boolean @default(true)
-  cpaEnabled               Boolean @default(true)
-  eventsEnabled            Boolean @default(true)
-  missionsEnabled          Boolean @default(true)
-  quizGamesEnabled         Boolean @default(true)
-  boardsEnabled            Boolean @default(true)
-  leaderboardEnabled       Boolean @default(true)
-  chatEnabled              Boolean @default(true)
-  groupsEnabled            Boolean @default(true)
-  affiliateEnabled         Boolean @default(true)
+  browseEarnEnabled      Boolean @default(true)
+  rewardedAdsEnabled     Boolean @default(true)
+  cpaEnabled             Boolean @default(true)
+  eventsEnabled          Boolean @default(true)
+  missionsEnabled        Boolean @default(true)
+  quizGamesEnabled       Boolean @default(true)
+  boardsEnabled          Boolean @default(true)
+  leaderboardEnabled     Boolean @default(true)
+  chatEnabled            Boolean @default(true)
+  groupsEnabled          Boolean @default(true)
+  affiliateEnabled       Boolean @default(true)
   // Creator/monetization capabilities — default OFF (granted per-user by admin)
   createTasksEnabled     Boolean @default(false)
   sellCoursesEnabled     Boolean @default(false)
@@ -2908,9 +2918,9 @@ model Package {
   features   String[]
   badgeColor String?
   /// Plan card: the "Most popular" ribbon (one plan, by convention).
-  isPopular                  Boolean                @default(false)
+  isPopular  Boolean  @default(false)
   /// Plan card icon key (shield, zap, sparkles, crown, rocket, gem, star).
-  icon                       String?
+  icon       String?
 
   // System
   isActive  Boolean  @default(true)
@@ -3023,20 +3033,20 @@ model AffiliateClick {
 }
 
 model AffiliateCommission {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   affiliateUserId  String
-  affiliate        User     @relation("AffiliateCommissions", fields: [affiliateUserId], references: [id])
+  affiliate        User      @relation("AffiliateCommissions", fields: [affiliateUserId], references: [id])
   sourceType       String // "MARKETPLACE" | "COURSE"
   sourceId         String // listingId | courseId
   orderRef         String // purchaseId | enrollmentId (dedupe)
   buyerId          String
-  saleAmount       Decimal  @db.Decimal(18, 6)
-  commissionAmount Decimal  @db.Decimal(18, 6)
+  saleAmount       Decimal   @db.Decimal(18, 6)
+  commissionAmount Decimal   @db.Decimal(18, 6)
   // ACTIVE | REVERSED — a refunded sale's commission is clawed back by
   // reverseAffiliateCommission() and excluded from affiliate stats.
   status           String    @default("ACTIVE")
   reversedAt       DateTime?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   @@unique([sourceType, orderRef])
   @@index([affiliateUserId, createdAt])
@@ -4190,6 +4200,7 @@ model Post {
   // the feed (not a permanent pin), capped per-viewer via PostBoostView.
   boostedUntil          DateTime?
   boostViews            PostBoostView[]
+  boostCampaigns        BoostCampaign[]
   savedBy               SavedPost[]
   likesCount            Int             @default(0)
   commentsCount         Int             @default(0)
@@ -5158,34 +5169,34 @@ model Event {
 }
 
 model UserEventProgress {
-  id               String    @id @default(cuid())
-  userId           String
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventId          String
-  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId           String
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   // Authoritative counter. Only event-progress.ts increments it; claiming must
   // never write it — a claim-time snapshot would clobber the real count.
-  progress         Int       @default(0)
-  proofUrl         String?
+  progress          Int       @default(0)
+  proofUrl          String?
   // UPLOAD_PROOF events: an admin reviews the proof before anything is paid.
   // null (no proof yet) | PENDING | APPROVED | REJECTED.
-  proofStatus      String?
-  proofReviewedAt  DateTime?
+  proofStatus       String?
+  proofReviewedAt   DateTime?
   proofReviewedById String?
-  proofNote        String?
-  claimedAt        DateTime?
+  proofNote         String?
+  claimedAt         DateTime?
   // Which tier thresholds this user has already claimed (multi-tier events).
-  claimedTiers     Int[]     @default([])
+  claimedTiers      Int[]     @default([])
   // First credited action — this user's personal start line for the event.
-  joinedAt         DateTime?
-  lastActionAt     DateTime?
+  joinedAt          DateTime?
+  lastActionAt      DateTime?
   // User-local day key + count, for Event.dailyCap.
-  dayKey           String?
-  dayCount         Int       @default(0)
+  dayKey            String?
+  dayCount          Int       @default(0)
   // Dedups the one-time "reward ready" notification.
-  notifiedComplete Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  notifiedComplete  Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([userId, eventId])
   @@index([eventId])
@@ -5855,39 +5866,39 @@ model RecurringEntry {
 /// Prisma relations, so the table can be added without touching User / Payee /
 /// FinanceCategory. Never holds passwords: `accountRef` is a login id only.
 model CompanySubscription {
-  id              String    @id @default(cuid())
-  name            String
+  id               String    @id @default(cuid())
+  name             String
   /// Domain | Hosting | SaaS/Software | Email | Cloud | Design/Media | Marketing | Other — or free text.
-  category        String
-  vendor          String?
+  category         String
+  vendor           String?
   /// Login / account id at the vendor. NOT a password.
-  accountRef      String?
-  cost            Decimal?  @db.Decimal(18, 2)
-  currency        String    @default("USD")
+  accountRef       String?
+  cost             Decimal?  @db.Decimal(18, 2)
+  currency         String    @default("USD")
   /// MONTHLY | QUARTERLY | YEARLY | ONE_TIME | CUSTOM
-  billingCycle    String
-  customCycleDays Int?
-  startDate       DateTime
+  billingCycle     String
+  customCycleDays  Int?
+  startDate        DateTime
   /// Expiry / next renewal. Empty = no end (one-time purchase, lifetime licence).
-  endDate         DateTime?
-  autoRenew       Boolean   @default(false)
-  paymentMethod   String?
+  endDate          DateTime?
+  autoRenew        Boolean   @default(false)
+  paymentMethod    String?
   /// Who is responsible for renewing it.
-  ownerUserId     String?
+  ownerUserId      String?
   /// ACTIVE | CANCELLED | EXPIRED
-  status          String    @default("ACTIVE")
-  remindDaysBefore Int[]    @default([30, 7, 1])
+  status           String    @default("ACTIVE")
+  remindDaysBefore Int[]     @default([30, 7, 1])
   /// "<endDate yyyy-mm-dd>:<threshold>" of the last reminder sent — the dedupe key.
-  lastRemindedFor String?
-  notes           String?   @db.Text
-  url             String?
+  lastRemindedFor  String?
+  notes            String?   @db.Text
+  url              String?
   /// [{ label, type: text|number|date|url|money, value }]
-  customFields    Json?
-  payeeId         String?
-  categoryId      String?
-  createdById     String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  customFields     Json?
+  payeeId          String?
+  categoryId       String?
+  createdById      String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([endDate])
   @@index([status])
@@ -5898,34 +5909,34 @@ model CompanySubscription {
 /// by the admin's score and members' votes together, and paid in points.
 /// Skill-judged, free to enter — no stake, no chance.
 model Contest {
-  id                String    @id @default(cuid())
-  title             String
-  description       String    @db.Text
-  rules             String?   @db.Text
-  coverImage        String?
+  id                  String    @id @default(cuid())
+  title               String
+  description         String    @db.Text
+  rules               String?   @db.Text
+  coverImage          String?
   /// Platforms accepted: TIKTOK | INSTAGRAM | YOUTUBE | FACEBOOK | ANY
-  platforms         String[]  @default(["ANY"])
+  platforms           String[]  @default(["ANY"])
   /// Must appear in the post (checked when the link can be read), e.g. #RevType
-  hashtag           String?
+  hashtag             String?
   /// Entries open → close (submissions), then members vote until votingEndsAt.
-  startAt           DateTime
-  endAt             DateTime
-  votingEndsAt      DateTime
+  startAt             DateTime
+  endAt               DateTime
+  votingEndsAt        DateTime
   /// Share of the final score from votes (0–100); the rest is the admin's score.
-  voteWeightPct     Int       @default(50)
-  minLevelToEnter   Int       @default(0)
-  minLevelToVote    Int       @default(3)
-  maxEntriesPerUser Int       @default(1)
+  voteWeightPct       Int       @default(50)
+  minLevelToEnter     Int       @default(0)
+  minLevelToVote      Int       @default(3)
+  maxEntriesPerUser   Int       @default(1)
   /// [{ rank, points }] — 1st, 2nd, 3rd …
-  prizes            Json
+  prizes              Json
   /// Points for every approved entry that did not place.
-  participationPoints Int     @default(0)
+  participationPoints Int       @default(0)
   /// DRAFT | PUBLISHED | FINISHED | CANCELLED (open / voting come from the dates)
-  status            String    @default("DRAFT")
-  finalizedAt       DateTime?
-  createdById       String
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  status              String    @default("DRAFT")
+  finalizedAt         DateTime?
+  createdById         String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   entries ContestEntry[]
 
@@ -6098,13 +6109,13 @@ model AmbassadorApplication {
 
 /// One monthly ambassador bonus (unique per member and month).
 model AmbassadorPayout {
-  id         String   @id @default(cuid())
-  userId     String
+  id        String   @id @default(cuid())
+  userId    String
   /// YYYY-MM
-  month      String
-  qualified  Int
-  points     Int
-  createdAt  DateTime @default(now())
+  month     String
+  qualified Int
+  points    Int
+  createdAt DateTime @default(now())
 
   @@unique([userId, month])
   @@index([month])
@@ -6266,28 +6277,28 @@ model CpaConversion {
 /// case leaves OPEN, so a later repeat opens a fresh case. No FK to User on
 /// purpose: a case must outlive whatever it is about.
 model AbuseCase {
-  id               String          @id @default(cuid())
-  status           String          @default("OPEN") // OPEN | ACTIONED | RESOLVED | DISMISSED
-  severity         String          @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
-  kind             String
-  userId           String?
-  entityType       String?
-  entityId         String?
-  summary          String          @db.Text
-  signalCount      Int             @default(1)
-  firstSeenAt      DateTime        @default(now())
-  lastSeenAt       DateTime        @default(now())
+  id              String          @id @default(cuid())
+  status          String          @default("OPEN") // OPEN | ACTIONED | RESOLVED | DISMISSED
+  severity        String          @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  kind            String
+  userId          String?
+  entityType      String?
+  entityId        String?
+  summary         String          @db.Text
+  signalCount     Int             @default(1)
+  firstSeenAt     DateTime        @default(now())
+  lastSeenAt      DateTime        @default(now())
   /// "kind|userId|entityType|entityId" while OPEN; null otherwise.
-  openKey          String?         @unique
-  assignedToId     String?
-  resolution       String?         @db.Text
+  openKey         String?         @unique
+  assignedToId    String?
+  resolution      String?         @db.Text
   /// The host / network / advertiser's own complaint or ticket id.
-  providerRef      String?
+  providerRef     String?
   /// While true, a pending withdrawal of this user cannot be approved.
-  withdrawalsHeld  Boolean         @default(false)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  evidence         AbuseEvidence[]
+  withdrawalsHeld Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  evidence        AbuseEvidence[]
 
   @@index([status, lastSeenAt])
   @@index([severity])
@@ -6429,4 +6440,65 @@ model VisitPass {
 
   @@index([taskId, createdAt])
   @@index([ip, createdAt])
+}
+
+/// A member's paid boost of one feed post (src/lib/boost/core.ts), 2026-10-16.
+/// Post delete sets postId to null: the record (and its money trail) stays,
+/// and the boost sweep refunds any boost whose post is gone.
+/// The budget (in Ad Points) is held when it is created; it is spent per
+/// counted event at the admin's per-country prices, and whatever is left is
+/// refunded to the balance it came from when it ends, is rejected or cancelled.
+model BoostCampaign {
+  id             String       @id @default(cuid())
+  postId         String?
+  post           Post?        @relation(fields: [postId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// PENDING | ACTIVE | PAUSED | REJECTED | COMPLETED | CANCELLED
+  status         String       @default("PENDING")
+  /// AD_POINTS | AD_FUND — where the budget came from; refunds go back there.
+  paidWith       String
+  /// Ad Points per USD at creation (an AD_FUND budget is held as USD at this rate).
+  rate           Int
+  budgetPoints   Int
+  spentPoints    Int          @default(0)
+  refundedPoints Int          @default(0)
+  /// Audience: the ad-targeting shape (src/lib/ad-targeting.ts). Null = everyone.
+  targeting      Json?
+  durationDays   Int
+  startsAt       DateTime?
+  endsAt         DateTime?
+  rejectReason   String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  impressions    Int          @default(0)
+  views          Int          @default(0)
+  clicks         Int          @default(0)
+  likes          Int          @default(0)
+  comments       Int          @default(0)
+  shares         Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  events         BoostEvent[]
+
+  @@index([status, endsAt])
+  @@index([postId])
+  @@index([userId])
+}
+
+/// One counted (and charged) event on a boost. `dedupeKey` is unique so the same
+/// viewer is never charged twice for the same thing.
+model BoostEvent {
+  id         String        @id @default(cuid())
+  campaignId String
+  campaign   BoostCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  viewerId   String?
+  /// IMPRESSION | VIEW | CLICK | LIKE | COMMENT | SHARE
+  kind       String
+  country    String?
+  costPoints Int
+  dedupeKey  String        @unique
+  createdAt  DateTime      @default(now())
+
+  @@index([campaignId, createdAt])
 }

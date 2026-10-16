@@ -1561,6 +1561,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "COMMERCE",
   },
   {
+    // Members' post boosts: review queue, running boosts, prices per country.
+    name: "Post Boosts",
+    href: "/admin/boosts",
+    icon: "Megaphone",
+    permissions: ["social.promote"],
+    category: "COMMERCE",
+  },
+  {
     // Every application in one place — seller, services, buyer, advertiser,
     // tutor, ambassador, blue badge — with the requirements per program.
     name: "Applications",
