@@ -33,6 +33,8 @@ interface SessionInfo {
     maxPerSession: number;
     requiresAd: boolean;
   };
+  /** Games whose own server decides income: the member's key for that game website. */
+  playerKey?: string;
   /** Absent on servers older than the Games SDK. */
   score?: {
     enabled: boolean;
@@ -75,7 +77,15 @@ export function GamePlayer({
   const endedRef = useRef(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   /** Latest running score from a connected game, and the last one sent. */
-  const scoreRef = useRef<{ total: number; sent: number }>({ total: 0, sent: 0 });
+  const scoreRef = useRef<{ total: number }>({ total: 0 });
+  /** Only this origin's messages count (the game's own address). */
+  const gameOrigin = (() => {
+    try {
+      return new URL(game.embedUrl).origin;
+    } catch {
+      return null;
+    }
+  })();
 
   useEffect(() => {
     loadedRef.current = loaded;
@@ -123,7 +133,13 @@ export function GamePlayer({
     const s = sessionRef.current;
     if (!s || endedRef.current) return;
     endedRef.current = true;
-    const body = JSON.stringify({ sessionId: s.sessionId });
+    // The last score rides on the end call, so points earned in the final
+    // minute are paid (the end route runs one final beat first).
+    const sc = scoreRef.current;
+    const body = JSON.stringify({
+      sessionId: s.sessionId,
+      ...(s.score?.enabled && sc.total > 0 ? { scoreTotal: sc.total } : {}),
+    });
     // `sendBeacon` survives the page going away; fetch would be cancelled.
     if (navigator.sendBeacon) {
       navigator.sendBeacon(
@@ -163,6 +179,11 @@ export function GamePlayer({
           body: JSON.stringify({
             sessionId: session.sessionId,
             loaded: loadedRef.current,
+            // Connected games: the running score rides on the beat — one
+            // request per beat instead of a separate score call.
+            ...(session.score?.enabled && scoreRef.current.total > 0
+              ? { scoreTotal: scoreRef.current.total }
+              : {}),
           }),
         });
         if (r.status === 409) {
@@ -175,6 +196,10 @@ export function GamePlayer({
         if (d.awarded > 0) {
           setFlash(d.awarded);
           setTimeout(() => setFlash(0), 2000);
+          frameRef.current?.contentWindow?.postMessage(
+            { source: "revtype-player", type: "earned", awarded: d.awarded, sessionPoints: d.sessionPoints },
+            gameOrigin ?? "*"
+          );
         }
         if (d.capped) setNotice("You've hit today's game reward limit.");
         else if (d.awaitingAd) setNotice("Watch an ad to keep earning.");
@@ -185,20 +210,13 @@ export function GamePlayer({
     };
     const id = setInterval(beat, session.beatSeconds * 1000);
     return () => clearInterval(id);
-  }, [session, started, game.id]);
+  }, [session, started, game.id, gameOrigin]);
 
   // ── Connected games (RevType Games SDK, public/sdk/revtype-games.js) ──────
   // The game posts its running score to this page. Only messages from THIS
   // game's frame and THIS game's origin count; the server still bounds what a
   // score can pay by measured play time, because the game runs in the
   // member's browser and its score can be faked.
-  const gameOrigin = (() => {
-    try {
-      return new URL(game.embedUrl).origin;
-    } catch {
-      return null;
-    }
-  })();
 
   const welcome = useCallback(() => {
     const w = frameRef.current?.contentWindow;
@@ -208,8 +226,9 @@ export function GamePlayer({
       {
         source: "revtype-player",
         type: "welcome",
-        earning: !!s?.score?.enabled,
+        earning: !!s?.score?.enabled || !!s?.playerKey,
         pointsPer1000: s?.score?.pointsPer1000 ?? 0,
+        playerKey: s?.playerKey ?? "",
       },
       gameOrigin
     );
@@ -233,40 +252,6 @@ export function GamePlayer({
     return () => window.removeEventListener("message", onMessage);
   }, [started, gameOrigin, welcome]);
 
-  useEffect(() => {
-    if (!session?.score?.enabled || !started) return;
-    const send = async () => {
-      const sc = scoreRef.current;
-      if (sc.total <= sc.sent) return;
-      const total = sc.total;
-      try {
-        const r = await fetch(`/api/games/${game.id}/score`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: session.sessionId, total }),
-        });
-        if (!r.ok) return;
-        sc.sent = total;
-        const d = (await r.json()) as { awarded?: number; sessionPoints?: number };
-        if (typeof d.sessionPoints === "number") setEarned(d.sessionPoints);
-        if ((d.awarded ?? 0) > 0) {
-          setFlash(d.awarded ?? 0);
-          setTimeout(() => setFlash(0), 2000);
-          frameRef.current?.contentWindow?.postMessage(
-            { source: "revtype-player", type: "earned", awarded: d.awarded, sessionPoints: d.sessionPoints },
-            gameOrigin ?? "*"
-          );
-        }
-      } catch {
-        // The next round retries with the latest total.
-      }
-    };
-    const id = setInterval(send, 5_000);
-    return () => {
-      clearInterval(id);
-      void send();
-    };
-  }, [session, started, game.id, gameOrigin]);
 
   // ── Load watchdog ────────────────────────────────────────────────────────
   // Cross-origin JS cannot see `X-Frame-Options: DENY` — no error fires, the

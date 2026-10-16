@@ -38,6 +38,8 @@ import { deriveSource } from "@/lib/tx-sources";
 import { History } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import { GameEarningsCard } from "@/components/user/wallet/game-earnings-card";
+import type { GameEarningsSummary } from "@/lib/game-earnings";
 
 export interface WalletTransaction {
   id: string;
@@ -111,6 +113,8 @@ export interface WalletViewProps {
   adPointsPerUsd?: number;
   /** The member's effective minimum withdrawal — gates Earn → Ad Points. */
   minWithdrawalUsd?: number;
+  /** Points from games (GameEarnLog); null when the member has none. */
+  gameEarnings?: GameEarningsSummary | null;
 }
 
 type Tab = "balance" | "history" | "deposits" | "referral" | "withdraw";
@@ -233,6 +237,7 @@ export function WalletView(props: WalletViewProps) {
           onSeeAll={() => setTab("history")}
           adPointsPerUsd={props.adPointsPerUsd ?? 100}
           minWithdrawalUsd={props.minWithdrawalUsd ?? 0}
+          gameEarnings={props.gameEarnings ?? null}
         />
       )}
 
@@ -541,6 +546,7 @@ function BalanceTab({
   onSeeAll,
   adPointsPerUsd,
   minWithdrawalUsd,
+  gameEarnings,
 }: {
   totalEarnings: number;
   totalWithdrawn: number;
@@ -555,6 +561,7 @@ function BalanceTab({
   onSeeAll: () => void;
   adPointsPerUsd: number;
   minWithdrawalUsd: number;
+  gameEarnings: GameEarningsSummary | null;
 }) {
   // Aggregate earnings by type for the breakdown chart. Social credits are
   // generic EARNING rows tagged with a `social_` reference — split them out so
@@ -596,6 +603,8 @@ function BalanceTab({
           ))}
         </div>
       </div>
+
+      {gameEarnings && <GameEarningsCard data={gameEarnings} pointsPerUsd={pointsPerUsd} />}
 
       {/* Earnings dashboard — lifetime + this-month + today at a glance.
           These were four hand-rolled tiles with `text-2xl … truncate` in a

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { enforceDbRateLimit } from "@/lib/rate-limit-db";
+import { rateLimit } from "@/lib/rate-limit";
 import { heartbeat, BEAT_INTERVAL_SECONDS } from "@/lib/game-session";
-import { requireActiveUser } from "@/lib/require-active";
 
 /**
  * POST /api/games/:id/heartbeat — accrue play time and credit points.
@@ -20,26 +19,22 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // Generous enough for the real cadence (4/min) with headroom for retries,
-  // tight enough that a script can't turn the endpoint into a busy loop.
-  // A banned / suspended account earns nothing (the session outlives the ban).
-  const activeCheck = await requireActiveUser(session.user.id);
-  if (!activeCheck.ok) {
-    return NextResponse.json({ error: activeCheck.message }, { status: activeCheck.httpStatus });
+  // The busiest endpoint in games, so its limiter is in memory, not a DB
+  // write per beat. Money does not depend on it: a beat pays for the seconds
+  // the SERVER measured since the last one, so beating faster pays nothing.
+  // A banned / suspended account is checked where points are paid
+  // (heartbeat's locked path) — not with an extra query on every beat.
+  if (!rateLimit(`game-beat:${session.user.id}`, 20, 60_000).ok) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
-  const limited = await enforceDbRateLimit(
-    req,
-    "game-beat",
-    session.user.id,
-    30,
-    60_000
-  );
-  if (limited) return limited;
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as {
     sessionId?: string;
     loaded?: boolean;
+    /** Connected games: the session's running score (RevType Games SDK). */
+    scoreTotal?: number;
+    final?: boolean;
   };
   if (!body.sessionId) {
     return NextResponse.json({ error: "sessionId required" }, { status: 400 });
@@ -47,6 +42,8 @@ export async function POST(
 
   const out = await heartbeat(session.user.id, id, body.sessionId, {
     loaded: body.loaded !== false,
+    scoreTotal: typeof body.scoreTotal === "number" ? body.scoreTotal : undefined,
+    final: body.final === true,
   });
   if (!out.ok) {
     // 409, not 400: the request was well-formed, the session just isn't open

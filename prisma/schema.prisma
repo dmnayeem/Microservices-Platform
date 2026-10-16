@@ -321,6 +321,10 @@ model GameSession {
   /// exactly-once even if a heartbeat is replayed.
   creditedSeconds Int  @default(0)
   pointsAwarded   Int  @default(0)
+  /// Part of `pointsAwarded` paid for the reported score (RevType Games SDK).
+  /// Kept on the row so a heartbeat can tell "nothing due" without summing
+  /// GameEarnLog — the common beat then costs two small queries.
+  scorePaid       Int  @default(0)
   /// Incremented by the server when it serves this session an interstitial.
   adsShown        Int  @default(0)
   score           Int?

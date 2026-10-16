@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { startSession } from "@/lib/game-session";
+import { prisma } from "@/lib/prisma";
+import { isAllowedGameOrigin, normalizeOrigin, playerKeyFor } from "@/lib/game-connect";
 
 /**
  * POST /api/games/:id/session — open a play session.
@@ -37,5 +39,12 @@ export async function POST(
   if (!result) {
     return NextResponse.json({ error: "Game not available" }, { status: 404 });
   }
-  return NextResponse.json(result);
+  // A game whose own server decides income (listed under Games → Settings →
+  // Your game websites) gets the member's player key here too, so playing it
+  // inside RevType's Games page pays exactly like playing it on its website.
+  let playerKey: string | undefined;
+  const g = await prisma.game.findUnique({ where: { id }, select: { embedUrl: true } });
+  const origin = normalizeOrigin(g?.embedUrl);
+  if (origin && (await isAllowedGameOrigin(origin))) playerKey = playerKeyFor(session.user.id, origin);
+  return NextResponse.json({ ...result, ...(playerKey ? { playerKey } : {}) });
 }

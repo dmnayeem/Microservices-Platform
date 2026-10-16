@@ -13,6 +13,8 @@ export interface GamesSettingsValues {
   globalDailyCap: number;
   maxPerSession: number;
   scoreMaxPerMinute: number;
+  serverMaxPerCredit: number;
+  serverDailyCap: number;
 }
 
 type NumKey = Exclude<keyof GamesSettingsValues, "enabled">;
@@ -47,6 +49,18 @@ const FIELDS: { key: NumKey; label: string; hint: string; unit: string }[] = [
     label: "Score points per minute (connected games)",
     hint: "Most points a connected game's score can pay per minute of real play. Scores come from the player's browser, so this is the real limit. 0 = score earning off.",
     unit: "points / minute",
+  },
+  {
+    key: "serverMaxPerCredit",
+    label: "Max points per credit (game servers)",
+    hint: "Most points your game server can add in one credit. Protects you if the server key leaks or the game has a bug. 0 = game-server income off.",
+    unit: "points",
+  },
+  {
+    key: "serverDailyCap",
+    label: "Daily cap per player (game servers)",
+    hint: "Most points one player can receive from your game servers per day. 0 = no cap.",
+    unit: "points / day",
   },
 ];
 

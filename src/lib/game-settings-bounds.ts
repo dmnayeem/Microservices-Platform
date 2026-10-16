@@ -11,4 +11,6 @@ export const GAMES_BOUNDS = {
   globalDailyCap: { min: 0, max: 100_000 },
   maxPerSession: { min: 0, max: 100_000 },
   scoreMaxPerMinute: { min: 0, max: 1_000 },
+  serverMaxPerCredit: { min: 0, max: 1_000_000 },
+  serverDailyCap: { min: 0, max: 10_000_000 },
 } as const;

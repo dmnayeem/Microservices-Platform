@@ -3,7 +3,13 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { saveSetting } from "@/lib/system-settings";
 import { writeAudit } from "@/lib/audit";
-import { GAME_CONNECT_ORIGINS_KEY, getGameConnectOrigins, normalizeOrigin } from "@/lib/game-connect";
+import {
+  GAME_CONNECT_ORIGINS_KEY,
+  getGameConnectOrigins,
+  getSiteServerKey,
+  normalizeOrigin,
+  rotateSiteServerKey,
+} from "@/lib/game-connect";
 
 /**
  * PUT /api/admin/games/websites { websites: string[] } — the owner's game
@@ -38,4 +44,37 @@ export async function PUT(req: NextRequest) {
     meta: { before, after: origins },
   }).catch(() => {});
   return NextResponse.json({ websites: origins });
+}
+
+/** GET — each listed website with its server key (for the game server). */
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id || !(await can(session.user.id, "games.manage"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const origins = await getGameConnectOrigins();
+  const sites = await Promise.all(origins.map(async (origin) => ({ origin, key: await getSiteServerKey(origin) })));
+  return NextResponse.json({ sites });
+}
+
+/** POST { origin } — rotate a website's server key (the old one stops working at once). */
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id || !(await can(session.user.id, "games.manage"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const body = (await req.json().catch(() => ({}))) as { origin?: string };
+  const origin = normalizeOrigin(body.origin);
+  if (!origin || !(await getGameConnectOrigins()).includes(origin)) {
+    return NextResponse.json({ error: "Not a listed game website." }, { status: 400 });
+  }
+  await rotateSiteServerKey(origin);
+  await writeAudit({
+    actorId: session.user.id,
+    action: "GAME_SERVER_KEY_ROTATED",
+    entity: "SystemSetting",
+    entityId: origin,
+    summary: `Rotated the game server key for ${origin}`,
+  }).catch(() => {});
+  return NextResponse.json({ origin, key: await getSiteServerKey(origin) });
 }

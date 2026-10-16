@@ -32,6 +32,14 @@ export interface GamesGlobalConfig {
    * is what bounds the payout. 0 = score earning off everywhere.
    */
   scoreMaxPerMinute: number;
+  /**
+   * Game servers (POST /api/games/s2s/credit): the most one credit may add.
+   * The owner's server decides income; this caps the damage of a bug or a
+   * leaked server key. 0 = game-server income off.
+   */
+  serverMaxPerCredit: number;
+  /** Game servers: points one player may receive per local day. 0 = no cap. */
+  serverDailyCap: number;
 }
 
 export const GAMES_DEFAULTS: GamesGlobalConfig = {
@@ -41,6 +49,8 @@ export const GAMES_DEFAULTS: GamesGlobalConfig = {
   globalDailyCap: 200,
   maxPerSession: 100,
   scoreMaxPerMinute: 5,
+  serverMaxPerCredit: 1_000,
+  serverDailyCap: 5_000,
 };
 
 export const GAMES_SETTING_KEYS = {
@@ -50,6 +60,8 @@ export const GAMES_SETTING_KEYS = {
   globalDailyCap: "games.global_daily_cap",
   maxPerSession: "games.max_per_session",
   scoreMaxPerMinute: "games.score_max_per_minute",
+  serverMaxPerCredit: "games.server_max_per_credit",
+  serverDailyCap: "games.server_daily_cap",
 } as const;
 
 const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
@@ -61,13 +73,15 @@ const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
 /** Read the admin-tuned global config, with safe clamped fallbacks. */
 export async function getGamesGlobalConfig(): Promise<GamesGlobalConfig> {
   try {
-    const [enabled, perTick, tickSecs, dailyCap, perSession, scorePerMin] = await Promise.all([
+    const [enabled, perTick, tickSecs, dailyCap, perSession, scorePerMin, srvPer, srvDaily] = await Promise.all([
       getSetting<boolean>(GAMES_SETTING_KEYS.enabled, GAMES_DEFAULTS.enabled),
       getSetting<number>(GAMES_SETTING_KEYS.maxPointsPerTick, GAMES_DEFAULTS.maxPointsPerTick),
       getSetting<number>(GAMES_SETTING_KEYS.minTickSeconds, GAMES_DEFAULTS.minTickSeconds),
       getSetting<number>(GAMES_SETTING_KEYS.globalDailyCap, GAMES_DEFAULTS.globalDailyCap),
       getSetting<number>(GAMES_SETTING_KEYS.maxPerSession, GAMES_DEFAULTS.maxPerSession),
       getSetting<number>(GAMES_SETTING_KEYS.scoreMaxPerMinute, GAMES_DEFAULTS.scoreMaxPerMinute),
+      getSetting<number>(GAMES_SETTING_KEYS.serverMaxPerCredit, GAMES_DEFAULTS.serverMaxPerCredit),
+      getSetting<number>(GAMES_SETTING_KEYS.serverDailyCap, GAMES_DEFAULTS.serverDailyCap),
     ]);
     return {
       enabled: enabled !== false,
@@ -76,6 +90,8 @@ export async function getGamesGlobalConfig(): Promise<GamesGlobalConfig> {
       globalDailyCap: clampInt(dailyCap, B.globalDailyCap.min, B.globalDailyCap.max, GAMES_DEFAULTS.globalDailyCap),
       maxPerSession: clampInt(perSession, B.maxPerSession.min, B.maxPerSession.max, GAMES_DEFAULTS.maxPerSession),
       scoreMaxPerMinute: clampInt(scorePerMin, B.scoreMaxPerMinute.min, B.scoreMaxPerMinute.max, GAMES_DEFAULTS.scoreMaxPerMinute),
+      serverMaxPerCredit: clampInt(srvPer, B.serverMaxPerCredit.min, B.serverMaxPerCredit.max, GAMES_DEFAULTS.serverMaxPerCredit),
+      serverDailyCap: clampInt(srvDaily, B.serverDailyCap.min, B.serverDailyCap.max, GAMES_DEFAULTS.serverDailyCap),
     };
   } catch {
     // Fails soft: a settings blip must not turn earning off mid-session, nor

@@ -17,6 +17,7 @@ import { resolveUserTimezone, localStartOfDayUtc } from "@/lib/user-day";
 import { getTeamSummary } from "@/lib/team";
 import { summarizeEarnings } from "@/lib/dashboard-earnings";
 import { getAdPointsPerUsd } from "@/lib/ad-wallet";
+import { getUserGameEarnings } from "@/lib/game-earnings";
 
 export default async function WalletPage() {
   const session = await auth();
@@ -53,6 +54,13 @@ export default async function WalletPage() {
       _sum: { amount: true },
     });
   });
+  // Game earnings (GameEarnLog) — "today" is the member's local day, the
+  // month is the same UTC calendar month as the rest of this page.
+  const gameEarningsP = userP.then((u) => {
+    if (!u) return null;
+    const tz = resolveUserTimezone({ country: u.country, timezone: u.timezone });
+    return getUserGameEarnings(userId, { monthStart, dayStart: localStartOfDayUtc(tz, now) });
+  });
 
   const [
     user,
@@ -69,6 +77,7 @@ export default async function WalletPage() {
     todayRefAgg,
     wcfg,
     adPointsPerUsd,
+    gameEarnings,
   ] = await Promise.all([
       userP,
       // The last 30 days of the ledger, read once: the earnings breakdown
@@ -160,6 +169,8 @@ export default async function WalletPage() {
       // wallet Withdraw tab can show it too, matching the /withdrawal page.
       getWithdrawalConfig(userId),
       getAdPointsPerUsd(),
+      // Optional section — a failed read just leaves it out.
+      safeRead(gameEarningsP, null, "wallet game earnings"),
     ]);
 
   if (!user) redirect("/login");
@@ -244,6 +255,7 @@ export default async function WalletPage() {
         // Earn → Ad Points opens at the member's OWN minimum withdrawal (the
         // same effective minimum the withdrawal route enforces).
         minWithdrawalUsd={wcfg.min}
+        gameEarnings={gameEarnings}
       />
     </>
   );
