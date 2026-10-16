@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { startSession } from "@/lib/game-session";
 import { prisma } from "@/lib/prisma";
-import { isAllowedGameOrigin, normalizeOrigin, playerKeyFor } from "@/lib/game-connect";
+import { absoluteAvatar, isAllowedGameOrigin, normalizeOrigin, playerKeyFor } from "@/lib/game-connect";
 
 /**
  * POST /api/games/:id/session — open a play session.
@@ -43,8 +43,16 @@ export async function POST(
   // Your game websites) gets the member's player key here too, so playing it
   // inside RevType's Games page pays exactly like playing it on its website.
   let playerKey: string | undefined;
-  const g = await prisma.game.findUnique({ where: { id }, select: { embedUrl: true } });
+  const [g, me] = await Promise.all([
+    prisma.game.findUnique({ where: { id }, select: { embedUrl: true } }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, username: true, avatar: true } }),
+  ]);
   const origin = normalizeOrigin(g?.embedUrl);
   if (origin && (await isAllowedGameOrigin(origin))) playerKey = playerKeyFor(session.user.id, origin);
-  return NextResponse.json({ ...result, ...(playerKey ? { playerKey } : {}) });
+  return NextResponse.json({
+    ...result,
+    ...(playerKey ? { playerKey } : {}),
+    // Name and picture for the game's own profile (sent to it by the player).
+    player: { name: me?.name || me?.username || "RevType member", avatar: absoluteAvatar(me?.avatar) },
+  });
 }

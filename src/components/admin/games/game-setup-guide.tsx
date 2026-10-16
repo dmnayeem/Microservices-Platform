@@ -386,6 +386,17 @@ if (window.RevType) RevType.setScore(score);`;
             </div>
           )}
           <ServerKeys />
+          {gameId && (
+            <>
+              <CopyBlock label="Link to open this game inside the RevType app" value={`${origin}/games?play=${gameId}`} />
+              <P>
+                Use this link in RevType banners, posts and notifications. It opens the game in
+                RevType&apos;s own player — no browser address bar on top, and the player is already
+                signed in. A link straight to your game website opens as an outside page inside the
+                RevType app, with the address bar.
+              </P>
+            </>
+          )}
         </Step>
       </Part>
 

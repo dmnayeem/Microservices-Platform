@@ -5,7 +5,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
 import { getGamesGlobalConfig } from "@/lib/game-settings";
 import { TransactionType } from "@/generated/prisma";
-import { isAllowedGameOrigin, normalizeOrigin, siteId, verifyPlayerKey, verifySiteSignature } from "@/lib/game-connect";
+import { absoluteAvatar, isAllowedGameOrigin, normalizeOrigin, siteId, verifyPlayerKey, verifySiteSignature } from "@/lib/game-connect";
 
 /**
  * /api/games/s2s/:action — the owner's GAME SERVER talks to RevType
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     const [u, ppu] = await Promise.all([
       prisma.user.findUnique({
         where: { id: player.userId },
-        select: { name: true, username: true, pointsBalance: true, status: true },
+        select: { name: true, username: true, avatar: true, pointsBalance: true, status: true },
       }),
       getPointsPerUsd(),
     ]);
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     return json({
       ok: true,
       name: u.name || u.username || "RevType member",
+      avatar: absoluteAvatar(u.avatar),
       points: u.pointsBalance,
       usd: ppu > 0 ? Math.floor((u.pointsBalance / ppu) * 100) / 100 : 0,
       active: u.status !== "BANNED" && u.status !== "SUSPENDED",

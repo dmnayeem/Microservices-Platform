@@ -77,11 +77,19 @@ STEP 2 - GAME PAGE (frontend)
     RevType.onReady(function (info) {
       if (info.connected && info.playerKey) {
         // POST to OUR server with the logged-in player's session:
-        // /api/revtype/link  { playerKey: info.playerKey }
+        // /api/revtype/link  { playerKey: info.playerKey, name: info.name, avatar: info.avatar }
       }
     });
   Server: save it on the current player's account in a new column
-  "revtype_player_key" (add a migration; overwrite if it changed). If the
+  "revtype_player_key" (add a migration; overwrite if it changed).
+- PROFILE FROM REVTYPE: once connected, the player's in-game profile must
+  show their RevType identity everywhere (header, profile page, lobby,
+  leaderboards, match screens): display name = info.name, profile picture =
+  info.avatar (a full image URL; if empty, keep the game's default avatar).
+  Replace guest/random names (e.g. "Guest", generated names) with it. Save
+  name and avatar on our server in the /api/revtype/link call and update them
+  on every onReady (the member may change them on RevType). On Disconnect,
+  go back to the game's own guest profile. If the
   game has no player login, link by the game's existing player id/device id
   and explain the limitation in your report.
 - Optional: after our server pays, the page may call RevType.refresh() to
@@ -168,5 +176,7 @@ Finally report each item as done / not done:
 [ ] RevType disabled/unreachable -> game works normally, payouts stay pending.
 [ ] "Test connection" works.
 [ ] Connect button doesn't cover controls at 360x640 and 640x360.
-[ ] playerKey linking works and survives reloads and re-logins.`;
+[ ] playerKey linking works and survives reloads and re-logins.
+[ ] After Connect RevType, the profile shows the RevType name and picture
+    everywhere in the game (no "Guest" left).`;
 }
