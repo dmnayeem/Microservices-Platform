@@ -77,11 +77,16 @@ export function verifyGameConnectToken(token: string | null | undefined): Payloa
   }
 }
 
-/** "https://games.example.com/" → "https://games.example.com"; anything else → null. */
+/**
+ * "https://games.example.com/play/x" → "https://games.example.com". A bare
+ * "games.example.com" (typed without https://) is read as https. Anything
+ * that is not https (except localhost) → null.
+ */
 export function normalizeOrigin(v: string | null | undefined): string | null {
   if (!v) return null;
+  const s = v.trim();
   try {
-    const u = new URL(v.trim());
+    const u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `https://${s}`);
     if (u.protocol !== "https:" && u.hostname !== "localhost") return null;
     return u.origin;
   } catch {

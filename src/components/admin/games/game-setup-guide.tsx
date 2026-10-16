@@ -140,6 +140,7 @@ function Part({ n, title, who, children }: { n: string; title: string; who: stri
 function ServerKeys() {
   const [sites, setSites] = useState<{ origin: string; key: string }[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [newSite, setNewSite] = useState("");
   const load = async () => {
     setBusy(true);
     try {
@@ -165,10 +166,52 @@ function ServerKeys() {
       </button>
     );
   }
+  const addSite = async () => {
+    const v = newSite.trim();
+    if (!v) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/admin/games/websites", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websites: [...sites.map((s) => s.origin), v] }),
+      });
+      const d = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
+      setNewSite("");
+      toast.success("Website added");
+      await load();
+    } catch (e) {
+      toast.error("Could not add the website", { description: e instanceof Error ? e.message : String(e) });
+      setBusy(false);
+    }
+  };
+  const addForm = (
+    <div className="flex flex-wrap gap-2">
+      <input
+        value={newSite}
+        onChange={(e) => setNewSite(e.target.value)}
+        placeholder="https://play.mygames.com"
+        className="flex-1 min-w-[12rem] rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 font-mono text-xs text-white focus:border-emerald-500 focus:outline-none"
+      />
+      <button
+        type="button"
+        onClick={addSite}
+        disabled={busy || !newSite.trim()}
+        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+      >
+        Add website
+      </button>
+    </div>
+  );
   if (sites.length === 0) {
     return (
-      <div className="rounded-lg bg-red-500/10 border border-red-500/25 p-2.5 text-xs text-red-300">
-        No game website is listed yet. Add it first in Games → Settings → Your game websites.
+      <div className="space-y-2">
+        <div className="rounded-lg bg-red-500/10 border border-red-500/25 p-2.5 text-xs text-red-300">
+          No game website is saved yet. Type your game website&apos;s address here and press{" "}
+          <strong>Add website</strong> — just the address, for example https://play.mygames.com.
+        </div>
+        {addForm}
       </div>
     );
   }
@@ -180,6 +223,12 @@ function ServerKeys() {
           <CopyBlock label="RevType server key (secret — server only)" value={s.key} />
         </div>
       ))}
+      <details>
+        <summary className="cursor-pointer text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+          Add another website
+        </summary>
+        <div className="mt-2">{addForm}</div>
+      </details>
     </div>
   );
 }
