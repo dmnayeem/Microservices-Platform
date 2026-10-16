@@ -41,19 +41,26 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
   const page = parsePage(p.page);
   const where = pwaInstallWhere(f);
 
-  const [stats, cfg, canEdit, total, rows] = await Promise.all([
-    pwaInstallStats(),
-    getPwaRewardConfig(),
-    can(session.user.id, "settings.edit"),
-    prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      select: PWA_ROW_SELECT,
-      orderBy: f.status === "not" ? { createdAt: "desc" } : { pwaFirstSeenAt: "desc" },
-      take: PAGE_SIZE,
-      skip: (page - 1) * PAGE_SIZE,
-    }),
-  ]);
+  // Read once more on a failure before giving up — the page used to error
+  // now and then and come back on a reload (owner, 2026-10-16).
+  const load = () =>
+    Promise.all([
+      pwaInstallStats(),
+      getPwaRewardConfig(),
+      can(session.user.id, "settings.edit"),
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        select: PWA_ROW_SELECT,
+        orderBy: f.status === "not" ? { createdAt: "desc" } : { pwaFirstSeenAt: "desc" },
+        take: PAGE_SIZE,
+        skip: (page - 1) * PAGE_SIZE,
+      }),
+    ]);
+  const [stats, cfg, canEdit, total, rows] = await load().catch(async () => {
+    await new Promise((r) => setTimeout(r, 500));
+    return load();
+  });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   // Same cutoff as the "Not opened in 30+ days" filter (lib/pwa-admin.ts).
   const dormantBefore = utcDay(DORMANT_DAYS - 1).getTime();

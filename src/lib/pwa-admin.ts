@@ -1,9 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { NON_STAFF_WHERE } from "@/lib/staff";
+import { NON_STAFF_WHERE, STAFF_ROLES } from "@/lib/staff";
 import { utcDay } from "@/lib/active-days";
 import { PWA_PLATFORMS, type PwaPlatform } from "@/lib/pwa-shared";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 
 /**
  * Reads for /admin/users/app-installs and its CSV export. Staff are left out
@@ -102,58 +102,75 @@ export const PWA_ROW_SELECT = {
   pwaUninstalledAt: true,
 } as const;
 
-export async function pwaInstallStats() {
-  const installed = { ...NON_STAFF_WHERE, pwaFirstSeenAt: { not: null } } as Prisma.UserWhereInput;
+/**
+ * Every summary figure in ONE query (plus the points sum). The page used to
+ * send twelve counts at once; one of them failing now and then is what made
+ * /admin/users/app-installs error until it was reloaded (owner, 2026-10-16).
+ * Same definitions as the counts it replaces — checked against them live.
+ */
+export async function pwaInstallStatsOneQuery() {
+  const staff = Prisma.join(STAFF_ROLES.map((r) => String(r)));
+  const d6 = utcDay(6);
+  const d29 = utcDay(29);
   const dormantBefore = utcDay(DORMANT_DAYS - 1);
-  const active30 = { ...NON_STAFF_WHERE, activeDays: { some: { date: { gte: utcDay(29) } } } } as Prisma.UserWhereInput;
-  const [total, last7, last30, activeUsers, activeInstalled, byPlatform, rewarded, legacyWww, paid, uninstalled, dormant, everyone] =
-    await Promise.all([
-      prisma.user.count({ where: installed }),
-      prisma.user.count({ where: { ...NON_STAFF_WHERE, pwaFirstSeenAt: { gte: utcDay(6) } } as Prisma.UserWhereInput }),
-      prisma.user.count({ where: { ...NON_STAFF_WHERE, pwaFirstSeenAt: { gte: utcDay(29) } } as Prisma.UserWhereInput }),
-      prisma.user.count({ where: active30 }),
-      prisma.user.count({ where: { AND: [active30, { pwaFirstSeenAt: { not: null } }] } }),
-      prisma.user.groupBy({ by: ["pwaPlatform"], where: installed, _count: { _all: true } }),
-      prisma.user.count({ where: { ...NON_STAFF_WHERE, pwaRewardedAt: { not: null } } as Prisma.UserWhereInput }),
-      prisma.user.count({ where: { ...NON_STAFF_WHERE, pwaHost: LEGACY_PWA_HOST } as Prisma.UserWhereInput }),
-      // Points column, never `amount` (its sign is not consistent across writers).
-      prisma.transaction.aggregate({
-        where: { reference: { startsWith: "pwa_install_" } },
-        _sum: { points: true },
-      }),
-      prisma.user.count({ where: { ...NON_STAFF_WHERE, pwaFirstSeenAt: { not: null }, pwaUninstalledAt: { not: null } } as Prisma.UserWhereInput }),
-      prisma.user.count({
-        where: {
-          AND: [
-            installed,
-            { pwaUninstalledAt: null },
-            { OR: [{ pwaLastSeenAt: null }, { pwaLastSeenAt: { lt: dormantBefore } }] },
-          ],
-        },
-      }),
-      prisma.user.count({ where: NON_STAFF_WHERE as Prisma.UserWhereInput }),
-    ]);
+  const [[r], byPlatform, paid] = await Promise.all([
+    prisma.$queryRaw<Array<Record<string, number>>>`
+      SELECT
+        COUNT(*) FILTER (WHERE u."pwaFirstSeenAt" IS NOT NULL)::int AS total,
+        COUNT(*) FILTER (WHERE u."pwaFirstSeenAt" >= ${d6})::int AS last7,
+        COUNT(*) FILTER (WHERE u."pwaFirstSeenAt" >= ${d29})::int AS last30,
+        COUNT(*) FILTER (WHERE a.active)::int AS "activeUsers",
+        COUNT(*) FILTER (WHERE a.active AND u."pwaFirstSeenAt" IS NOT NULL)::int AS "activeInstalled",
+        COUNT(*) FILTER (WHERE u."pwaRewardedAt" IS NOT NULL)::int AS rewarded,
+        COUNT(*) FILTER (WHERE u."pwaHost" = ${LEGACY_PWA_HOST})::int AS "legacyWww",
+        COUNT(*) FILTER (WHERE u."pwaFirstSeenAt" IS NOT NULL AND u."pwaUninstalledAt" IS NOT NULL)::int AS uninstalled,
+        COUNT(*) FILTER (WHERE u."pwaFirstSeenAt" IS NOT NULL AND u."pwaUninstalledAt" IS NULL
+                           AND (u."pwaLastSeenAt" IS NULL OR u."pwaLastSeenAt" < ${dormantBefore}))::int AS dormant,
+        COUNT(*)::int AS everyone
+      FROM "User" u
+      CROSS JOIN LATERAL (
+        SELECT EXISTS (SELECT 1 FROM "UserActiveDay" d WHERE d."userId" = u.id AND d.date >= ${d29}::date) AS active
+      ) a
+      WHERE u.role::text NOT IN (${staff})`,
+    prisma.$queryRaw<Array<{ p: string | null; n: number }>>`
+      SELECT u."pwaPlatform" AS p, COUNT(*)::int AS n FROM "User" u
+      WHERE u.role::text NOT IN (${staff}) AND u."pwaFirstSeenAt" IS NOT NULL
+      GROUP BY 1`,
+    prisma.transaction.aggregate({
+      where: { reference: { startsWith: "pwa_install_" } },
+      _sum: { points: true },
+    }),
+  ]);
   const platforms = Object.fromEntries(PWA_PLATFORMS.map((p) => [p, 0])) as Record<PwaPlatform, number>;
-  for (const g of byPlatform as unknown as Array<{ pwaPlatform: string | null; _count: { _all: number } }>) {
-    const k = (PWA_PLATFORMS as string[]).includes(g.pwaPlatform ?? "") ? (g.pwaPlatform as PwaPlatform) : "other";
-    platforms[k] += g._count._all;
+  for (const g of byPlatform) {
+    const k = (PWA_PLATFORMS as string[]).includes(g.p ?? "") ? (g.p as PwaPlatform) : "other";
+    platforms[k] += g.n;
   }
   return {
-    total,
-    // Has it now = ever installed minus removed.
-    installedNow: total - uninstalled,
-    uninstalled,
-    dormant,
-    notInstalled: Math.max(0, everyone - total),
-    everyone,
-    last7,
-    last30,
-    activeUsers,
-    activeInstalled,
-    activePct: activeUsers > 0 ? (activeInstalled / activeUsers) * 100 : 0,
+    total: r.total,
+    installedNow: r.total - r.uninstalled,
+    uninstalled: r.uninstalled,
+    dormant: r.dormant,
+    notInstalled: Math.max(0, r.everyone - r.total),
+    everyone: r.everyone,
+    last7: r.last7,
+    last30: r.last30,
+    activeUsers: r.activeUsers,
+    activeInstalled: r.activeInstalled,
+    activePct: r.activeUsers > 0 ? (r.activeInstalled / r.activeUsers) * 100 : 0,
     platforms,
-    rewarded,
+    rewarded: r.rewarded,
     pointsPaid: Number(paid._sum.points ?? 0),
-    legacyWww,
+    legacyWww: r.legacyWww,
   };
+}
+
+export async function pwaInstallStats() {
+  // One retry: a single failed read must not turn the whole page into an error.
+  try {
+    return await pwaInstallStatsOneQuery();
+  } catch {
+    await new Promise((r) => setTimeout(r, 400));
+    return pwaInstallStatsOneQuery();
+  }
 }
