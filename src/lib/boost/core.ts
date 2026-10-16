@@ -277,8 +277,13 @@ export async function sweepBoosts(): Promise<{ completed: number; orphaned: numb
   for (const b of ended) {
     if (await prisma.$transaction((tx) => settle(tx, b.id, ["ACTIVE", "PAUSED"], "COMPLETED"))) completed++;
   }
+  // Deleted, hidden (by a moderator) or made private: it can't be shown, so
+  // its budget must not stay held until the end date.
   const orphans = await prisma.boostCampaign.findMany({
-    where: { status: { in: BOOST_OPEN }, postId: null },
+    where: {
+      status: { in: BOOST_OPEN },
+      OR: [{ postId: null }, { post: { is: { OR: [{ isHidden: true }, { isPublic: false }] } } }],
+    },
     select: { id: true },
     take: 500,
   });

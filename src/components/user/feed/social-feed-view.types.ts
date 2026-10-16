@@ -86,6 +86,13 @@ export interface FeedPost {
   isSaved?: boolean;
   isOwner: boolean;
   isFollowingAuthor?: boolean;
+  /**
+   * Set by the feed ONLY when this post was served as a paid boost placement
+   * (a BoostCampaign). Non-owners then see a small "Sponsored" label.
+   */
+  sponsored?: boolean;
+  /** The boost this placement belongs to (event tracking uses it). */
+  boostCampaignId?: string | null;
 }
 
 export interface FeedComment {

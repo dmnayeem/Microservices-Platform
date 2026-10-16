@@ -7,6 +7,15 @@
 export const HALF_LIFE_HOURS = 18;
 /** Multiplier applied to posts whose author the viewer follows. */
 export const FOLLOW_MULT = 1.25;
+/**
+ * Multiplier for posts whose author is in the VIEWER's country (owner,
+ * 2026-10-16: "my country first"). The random band spans 0.2..1.2, so ×2.5
+ * lifts a local post above most — not all — others: local posts fill the top
+ * of the feed and appear far more often, a lucky foreign post can still slip
+ * in between, and once the local ones are used up the rest follow in their
+ * usual jittered order. No country known (viewer or author) = no lift.
+ */
+export const COUNTRY_MULT = 2.5;
 /** How many freshest posts to score per main-feed request (bounded for scale). */
 export const POOL_SIZE = 500;
 
@@ -43,6 +52,8 @@ export interface ScoreOpts {
    *  seed reshuffles. The feed route passes a per-session seed (or falls back to
    *  the UTC day key), giving fresh variety each refresh. */
   seed: string;
+  /** Authors in the viewer's country (see COUNTRY_MULT). Main feed only. */
+  localAuthors?: Set<string>;
 }
 
 /** Hot score for a post. Higher = higher in the feed.
@@ -89,8 +100,8 @@ export const FEED_WINDOW = 3000;
  * cursor and every post in the window is shown exactly once per round.
  *
  * Random is the main driver (a fresh seed per session / round = a new order);
- * newer posts get a gentle lift that never buries old ones, and a followed
- * author a small edge.
+ * newer posts get a gentle lift that never buries old ones, a followed author
+ * a small edge, and an author from the viewer's own country a big one.
  */
 export function streamScore(
   post: { id: string; userId: string; createdAt: Date },
@@ -99,6 +110,7 @@ export function streamScore(
   const ageHours = Math.max(0, (opts.now.getTime() - post.createdAt.getTime()) / (1000 * 60 * 60));
   const recencySoft = 1 / (1 + ageHours / (HALF_LIFE_HOURS * 4));
   const follow = opts.follows.has(post.userId) ? FOLLOW_MULT : 1;
+  const local = opts.localAuthors?.has(post.userId) ? COUNTRY_MULT : 1;
   const random = rand01(`${post.id}:${opts.seed}`);
-  return (0.2 + random) * (0.6 + 0.4 * recencySoft) * follow;
+  return (0.2 + random) * (0.6 + 0.4 * recencySoft) * follow * local;
 }
