@@ -21,7 +21,13 @@ import {
 import { toast } from "@/lib/toast";
 import { CustomTaskBuilder } from "@/app/admin/tasks/_components/CustomTaskBuilder";
 import type { CustomConfig } from "@/lib/custom-tasks";
-import { BUYER_CUSTOM_NOTICE } from "@/lib/buyer-task-configs";
+import {
+  BUYER_CUSTOM_NOTICE,
+  BUYER_SOCIAL_TEXT_REQUIRED,
+  buyerSocialFields,
+  buyerSocialProblem,
+} from "@/lib/buyer-task-configs";
+import { getAction } from "@/lib/social-tasks";
 import { usd, pts, cn } from "@/lib/utils";
 import Link from "next/link";
 import { TASK_CREDIT } from "@/lib/task-credit-theme";
@@ -129,9 +135,19 @@ export function CreateTaskView({
   const pickPlatform = (key: string) => {
     setSocialPlatform(key);
     setSocialAction("");
+    setSocialFields({});
   };
   const platformDef = platforms.find((p) => p.key === socialPlatform);
   const [socialUrl, setSocialUrl] = useState("");
+  // The action's own text / handle (post text, account to tag …), keyed by field.
+  const [socialFields, setSocialFields] = useState<Record<string, string>>({});
+  // On by default: a buyer asking for N members wants N different accounts.
+  const [uniqueAccount, setUniqueAccount] = useState(true);
+  const [memberWrites, setMemberWrites] = useState(false);
+  const actionDef = getAction(socialPlatform, socialAction);
+  const actionFields = buyerSocialFields(socialPlatform, socialAction);
+  const targetLabel =
+    actionDef?.adminFields.find((f) => f.key === "targetUrl")?.label ?? "Target URL";
   // VIDEO
   const [videoUrl, setVideoUrl] = useState("");
   const [watchSeconds, setWatchSeconds] = useState(30);
@@ -167,6 +183,9 @@ export function CreateTaskView({
     feePercent,
   });
   const budget = quote.budgetPoints;
+  // SOCIAL and SURVEY run once per member (lib/task-repeat), so the funded
+  // count is a head count there; other types repeat and count completions.
+  const perMember = type === "SOCIAL" || type === "SURVEY";
 
   // ── Who will actually see this, and how long it should take ────────────────
   //
@@ -254,6 +273,16 @@ export function CreateTaskView({
       toast.error("Social tasks need an action and a target URL");
       return;
     }
+    if (type === "SOCIAL") {
+      const socialProblem = buyerSocialProblem(socialPlatform, socialAction, {
+        fields: socialFields,
+        memberWrites,
+      });
+      if (socialProblem) {
+        toast.error(socialProblem);
+        return;
+      }
+    }
     // Every payload-carrying type checks the SAME rules the server will, so a
     // buyer is told what is wrong before they submit, not after.
     const problem =
@@ -332,6 +361,16 @@ export function CreateTaskView({
         body.socialPlatform = socialPlatform.trim() || undefined;
         body.socialAction = socialAction.trim();
         body.socialUrl = socialUrl.trim();
+        const keys = new Set(actionFields.map((f) => f.key));
+        body.social = {
+          fields: Object.fromEntries(
+            Object.entries(socialFields).filter(
+              ([k, v]) => keys.has(k) && v.trim()
+            )
+          ),
+          uniqueAccount,
+          memberWrites: memberWrites && !!actionDef?.supportsAiPrompt,
+        };
       } else {
         body.instructions = instructions.trim() || undefined;
       }
@@ -536,7 +575,10 @@ export function CreateTaskView({
                 </label>
                 <select
                   value={socialAction}
-                  onChange={(e) => setSocialAction(e.target.value)}
+                  onChange={(e) => {
+                    setSocialAction(e.target.value);
+                    setSocialFields({});
+                  }}
                   disabled={!platformDef}
                   className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50"
                 >
@@ -551,9 +593,14 @@ export function CreateTaskView({
                 </select>
               </div>
             </div>
+            {actionDef && (
+              <p className="text-[11px] leading-relaxed text-(--app-ink-3)">
+                {actionDef.description}.
+              </p>
+            )}
             <div>
               <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
-                Target URL *
+                {targetLabel} *
               </label>
               <input
                 value={socialUrl}
@@ -562,6 +609,91 @@ export function CreateTaskView({
                 className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
+
+            {actionDef?.supportsAiPrompt && (
+              <label className="flex items-start gap-2 text-xs text-(--app-ink-2) cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={memberWrites}
+                  onChange={(e) => setMemberWrites(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Let each member write their own version
+                  <span className="block text-[11px] text-(--app-ink-3)">
+                    Members get a ready-made AI writing prompt, so no two posts
+                    are identical. Your text below becomes an optional example.
+                  </span>
+                </span>
+              </label>
+            )}
+
+            {actionFields.map((f) => {
+              const aiOptional =
+                memberWrites && !!actionDef?.aiGeneratableFields?.includes(f.key);
+              const required =
+                BUYER_SOCIAL_TEXT_REQUIRED.has(socialAction) && f.required && !aiOptional;
+              const value = socialFields[f.key] ?? "";
+              const set = (v: string) =>
+                setSocialFields((prev) => ({ ...prev, [f.key]: v }));
+              const cls =
+                "w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)";
+              return (
+                <div key={f.key}>
+                  <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+                    {f.label}
+                    {aiOptional ? " (example, optional)" : required ? " *" : " (optional)"}
+                  </label>
+                  {f.type === "textarea" ? (
+                    <textarea
+                      rows={3}
+                      value={value}
+                      maxLength={3000}
+                      onChange={(e) => set(e.target.value)}
+                      placeholder={f.placeholder}
+                      className={cn(cls, "resize-none")}
+                    />
+                  ) : f.type === "select" ? (
+                    <select value={value} onChange={(e) => set(e.target.value)} className={cls}>
+                      <option value="">Any</option>
+                      {(f.options ?? []).map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={value}
+                      maxLength={3000}
+                      onChange={(e) => set(e.target.value)}
+                      placeholder={f.placeholder}
+                      className={cls}
+                    />
+                  )}
+                  {f.helperText && (
+                    <p className="mt-1 text-[10px] text-(--app-ink-3)">{f.helperText}</p>
+                  )}
+                </div>
+              );
+            })}
+
+            <label className="flex items-start gap-2 rounded-lg border border-(--app-line) bg-(--app-page) p-2.5 text-xs text-(--app-ink-2) cursor-pointer">
+              <input
+                type="checkbox"
+                checked={uniqueAccount}
+                onChange={(e) => setUniqueAccount(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-semibold text-(--app-ink)">One account per member</span>
+                <span className="block text-[11px] leading-relaxed text-(--app-ink-3)">
+                  Each member does this once, with their own existing account.
+                  Members give their username, and an account or post another
+                  member already submitted is refused.
+                </span>
+              </span>
+            </label>
           </>
         ) : type === "SURVEY" ? (
           <SurveyBuilder value={survey} onChange={setSurvey} />
@@ -595,10 +727,65 @@ export function CreateTaskView({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2">
+        {/* How many people — the number a buyer actually thinks in. */}
+        <div className="rounded-xl border border-(--app-accent-edge)/40 bg-(--app-cta)/5 p-3 space-y-2">
+          <label className="flex items-center gap-1.5 text-sm font-bold text-white">
+            <Users className="h-4 w-4 text-(--app-accent-ink)" />
+            {perMember ? "How many members do you need?" : "How many completions do you need?"}
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {[10, 20, 50, 100].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setTargetCount(n)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-sm font-semibold tabular-nums transition-colors",
+                  targetCount === n
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-(--app-accent-ink)"
+                    : "border-(--app-line) bg-(--app-page) text-(--app-ink-2) hover:border-(--app-accent-edge)"
+                )}
+              >
+                {n}
+              </button>
+            ))}
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={targetCount}
+              onChange={(e) => setTargetCount(Number(e.target.value))}
+              aria-label="Custom number"
+              className="w-24 px-3 py-1.5 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
+            />
+          </div>
+          <p className="text-sm text-(--app-ink)">
+            <span className="tabular-nums">{targetCount.toLocaleString()}</span>{" "}
+            {perMember ? "members" : "completions"} ×{" "}
+            <span className="tabular-nums">{pts(pointsReward)}</span> pts ={" "}
+            <span className={cn("font-bold tabular-nums", TASK_CREDIT.textStrong)}>
+              {pts(budget)} pts
+            </span>
+            {feePercent > 0 && (
+              <span className="text-(--app-ink-3)">
+                {" "}+ {feePercent}% fee = {pts(quote.totalPoints)} pts
+              </span>
+            )}
+            <span className="text-(--app-ink-3)"> (about {usd(quote.totalUsd)})</span>
+          </p>
+          <p className="text-[11px] leading-relaxed text-(--app-ink-3)">
+            {type === "SOCIAL"
+              ? "Each member does it once, with their own account. You pay only for completions that are approved."
+              : perMember
+                ? "Each member does it once. You pay only for completions that are approved."
+                : "You pay only for completions that are approved."}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
-              Points reward
+              {perMember ? "Reward per member (points)" : "Points reward"}
             </label>
             <input
               type="number"
@@ -608,22 +795,6 @@ export function CreateTaskView({
               onChange={(e) => setPointsReward(Number(e.target.value))}
               className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
-              Completions
-            </label>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={targetCount}
-              onChange={(e) => setTargetCount(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
-            />
-            <p className="text-[10px] text-(--app-ink-3) mt-1">
-              How many completions to fund
-            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
@@ -748,7 +919,7 @@ export function CreateTaskView({
             <p className="text-sm font-semibold text-white">If everyone completes it</p>
             <p className="text-[11px] text-(--app-ink-3)">
               {pointsReward.toLocaleString()} pts ×{" "}
-              {targetCount.toLocaleString()} completions
+              {targetCount.toLocaleString()} {perMember ? "members" : "completions"}
             </p>
           </div>
         </div>

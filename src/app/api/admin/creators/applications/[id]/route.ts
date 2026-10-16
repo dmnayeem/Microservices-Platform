@@ -3,16 +3,22 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
-import { deliverToUser } from "@/lib/notify";
+import { sendApplicationDecision } from "@/lib/application-decision";
+import { PROGRAMS } from "@/lib/application-requirements";
+import { prisma } from "@/lib/prisma";
 import {
   approveCreatorApplication,
   rejectCreatorApplication,
+  grantBlueBadge,
   CREATOR_TYPES,
 } from "@/lib/creator-application";
 
 const bodySchema = z.object({
   action: z.enum(["approve", "reject"]),
   adminNote: z.string().max(2000).optional(),
+  // BLUE_BADGE approvals only: how long the badge lasts.
+  badgeLifetime: z.boolean().optional(),
+  badgeDurationDays: z.number().int().min(1).max(3650).optional(),
 });
 
 interface RouteParams {
@@ -33,7 +39,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
-  const { action, adminNote } = parsed.data;
+  const { action, adminNote, badgeLifetime, badgeDurationDays } = parsed.data;
+
+  // Approving a blue-badge application gives the badge away, which the user
+  // editor guards with its own permission — the same rule applies here.
+  const target = await prisma.creatorApplication.findUnique({ where: { id }, select: { type: true } });
+  if (!target) return NextResponse.json({ error: "Application not found" }, { status: 404 });
+  const isBadge = target.type === "BLUE_BADGE";
+  if (isBadge && action === "approve") {
+    if (!(await can(session.user.id, "users.grant_badge"))) {
+      return NextResponse.json(
+        { error: 'Approving the blue badge needs the "users.grant_badge" permission — ask a super admin.' },
+        { status: 403 }
+      );
+    }
+    if (badgeLifetime !== true && badgeDurationDays === undefined) {
+      return NextResponse.json({ error: "Choose how long the badge lasts (days) or tick Lifetime." }, { status: 400 });
+    }
+  }
 
   try {
     const app =
@@ -49,6 +72,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             adminNote: adminNote ?? null,
           });
 
+    if (isBadge && action === "approve") {
+      const grant = await grantBlueBadge(app.userId, {
+        lifetime: badgeLifetime === true,
+        days: badgeLifetime === true ? null : badgeDurationDays!,
+      });
+      await writeAudit({
+        actorId: session.user.id,
+        action: "USER_BADGE_GRANTED",
+        entity: "User",
+        entityId: app.userId,
+        targetUserId: app.userId,
+        summary: grant.summary,
+        meta: { ...grant.meta, applicationId: id, reason: adminNote || null },
+      });
+    }
+
     await writeAudit({
       actorId: session.user.id,
       action: action === "approve" ? "CREATOR_APP_APPROVE" : "CREATOR_APP_REJECT",
@@ -60,17 +99,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     });
 
     const meta = CREATOR_TYPES[app.type];
-    void deliverToUser({ category: "account_review",
+    sendApplicationDecision({
       userId: app.userId,
-      title:
-        action === "approve"
-          ? `Approved: ${meta.label}`
-          : `${meta.label} application update`,
-      message:
-        action === "approve"
-          ? `You now have ${meta.label} access.`
-          : "Your application wasn't approved this time.",
-      link: action === "approve" ? meta.dashboardHref : "/profile/become-creator",
+      program: PROGRAMS[app.type].label,
+      approved: action === "approve",
+      adminNote: adminNote ?? null,
+      link: action === "approve" ? meta.dashboardHref : `/apply?type=${app.type}`,
     });
 
     return NextResponse.json({ success: true, application: { id: app.id, status: app.status } });

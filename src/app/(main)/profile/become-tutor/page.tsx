@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BecomeTutorForm } from "./_components/BecomeTutorForm";
+import { effectiveRequirements } from "@/lib/application-requirements-server";
 import { GraduationCap, ArrowLeft, Shield, Clock, XCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -9,7 +10,7 @@ export default async function BecomeTutorPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [user, latest] = await Promise.all([
+  const [user, latest, req] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { role: true, name: true, email: true },
@@ -18,6 +19,7 @@ export default async function BecomeTutorPage() {
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
     }),
+    effectiveRequirements("TUTOR"),
   ]);
   if (!user) redirect("/login");
 
@@ -104,7 +106,7 @@ export default async function BecomeTutorPage() {
               </div>
             </div>
           )}
-          <BecomeTutorForm />
+          <BecomeTutorForm questions={req.questions} />
         </>
       )}
     </div>

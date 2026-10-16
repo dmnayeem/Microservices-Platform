@@ -26,22 +26,31 @@ export const MARKETPLACE_PRIVATE_SEGMENTS = [
   "orders",
 ] as const;
 
+/** Static folders under /services that are private flows — never public. */
+export const SERVICES_PRIVATE_SEGMENTS = ["create", "my"] as const;
+
 /** Static folders under /marketplace that are public catalog pages. */
 const MARKETPLACE_PUBLIC_STATIC = ["section", "brand"] as const;
 
 const ID_SEGMENT = /^[A-Za-z0-9_-]{1,128}$/;
 
 /**
- * True for the browse / category / brand / detail pages of the marketplace
- * and of courses. Nothing else: not the cart, checkout, orders, deals,
+ * True for the browse / category / brand / detail pages of the marketplace,
+ * of services and of courses. Nothing else: not the cart, checkout, orders, deals,
  * messages, create-listing, my-learning, the lesson player (/learn) or the
  * course creator (/course-creator, /tutor).
  */
 export function isPublicCatalogPath(pathname: string): boolean {
   const p = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  if (p === "/marketplace" || p === "/courses") return true;
+  if (p === "/marketplace" || p === "/courses" || p === "/services") return true;
 
   const parts = p.split("/").filter(Boolean);
+  if (parts[0] === "services") {
+    // /services/<listingId> — but not "create" / "my"
+    if (parts.length !== 2) return false;
+    if ((SERVICES_PRIVATE_SEGMENTS as readonly string[]).includes(parts[1])) return false;
+    return ID_SEGMENT.test(parts[1]);
+  }
   if (parts[0] === "marketplace") {
     // /marketplace/section/<slug>, /marketplace/brand/<slug>
     if (parts.length === 3 && (MARKETPLACE_PUBLIC_STATIC as readonly string[]).includes(parts[1])) {

@@ -13,7 +13,7 @@ type ThreadListRow = {
   unreadBuyer: number;
   unreadSeller: number;
   listing: { id: string; title: string; images: string[] };
-  messages: { body: string }[];
+  messages: { body: string; senderType: string }[];
   deals: { id: string; status: string; amount: Prisma.Decimal }[];
 };
 
@@ -44,7 +44,9 @@ export async function GET() {
       listing: { id: t.listing.id, title: t.listing.title, image: t.listing.images?.[0] ?? null },
       role: iAmBuyer ? "BUYER" : "SELLER",
       counterpartyId: iAmBuyer ? t.sellerId : t.buyerId,
-      lastMessage: t.messages[0]?.body ?? null,
+      // An order brief is JSON — show what it is, not the payload.
+      lastMessage:
+        t.messages[0]?.senderType === "ORDER" ? "New order placed" : t.messages[0]?.body ?? null,
       lastMessageAt: t.lastMessageAt.toISOString(),
       unread: iAmBuyer ? t.unreadBuyer : t.unreadSeller,
       deal: deal

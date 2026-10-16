@@ -347,6 +347,7 @@ export const DEFAULT_SIDEBAR: SidebarConfig = {
       ["Courses", "/courses", "graduation", "courses", "learn lessons lms"],
       ["My Learning", "/my-learning", "graduation", "courses", "enrolled progress certificate"],
       ["Marketplace", "/marketplace", "store", "marketplace", "buy sell shop products"],
+      ["Services", "/services", "briefcase", "marketplace", "hire freelance gig service design writing"],
     ]),
     seedSection("Network & Grow", [
       ["My Team", "/referrals", "users", "referrals", "referral refer invite downline"],
@@ -354,6 +355,7 @@ export const DEFAULT_SIDEBAR: SidebarConfig = {
       ["Milestones", "/milestones", "target", undefined, "progress rewards"],
       ["Level Rewards", "/level-rewards", "gift", undefined, "level up reward claim"],
       ["Ambassador", "/ambassador", "medal", undefined, "ambassador program represent invite bonus"],
+      ["Apply", "/apply", "award", undefined, "apply seller services tutor buyer advertiser badge program access"],
       ["Achievements", "/achievements", "award", undefined, "badges trophies"],
     ]),
     seedSection("Promote", [

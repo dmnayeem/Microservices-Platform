@@ -82,6 +82,8 @@ export const USER_PAGES: UserPage[] = [
   { path: "/chat", label: "Chat", group: "Community" },
   // Buy & sell
   { path: "/marketplace", label: "Marketplace", group: "Buy & sell" },
+  { path: "/services", label: "Services", group: "Buy & sell" },
+  { path: "/apply", label: "Apply — programs & access", group: "Earn" },
   { path: "/packages", label: "Packages", group: "Buy & sell" },
   { path: "/my-package", label: "My Package", group: "Buy & sell" },
   { path: "/badge", label: "Blue Badge shop", group: "Buy & sell" },

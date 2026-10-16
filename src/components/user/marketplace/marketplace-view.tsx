@@ -29,12 +29,15 @@ import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import {
   ASSET_TYPE_LABEL,
   MARKETPLACE_SECTIONS,
+  getSubType,
+  isServiceType,
+  listingHref,
 } from "@/lib/marketplace-categories";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AffiliateRewardBadge } from "@/components/user/affiliate/affiliate-reward-badge";
 import { cn } from "@/lib/utils";
 
-interface Listing {
+export interface MarketplaceListingRow {
   id: string;
   title: string;
   description: string;
@@ -65,7 +68,12 @@ interface Listing {
   seller: { name: string | null; avatar: string | null };
   /** Affiliate-only commission (set by the API only for approved affiliates). */
   affiliateReward?: string | null;
+  /** Services only — from the listing's details. */
+  deliveryDays?: number | null;
+  revisions?: number | null;
 }
+
+type Listing = MarketplaceListingRow;
 
 interface Facet {
   assetType: string;
@@ -291,7 +299,7 @@ export function MarketplaceView({
         <h1 className="text-xl sm:text-2xl font-bold text-white flex-1 inline-flex items-center gap-2">
           <ShoppingBag className="w-6 h-6 text-(--app-accent-ink)" /> Marketplace
           <span className="text-xs font-mono uppercase tracking-wider text-(--app-ink-3)">
-            digital assets
+            digital products
           </span>
         </h1>
         <Link
@@ -388,6 +396,10 @@ export function MarketplaceView({
             {s.label}
           </button>
         ))}
+        {/* Services have their own page now; keep a way there from here. */}
+        <Link href="/services" className={sectionClass(false)} title="Hire a freelancer">
+          Services →
+        </Link>
       </div>
       {section && (
         <p className="text-[11px] text-(--app-ink-3) -mt-1">
@@ -504,7 +516,7 @@ export function MarketplaceView({
           description={
             anyFilterActive
               ? "Try widening the search or clearing some filters."
-              : "Be the first to list a digital asset."
+              : "Be the first to list a digital product."
           }
           action={{ label: "Create Listing", href: "/marketplace/create" }}
         />
@@ -601,7 +613,8 @@ function ToggleChip({
   );
 }
 
-function ListingCardV2({ listing }: { listing: Listing }) {
+/** One listing card — shared with the Services page. */
+export function ListingCardV2({ listing }: { listing: Listing }) {
   const [watched, setWatched] = useState(listing.isWatched);
   const [watchBusy, setWatchBusy] = useState(false);
 
@@ -620,10 +633,14 @@ function ListingCardV2({ listing }: { listing: Listing }) {
   };
 
   const cover = listing.images[0] ?? listing.screenshots[0];
+  const service = isServiceType(listing.assetType);
+  const typeLabel = service
+    ? (getSubType(listing.assetType, listing.subType)?.label ?? "Service")
+    : (ASSET_TYPE_LABEL[listing.assetType] ?? listing.assetType);
 
   return (
     <Link
-      href={`/marketplace/${listing.id}`}
+      href={listingHref(listing)}
       className="group block glass rounded-xl overflow-hidden hover:border-(--app-accent-edge)/40 transition-colors"
     >
       <div className="relative aspect-video bg-(--app-page) overflow-hidden">
@@ -683,7 +700,7 @@ function ListingCardV2({ listing }: { listing: Listing }) {
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-(--app-cta)/15 text-(--app-accent-ink) border border-(--app-accent-edge)/30">
-            {ASSET_TYPE_LABEL[listing.assetType] ?? listing.assetType}
+            {typeLabel}
           </span>
           {listing.niche && (
             <span className="text-[10px] text-(--app-ink-3) truncate min-w-0">
@@ -715,6 +732,22 @@ function ListingCardV2({ listing }: { listing: Listing }) {
               <span className="text-(--app-ink-3)">/mo visits</span>
             </span>
           ) : null}
+          {service && listing.deliveryDays != null ? (
+            <span className="inline-flex items-center gap-1 text-sky-300">
+              <span className="font-bold tabular-nums">{listing.deliveryDays}</span>
+              <span className="text-(--app-ink-3)">
+                day{listing.deliveryDays === 1 ? "" : "s"} delivery
+              </span>
+            </span>
+          ) : null}
+          {service && listing.revisions != null ? (
+            <span className="inline-flex items-center gap-1 text-purple-300">
+              <span className="font-bold tabular-nums">{listing.revisions}</span>
+              <span className="text-(--app-ink-3)">
+                revision{listing.revisions === 1 ? "" : "s"}
+              </span>
+            </span>
+          ) : null}
           {listing.assetAgeMonths ? (
             <span className="inline-flex items-center gap-1 text-purple-300">
               <span className="font-bold tabular-nums">
@@ -728,7 +761,7 @@ function ListingCardV2({ listing }: { listing: Listing }) {
         <div className="flex items-end justify-between pt-2 border-t border-(--app-line)">
           <div>
             <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
-              {listing.auctionMode ? "Current price" : "Asking"}
+              {listing.auctionMode ? "Current price" : service ? "Starting at" : "Asking"}
             </p>
             <p className="text-base font-extrabold text-white tabular-nums">
               ${compactMoney(listing.price)}

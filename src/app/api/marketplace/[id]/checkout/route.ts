@@ -25,7 +25,7 @@ import {
 } from "@/lib/affiliate";
 import { userCanFeature } from "@/lib/packages";
 import { D, lt, sub, toNum, toNumOrNull } from "@/lib/money";
-import { requiresDeliverable } from "@/lib/marketplace-categories";
+import { isServiceType, requiresDeliverable } from "@/lib/marketplace-categories";
 import {
   getLicenseTiersEnabled,
   readTiers,
@@ -88,6 +88,14 @@ export async function POST(
     if (listing.status !== MarketplaceListingStatus.ACTIVE) {
       return NextResponse.json(
         { error: `Listing is ${listing.status.toLowerCase()}, not available for purchase.` },
+        { status: 400 }
+      );
+    }
+    // Escrow is mandatory for services: the order flow (/order) holds the
+    // money until the work is delivered. Never settle one instantly.
+    if (isServiceType(listing.assetType)) {
+      return NextResponse.json(
+        { error: "Services are ordered through escrow — open the service and choose a package.", serviceOrder: true },
         { status: 400 }
       );
     }

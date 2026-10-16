@@ -10,7 +10,7 @@ export default async function AgencyPage() {
 
   const { enabled } = await getEffectiveFeatures(session.user.id);
   if (!enabled.has("agencyMode"))
-    return <FeatureLock title="Agency Console" applyHref="/profile/become-creator" />;
+    return <FeatureLock title="Agency Console" applyHref="/apply?type=AGENCY" />;
 
   return <AgencyConsoleView />;
 }

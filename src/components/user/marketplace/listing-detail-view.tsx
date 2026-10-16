@@ -44,9 +44,13 @@ import { newIdempotencyKey } from "@/lib/idempotency-key";
 import {
   ASSET_TYPE_LABEL,
   getFieldsFor,
+  isServiceType,
+  listingHref,
   type CategoryField,
 } from "@/lib/marketplace-categories";
 import { loginHref, registerHref } from "@/lib/public-catalog";
+import { readPackages, readRequirements, resolveServiceTier } from "@/lib/service-packages";
+import { ServiceOrderSheet, ServicePackagePicker } from "./service-order-panel";
 
 interface Listing {
   id: string;
@@ -128,6 +132,8 @@ interface Props {
    * that returns here afterwards. Nothing that needs a session is called.
    */
   guest?: boolean;
+  /** Services: the viewer may open an escrow order (package feature `deals`). */
+  canOrder?: boolean;
 }
 
 export function ListingDetailView({
@@ -137,9 +143,21 @@ export function ListingDetailView({
   hideFinancials,
   viewerId,
   guest = false,
+  canOrder = true,
 }: Props) {
   const router = useRouter();
-  const here = `/marketplace/${listing.id}`;
+  const here = listingHref(listing);
+  // Services are hired, not bought: same checkout, freelancer wording.
+  const service = isServiceType(listing.assetType);
+  const serviceDays = service ? numOrNull(listing.details?.turnaroundDays) : null;
+  const serviceRevisions = service ? numOrNull(listing.details?.revisions) : null;
+  // Services are ordered through escrow on a package (or the single price),
+  // never through the cart / instant checkout.
+  const packages = service ? readPackages(listing.details) : [];
+  const requirements = service ? readRequirements(listing.details) : [];
+  const [pkgId, setPkgId] = useState<string>(packages[0]?.id ?? "");
+  const [orderOpen, setOrderOpen] = useState(false);
+  const orderTier = service ? resolveServiceTier(listing.details, listing.price, pkgId || null) : null;
   const signIn = loginHref(here);
   const [zoom, setZoom] = useState<{ list: string[]; idx: number } | null>(null);
   const [showShare, setShowShare] = useState(false);
@@ -176,7 +194,8 @@ export function ListingDetailView({
   // another, so the same arithmetic runs in both places.
   const commission =
     Math.round((effectivePrice * listing.tax.commissionBps) / 10000 * 100) / 100;
-  const taxAmount = listing.tax.enabled
+  // Escrow orders (services) carry no commission tax on top.
+  const taxAmount = listing.tax.enabled && !service
     ? Math.round(commission * (listing.tax.pct / 100) * 100) / 100
     : 0;
   const payable = Math.round((effectivePrice + taxAmount) * 100) / 100;
@@ -251,10 +270,10 @@ export function ListingDetailView({
     // Confirm before committing wallet funds — once a marketplace listing
     // is purchased the status flips to SOLD and the spend is final.
     const ok = await confirmDialog({
-      title: "Confirm purchase",
-      description: `Buy "${listing.title}"${selectedTier ? ` (${selectedTier.name})` : ""} for $${payable.toLocaleString()}${taxAmount > 0 ? ` (incl. $${taxAmount.toLocaleString()} ${listing.tax.label})` : ""}? The amount will be debited from your wallet immediately.`,
+      title: service ? "Confirm order" : "Confirm purchase",
+      description: `${service ? "Order" : "Buy"} "${listing.title}"${selectedTier ? ` (${selectedTier.name})` : ""} for $${payable.toLocaleString()}${taxAmount > 0 ? ` (incl. $${taxAmount.toLocaleString()} ${listing.tax.label})` : ""}? The amount will be debited from your wallet immediately.`,
       tone: "info",
-      confirmLabel: "Buy now",
+      confirmLabel: service ? "Order now" : "Buy now",
     });
     if (!ok) return;
     setBusy(true);
@@ -300,7 +319,7 @@ export function ListingDetailView({
         }
         throw new Error(d.error ?? d.details ?? `HTTP ${res.status}`);
       }
-      toast.success("Purchase complete 🎉");
+      toast.success(service ? "Order placed 🎉" : "Purchase complete 🎉");
       router.push("/marketplace/orders");
     } catch (err) {
       toast.error("Purchase failed", {
@@ -343,11 +362,11 @@ export function ListingDetailView({
         </div>
       )}
       <Link
-        href="/marketplace"
+        href={service ? "/services" : "/marketplace"}
         className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ChevronLeft className="w-4 h-4" />
-        Back to marketplace
+        {service ? "Back to services" : "Back to marketplace"}
       </Link>
 
       {/* Hero */}
@@ -447,11 +466,32 @@ export function ListingDetailView({
           {/* Price block */}
           <div className="glass rounded-xl p-4 space-y-2">
             <p className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3)">
-              {listing.auctionMode ? "Current price" : "Asking price"}
+              {listing.auctionMode ? "Current price" : service ? "Starting at" : "Asking price"}
             </p>
             <p className="text-3xl font-extrabold text-white tabular-nums">
               ${listing.price.toLocaleString()}
             </p>
+            {packages.length > 0 && (
+              <ServicePackagePicker packages={packages} selectedId={pkgId} onSelect={setPkgId} />
+            )}
+            {packages.length === 0 && (serviceDays != null || serviceRevisions != null) && (
+              <div className="flex flex-wrap gap-3 text-xs text-(--app-ink-2)">
+                {serviceDays != null && (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Delivery in{" "}
+                    <strong className="text-white tabular-nums">{serviceDays}</strong>{" "}
+                    day{serviceDays === 1 ? "" : "s"}
+                  </span>
+                )}
+                {serviceRevisions != null && (
+                  <span>
+                    <strong className="text-white tabular-nums">{serviceRevisions}</strong>{" "}
+                    revision{serviceRevisions === 1 ? "" : "s"} included
+                  </span>
+                )}
+              </div>
+            )}
             {listing.licenseTiers.length > 1 && (
               <div className="space-y-1.5 pt-1">
                 <p className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3)">
@@ -508,9 +548,13 @@ export function ListingDetailView({
             {/* A buyer needs to know which of the two things they are buying:
                 the only copy, or a licence alongside everyone else. */}
             <p className="text-[11px] text-(--app-ink-3)">
-              {listing.saleMode === "UNLIMITED"
-                ? "Licensed to every buyer — stays on sale after you buy it."
-                : "Sold once. It leaves the marketplace when it sells."}
+              {service
+                ? listing.saleMode === "UNLIMITED"
+                  ? "Each order is a separate job for this freelancer."
+                  : "This freelancer takes one order for this service."
+                : listing.saleMode === "UNLIMITED"
+                  ? "Licensed to every buyer — stays on sale after you buy it."
+                  : "Sold once. It leaves the marketplace when it sells."}
             </p>
             {listing.auctionMode && (
               <div className="flex flex-wrap gap-3 text-xs text-(--app-ink-3)">
@@ -543,6 +587,7 @@ export function ListingDetailView({
             )}
             {guest && (
               <div className="flex gap-2 pt-2">
+                {!service && (
                 <Link
                   href={signIn}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-bold"
@@ -550,11 +595,12 @@ export function ListingDetailView({
                   <ShoppingCart className="w-4 h-4" />
                   Sign in to add to cart
                 </Link>
+                )}
                 <Link
                   href={signIn}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:opacity-90 text-white text-sm font-bold"
                 >
-                  {listing.assetType === "SERVICE" ? "Sign in to order" : "Sign in to buy"}
+                  {service ? "Sign in to order" : "Sign in to buy"}
                 </Link>
               </div>
             )}
@@ -564,10 +610,42 @@ export function ListingDetailView({
                 <Link href={registerHref(here)} className="font-semibold text-(--app-accent-ink) hover:underline">
                   Create a free account
                 </Link>{" "}
-                to buy, message the seller or make an offer.
+                {service
+                  ? "to hire this freelancer or message them."
+                  : "to buy, message the seller or make an offer."}
               </p>
             )}
-            {!isOwner && !guest && (
+            {!isOwner && !guest && service && listing.status === "ACTIVE" && (
+              <div className="space-y-1.5 pt-2">
+                {canOrder ? (
+                  <button
+                    onClick={() => {
+                      if (orderTier && !orderTier.ok) return toast.error(orderTier.error);
+                      setOrderOpen(true);
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:opacity-90 text-white text-sm font-bold"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Continue{orderTier?.ok ? ` ($${orderTier.tier.price.toLocaleString()})` : ""}
+                  </button>
+                ) : (
+                  <Link
+                    href="/apply?type=DEALS"
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+                  >
+                    <Lock className="w-4 h-4" />
+                    Apply for escrow orders
+                  </Link>
+                )}
+                <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  {canOrder
+                    ? "Paid into escrow — released to the seller only after you accept the work."
+                    : "Ordering a service uses escrow deals, which aren't unlocked for your account yet."}
+                </p>
+              </div>
+            )}
+            {!isOwner && !guest && !service && (
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={addToCart}
@@ -588,6 +666,8 @@ export function ListingDetailView({
                 >
                   {busy ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : service ? (
+                    "Order now"
                   ) : (
                     "Buy now"
                   )}
@@ -688,7 +768,9 @@ export function ListingDetailView({
       {guest && listing.status === "ACTIVE" && (
         <section className="glass rounded-xl p-4 sm:p-5 flex flex-wrap items-center gap-3">
           <p className="text-sm text-(--app-ink-2) flex-1 min-w-48">
-            {listing.auctionMode
+            {service
+              ? "Sign in to order this service or message the seller."
+              : listing.auctionMode
               ? "Sign in to place a bid or make the seller an offer."
               : "Sign in to make the seller an offer."}
           </p>
@@ -697,12 +779,23 @@ export function ListingDetailView({
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             {listing.auctionMode ? <Gavel className="w-4 h-4" /> : <Coins className="w-4 h-4" />}
-            {listing.auctionMode ? "Sign in to bid" : "Sign in to make an offer"}
+            {service ? "Sign in to order" : listing.auctionMode ? "Sign in to bid" : "Sign in to make an offer"}
           </Link>
         </section>
       )}
 
       {/* Auction bidding (only when in auction mode) */}
+      {service && orderTier?.ok && !guest && !isOwner && (
+        <ServiceOrderSheet
+          key={orderTier.tier.id}
+          open={orderOpen}
+          onOpenChange={setOrderOpen}
+          listingId={listing.id}
+          tier={orderTier.tier}
+          requirements={requirements}
+        />
+      )}
+
       {listing.auctionMode && !guest && (
         <BidPanel
           listingId={listing.id}
@@ -716,8 +809,10 @@ export function ListingDetailView({
         />
       )}
 
-      {/* Make-an-offer / offers inbox — works for any listing */}
-      {listing.status === "ACTIVE" && !guest && (
+      {/* Make-an-offer / offers inbox. Not on services: an accepted offer
+          settles instantly, and services are paid through escrow only —
+          a custom price is agreed as a deal in the conversation. */}
+      {listing.status === "ACTIVE" && !guest && !service && (
         <OfferPanel
           listingId={listing.id}
           askingPrice={listing.price}
@@ -1157,4 +1252,10 @@ function Pill({
       {children}
     </span>
   );
+}
+
+function numOrNull(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
 }

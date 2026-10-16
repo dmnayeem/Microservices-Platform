@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { saveSetting } from "@/lib/system-settings";
 import { writeAudit } from "@/lib/audit";
+import { sendApplicationDecision } from "@/lib/application-decision";
 import { contestAdminGuard as communityGuard } from "@/lib/contests-admin";
 import { AMBASSADOR_KEY, ambassadorBonus, monthOf, normalizeAmbassadorConfig } from "@/lib/ambassadors";
 import { getAmbassadorConfig, payAmbassadorMonth, qualifiedInMonth } from "@/lib/ambassadors-server";
@@ -76,6 +77,15 @@ export async function PATCH(request: NextRequest) {
       data: { link: "/ambassador" },
     },
   });
+  if (status !== "REMOVED") {
+    sendApplicationDecision({
+      userId,
+      program: "Ambassador",
+      approved: status === "APPROVED",
+      adminNote: body.adminNote ? String(body.adminNote).slice(0, 500) : null,
+      link: "/ambassador",
+    });
+  }
   await writeAudit({ actorId: g.userId, action: `AMBASSADOR_${status}`, entity: "AmbassadorApplication", entityId: userId, targetUserId: userId, summary: `Ambassador application → ${status}` });
   return NextResponse.json({ ok: true });
 }

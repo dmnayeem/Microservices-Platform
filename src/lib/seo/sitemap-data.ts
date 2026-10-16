@@ -6,6 +6,7 @@ import { PUBLIC_COURSES_TAG, PUBLIC_MARKETPLACE_TAG } from "@/lib/public-catalog
 import { prisma } from "@/lib/prisma";
 import { publicAudienceEpochMs, publicSharingEnabled } from "@/lib/public-post";
 import { getArticles } from "@/lib/blog";
+import { listingHref } from "@/lib/marketplace-categories";
 import { SITE_URL } from "@/lib/seo/site-url";
 
 /**
@@ -39,17 +40,17 @@ type SlugRow = Row & { slug: string | null };
 
 /** Public marketplace listings — products, stock media and services alike. */
 const listingRows = unstable_cache(
-  async (): Promise<Row[]> =>
+  async (): Promise<Array<Row & { assetType: string }>> =>
     prisma.marketplaceListing
       .findMany({
         // Same rule as the public catalogue (lib/public-catalog-data.ts).
         where: { status: "ACTIVE", nsfw: false, seller: { status: "ACTIVE" } },
-        select: { id: true, updatedAt: true },
+        select: { id: true, updatedAt: true, assetType: true },
         orderBy: { updatedAt: "desc" },
         take: 20000,
       })
       .catch(() => []),
-  ["sitemap:listings:v1"],
+  ["sitemap:listings:v2"],
   { revalidate: HOUR, tags: [PUBLIC_MARKETPLACE_TAG] }
 );
 
@@ -158,6 +159,7 @@ export async function sitemapSection(section: SitemapSection): Promise<SitemapEn
         ["/features/marketplace", 0.9, "weekly"],
         ["/features/courses", 0.9, "weekly"],
         ["/features/affiliate", 0.8, "weekly"],
+        ["/programs", 0.8, "weekly"],
         ["/advertise", 0.8, "weekly"],
         ["/pricing", 0.8, "weekly"],
         // Not in the public menu (by request) — which makes listing it here
@@ -200,13 +202,13 @@ export async function sitemapSection(section: SitemapSection): Promise<SitemapEn
       return [
         ...staticEntries([
           ["/marketplace", 0.8, "daily"],
-          ["/marketplace/section/services", 0.8, "daily"],
+          ["/services", 0.8, "daily"],
           ["/marketplace/section/products", 0.7, "daily"],
           ["/marketplace/section/assets", 0.7, "daily"],
           ["/marketplace/section/stock", 0.6, "daily"],
         ]),
         ...listings.map((l) => ({
-          url: u(`/marketplace/${l.id}`),
+          url: u(listingHref(l)),
           lastModified: d(l.updatedAt),
           changeFrequency: "weekly" as const,
           priority: 0.6,

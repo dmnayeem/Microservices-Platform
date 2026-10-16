@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
+import { sendApplicationDecision } from "@/lib/application-decision";
 import { z } from "zod";
 import {
   approveTutorApplication,
@@ -113,6 +114,16 @@ export async function PATCH(
       summary: `${action.action === "approve" ? "Approved" : "Rejected"} tutor application${action.adminNote ? ` — ${action.adminNote}` : ""}`,
       meta: { adminNote: action.adminNote ?? null },
     });
+
+    if (updated?.userId) {
+      sendApplicationDecision({
+        userId: updated.userId,
+        program: "Tutor",
+        approved: action.action === "approve",
+        adminNote: action.adminNote ?? null,
+        link: action.action === "approve" ? "/tutor/dashboard" : "/apply?type=TUTOR",
+      });
+    }
 
     return NextResponse.json({ application: updated });
   } catch (error) {

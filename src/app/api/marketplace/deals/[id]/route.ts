@@ -12,12 +12,16 @@ import {
   refundDeal,
   cancelDeal,
   escalateToAdmin,
+  requestRevision,
   type DealResult,
 } from "@/lib/marketplace-deal";
 
 const schema = z.object({
-  action: z.enum(["accept", "fund", "deliver", "confirm", "cancel", "escalate", "refund"]),
+  action: z.enum(["accept", "fund", "deliver", "confirm", "cancel", "escalate", "refund", "revision"]),
   reason: z.string().max(500).optional(),
+  // deliver: the work itself (message + uploaded files / links).
+  message: z.string().max(4000).optional(),
+  attachments: z.array(z.string().url().max(2048)).max(10).optional(),
 });
 
 // POST /api/marketplace/deals/:id — buyer/seller deal actions.
@@ -55,6 +59,12 @@ export async function POST(
       if (!(await userCanFeature(userId, "marketplace"))) {
         return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
       }
+      if (!(await userCanFeature(userId, "deals"))) {
+        return NextResponse.json(
+          { error: "Escrow deals aren't unlocked for your account yet.", applyHref: "/apply?type=DEALS" },
+          { status: 403 }
+        );
+      }
       result = await fundDeal({
         dealId: id,
         buyerId: userId,
@@ -69,7 +79,19 @@ export async function POST(
     }
     case "deliver": {
       if (!isSeller) return NextResponse.json({ error: "Only the seller can mark delivery" }, { status: 403 });
-      result = await markDelivered({ dealId: id, sellerId: userId });
+      result = await markDelivered({
+        dealId: id,
+        sellerId: userId,
+        delivery:
+          v.data.message || v.data.attachments?.length
+            ? { message: v.data.message ?? "", attachments: v.data.attachments ?? [] }
+            : undefined,
+      });
+      break;
+    }
+    case "revision": {
+      if (!isBuyer) return NextResponse.json({ error: "Only the buyer can request a revision" }, { status: 403 });
+      result = await requestRevision({ dealId: id, buyerId: userId, message: v.data.message ?? v.data.reason ?? "" });
       break;
     }
     case "confirm": {

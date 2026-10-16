@@ -10,6 +10,7 @@ import {
 } from "@/generated/prisma";
 import { z } from "zod";
 import { toNum, toNumOrNull } from "@/lib/money";
+import { isServiceType } from "@/lib/marketplace-categories";
 
 // GET /api/marketplace/listings/:id/offers
 // - Seller (listing owner): sees all PENDING + COUNTERED offers
@@ -134,10 +135,19 @@ export async function POST(
         sellerId: true,
         status: true,
         title: true,
+        assetType: true,
       },
     });
     if (!listing)
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    // An accepted offer settles instantly; services must go through escrow.
+    // Negotiate a custom price with "Message seller" → propose a deal instead.
+    if (isServiceType(listing.assetType)) {
+      return NextResponse.json(
+        { error: "Offers aren't available on services — message the seller to agree a custom price in escrow." },
+        { status: 400 }
+      );
+    }
     if (listing.sellerId === session.user.id) {
       return NextResponse.json(
         { error: "You can't make an offer on your own listing" },

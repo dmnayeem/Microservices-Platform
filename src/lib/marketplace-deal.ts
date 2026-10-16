@@ -17,6 +17,13 @@ import {
 import { notifyUser } from "@/lib/notify";
 import { inngest, EVENTS } from "@/lib/inngest/client";
 import { toNum } from "@/lib/money";
+import {
+  DELIVERY_SENDER_TYPE,
+  ORDER_SENDER_TYPE,
+  REVISION_SENDER_TYPE,
+  parseOrderBrief,
+  type OrderBrief,
+} from "@/lib/service-packages";
 
 /**
  * Escrow "deal" engine for the marketplace. A deal holds the buyer's funds
@@ -53,7 +60,7 @@ async function systemMessage(tx: Tx, threadId: string, body: string) {
 }
 
 /** Non-terminal deal states — only one may exist per thread at a time. */
-const ACTIVE_STATUSES: MarketplaceDealStatus[] = [
+export const ACTIVE_STATUSES: MarketplaceDealStatus[] = [
   MarketplaceDealStatus.PROPOSED,
   MarketplaceDealStatus.FUNDED,
   MarketplaceDealStatus.DELIVERED,
@@ -390,12 +397,18 @@ export async function fundDeal(opts: {
   return { ok: true, dealId };
 }
 
-/** Seller marks the deal delivered → starts the buyer-confirm / auto-release window. */
+/**
+ * Seller marks the deal delivered → starts the buyer-confirm / auto-release
+ * window. `delivery` (message + files/links) is written to the thread in the
+ * same transaction as the status flip, so a delivery can never exist without
+ * its work attached, or the work without the delivery.
+ */
 export async function markDelivered(opts: {
   dealId: string;
   sellerId: string;
+  delivery?: { message: string; attachments: string[] };
 }): Promise<DealResult> {
-  const { dealId, sellerId } = opts;
+  const { dealId, sellerId, delivery } = opts;
   const deal = await prisma.marketplaceDeal.findUnique({
     where: { id: dealId },
     include: { listing: { select: { title: true } } },
@@ -407,18 +420,39 @@ export async function markDelivered(opts: {
   }
 
   const autoReleaseAt = new Date(Date.now() + AUTO_RELEASE_DAYS * 86_400_000);
+  let won = true;
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.marketplaceDeal.updateMany({
       where: { id: dealId, status: MarketplaceDealStatus.FUNDED },
       data: { status: MarketplaceDealStatus.DELIVERED, deliveredAt: new Date(), autoReleaseAt },
     });
     if (claimed.count === 0) throw new Error("RACE");
+    if (delivery && (delivery.message.trim() || delivery.attachments.length > 0)) {
+      await tx.marketplaceThreadMessage.create({
+        data: {
+          threadId: deal.threadId,
+          senderId: sellerId,
+          senderType: DELIVERY_SENDER_TYPE,
+          body: delivery.message.trim() || "Delivery attached.",
+          attachments: delivery.attachments,
+        },
+      });
+      await tx.marketplaceThread.update({
+        where: { id: deal.threadId },
+        data: { unreadBuyer: { increment: 1 } },
+      });
+    }
     await systemMessage(
       tx,
       deal.threadId,
       `Seller marked the item delivered. Buyer, please confirm — funds auto-release in ${AUTO_RELEASE_DAYS} days.`
     );
+  }).catch((err) => {
+    // A concurrent delivery already won the CAS — it notifies; this is a no-op.
+    if (!(err instanceof Error && err.message === "RACE")) throw err;
+    won = false;
   });
+  if (!won) return { ok: true, dealId };
 
   notifyUser({
     userId: deal.buyerId,
@@ -474,7 +508,14 @@ export async function releaseDeal(opts: {
   try {
     await prisma.$transaction(async (tx) => {
       const claimed = await tx.marketplaceDeal.updateMany({
-        where: { id: dealId, status: { in: allowedFrom } },
+        where: {
+          id: dealId,
+          status: { in: allowedFrom },
+          // The timer re-checked in the CAS: a revision request + redelivery
+          // between the read above and here moves autoReleaseAt forward, and
+          // a stale timer must not release the new delivery early.
+          ...(actor === "SYSTEM" ? { autoReleaseAt: { lte: new Date() } } : {}),
+        },
         data: {
           status: MarketplaceDealStatus.RELEASED,
           releasedAt: new Date(),
@@ -870,6 +911,125 @@ export async function escalateToAdmin(opts: {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg !== "RACE") throw err;
   });
+
+  return { ok: true, dealId };
+}
+
+/** The order brief (tier snapshot + requirement answers) of a service order. */
+export async function getOrderBrief(deal: {
+  id: string;
+  threadId: string;
+}): Promise<OrderBrief | null> {
+  const msg = await prisma.marketplaceThreadMessage.findFirst({
+    where: { threadId: deal.threadId, senderType: ORDER_SENDER_TYPE, body: { contains: deal.id } },
+    select: { body: true },
+  });
+  const brief = parseOrderBrief(msg?.body);
+  return brief && brief.dealId === deal.id ? brief : null;
+}
+
+/**
+ * Revisions the buyer has requested on a deal. Only one deal is active per
+ * thread at a time, so every REVISION message since this deal was created is
+ * this deal's.
+ */
+export async function countRevisions(
+  db: Pick<Tx, "marketplaceThreadMessage">,
+  deal: { threadId: string; createdAt: Date }
+): Promise<number> {
+  return db.marketplaceThreadMessage.count({
+    where: {
+      threadId: deal.threadId,
+      senderType: REVISION_SENDER_TYPE,
+      createdAt: { gte: deal.createdAt },
+    },
+  });
+}
+
+/**
+ * Buyer sends a delivered order back for changes. DELIVERED → FUNDED (the
+ * money stays in escrow, the auto-release timer stops) — no new deal status,
+ * so no schema change. Allowed while the order's tier has revisions left;
+ * after that the buyer can only accept or escalate.
+ *
+ * Race-safe: the status CAS admits one request per delivery, and the
+ * used-revisions count is re-read inside the same transaction after it.
+ */
+export async function requestRevision(opts: {
+  dealId: string;
+  buyerId: string;
+  message: string;
+}): Promise<DealResult> {
+  const { dealId, buyerId } = opts;
+  const message = opts.message.trim();
+  if (message.length < 5) {
+    return { ok: false, error: "Tell the seller what to change (at least a few words).", status: 400 };
+  }
+  const deal = await prisma.marketplaceDeal.findUnique({
+    where: { id: dealId },
+    include: { listing: { select: { title: true } } },
+  });
+  if (!deal) return { ok: false, error: "Deal not found.", status: 404 };
+  if (deal.buyerId !== buyerId) {
+    return { ok: false, error: "Only the buyer can request a revision.", status: 403 };
+  }
+  if (deal.status !== MarketplaceDealStatus.DELIVERED) {
+    return { ok: false, error: "A revision can only be requested on a delivered order.", status: 400 };
+  }
+  const brief = await getOrderBrief(deal);
+  const allowed = brief?.tier.revisions ?? 0;
+  if (allowed <= 0) {
+    return { ok: false, error: "This order has no revisions included — accept it or escalate to an admin.", status: 400 };
+  }
+
+  let used = 0;
+  try {
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.marketplaceDeal.updateMany({
+        where: { id: dealId, status: MarketplaceDealStatus.DELIVERED },
+        data: { status: MarketplaceDealStatus.FUNDED, deliveredAt: null, autoReleaseAt: null },
+      });
+      if (claimed.count === 0) throw new Error("RACE");
+      used = await countRevisions(tx, deal);
+      if (used >= allowed) throw new Error("NO_REVISIONS");
+      used += 1;
+      await tx.marketplaceThreadMessage.create({
+        data: {
+          threadId: deal.threadId,
+          senderId: buyerId,
+          senderType: REVISION_SENDER_TYPE,
+          body: message.slice(0, 2000),
+          attachments: [],
+        },
+      });
+      await tx.marketplaceThread.update({
+        where: { id: deal.threadId },
+        data: { unreadSeller: { increment: 1 } },
+      });
+      await systemMessage(
+        tx,
+        deal.threadId,
+        `Buyer requested a revision (${used} of ${allowed}). The order is back in progress — funds stay in escrow.`
+      );
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg === "RACE") {
+      return { ok: false, error: "The order changed in the meantime — refresh and try again.", status: 409 };
+    }
+    if (msg === "NO_REVISIONS") {
+      return { ok: false, error: "All included revisions are used — accept the delivery or escalate to an admin.", status: 400 };
+    }
+    throw err;
+  }
+
+  notifyUser({
+    userId: deal.sellerId,
+    type: "SYSTEM",
+    title: "Revision requested",
+    message: `The buyer asked for changes on "${deal.listing.title}" (revision ${used} of ${allowed}).`,
+    link: `/marketplace/messages/${deal.threadId}`,
+  }).catch(() => {});
 
   return { ok: true, dealId };
 }

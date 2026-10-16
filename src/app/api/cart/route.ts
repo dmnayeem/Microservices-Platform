@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { toNum } from "@/lib/money";
 import { CART_MAX_ITEMS } from "@/lib/marketplace-cart";
+import { isServiceType } from "@/lib/marketplace-categories";
 
 // `quantity` is still accepted for old clients but ignored: every listing is
 // one digital asset, checkout always sells exactly one, so a stored quantity
@@ -102,6 +103,13 @@ export async function POST(req: NextRequest) {
   if (listing.sellerId === session.user.id) {
     return NextResponse.json(
       { error: "You can't add your own listing to cart" },
+      { status: 400 }
+    );
+  }
+  // Services are never paid through the cart — they go through escrow.
+  if (isServiceType(listing.assetType)) {
+    return NextResponse.json(
+      { error: "Services are ordered through escrow — open the service and choose a package.", serviceOrder: true },
       { status: 400 }
     );
   }

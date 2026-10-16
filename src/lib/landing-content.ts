@@ -527,6 +527,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       { label: "Marketplace", href: "/features/marketplace" },
       { label: "Courses", href: "/features/courses" },
       { label: "Affiliate", href: "/features/affiliate" },
+      { label: "Programs", href: "/programs" },
     ],
     cta_signin_label: "Sign In",
     cta_signin_href: "/login",
@@ -909,6 +910,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           { label: "Marketplace", href: "/features/marketplace" },
           { label: "Courses", href: "/features/courses" },
           { label: "Affiliate", href: "/features/affiliate" },
+          { label: "Programs & applications", href: "/programs" },
           { label: "Referral", href: "/referral" },
           { label: "Advertise", href: "/advertise" },
           { label: "Pricing", href: "#pricing" },
@@ -988,6 +990,8 @@ export function settingKeyFor(section: SectionKey): string {
 export const REQUIRED_NAV_LINKS: readonly NavLink[] = [
   { label: "MicroTask", href: "/microtask" },
   { label: "Advertise", href: "/advertise" },
+  // The one door to every apply flow (seller, services, buyer, tutor, …).
+  { label: "Programs", href: "/programs" },
 ] as const;
 
 /**

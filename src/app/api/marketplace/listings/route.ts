@@ -1,4 +1,4 @@
-import { assertPageVisible } from "@/lib/page-visibility-server";
+import { listingSellerGate } from "@/lib/marketplace-seller-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +11,7 @@ import {
   resolveSaleMode,
   canBeUnlimited,
   getSection,
+  SERVICE_ASSET_TYPE,
 } from "@/lib/marketplace-categories";
 import { extractMediaMetadata, type MediaMeta } from "@/lib/media-metadata";
 import {
@@ -20,7 +21,6 @@ import {
 import { hammingDistance, PHASH_HAMMING_THRESHOLD } from "@/lib/phash";
 import { safeFetchBytes } from "@/lib/safe-fetch";
 import { inngest, EVENTS } from "@/lib/inngest/client";
-import { userCanFeature } from "@/lib/packages";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { getSetting } from "@/lib/system-settings";
 import { formatAffiliateReward } from "@/lib/affiliate";
@@ -28,6 +28,7 @@ import { z } from "zod";
 import { screenLinks, stringsIn } from "@/lib/link-safety";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 import { inspectStoredFiles, reportStoredFiles, type StoredFilesSafety } from "@/lib/upload-safety";
+import { normalizeServiceDetails, readPackages, cheapestPackage } from "@/lib/service-packages";
 
 // Cap how many bytes we pull back to analyse a deliverable (bounds bandwidth
 // for large stock video; images/audio are usually far smaller). For a bigger
@@ -79,6 +80,18 @@ async function analyseDeliverable(
     }
   }
   return meta;
+}
+
+function serviceTerms(details: unknown): { deliveryDays: number | null; revisions: number | null } {
+  const d = (details && typeof details === "object" ? details : {}) as Record<string, unknown>;
+  const n = (v: unknown) => {
+    const x = typeof v === "number" ? v : Number(v);
+    return v != null && v !== "" && Number.isFinite(x) ? x : null;
+  };
+  // With packages, the card quotes the cheapest one ("Starting at").
+  const cheapest = cheapestPackage(readPackages(d));
+  if (cheapest) return { deliveryDays: cheapest.deliveryDays, revisions: cheapest.revisions };
+  return { deliveryDays: n(d.turnaroundDays), revisions: n(d.revisions) };
 }
 
 // GET /api/marketplace/listings - Get marketplace listings
@@ -137,6 +150,10 @@ export async function GET(request: NextRequest) {
       if (sec) where.assetType = { in: sec.assetTypes as unknown as string[] };
     }
     if (assetType) where.assetType = assetType;
+    // The marketplace is digital products only; services are browsed on
+    // /services (assetType=SERVICE or section=services). A seller's own list
+    // (sellerId) still returns everything they have.
+    if (!where.assetType && !sellerId) where.assetType = { not: SERVICE_ASSET_TYPE };
     if (subType) where.subType = subType;
     if (verifiedOnly) where.verifiedMetrics = true;
     if (auctionOnly) where.auctionMode = true;
@@ -249,6 +266,8 @@ export async function GET(request: NextRequest) {
       buyNowPrice: toNumOrNull(l.buyNowPrice),
       startingBid: toNumOrNull(l.startingBid),
       auctionEndsAt: l.auctionEndsAt,
+      // Service cards show delivery time and revisions (from `details`).
+      ...(l.assetType === SERVICE_ASSET_TYPE ? serviceTerms(l.details) : {}),
       createdAt: l.createdAt,
       seller: l.seller,
       isOwner: session?.user?.id === l.sellerId,
@@ -268,14 +287,17 @@ export async function GET(request: NextRequest) {
     // either shows nothing or quietly throws them out of the section they
     // picked.
     const facetSection = section ? getSection(section) : null;
+    const servicesOnly = assetType === SERVICE_ASSET_TYPE || facetSection?.slug === "services";
     const assetTypeGroupsRaw = await prisma.marketplaceListing.groupBy({
       by: ["assetType"],
       where: {
         status: MarketplaceListingStatus.ACTIVE,
         nsfw: false,
-        ...(facetSection
-          ? { assetType: { in: facetSection.assetTypes as unknown as string[] } }
-          : {}),
+        assetType: facetSection
+          ? { in: facetSection.assetTypes as unknown as string[] }
+          : servicesOnly
+            ? SERVICE_ASSET_TYPE
+            : { not: SERVICE_ASSET_TYPE },
       },
       _count: { _all: true },
     });
@@ -287,6 +309,20 @@ export async function GET(request: NextRequest) {
       .map((g) => ({ assetType: g.assetType, count: g._count._all }))
       .sort((a, b) => b.count - a.count);
 
+    // Service categories (subType) for the /services filter chips.
+    let subTypeFacets: Array<{ subType: string; count: number }> = [];
+    if (servicesOnly) {
+      const raw = (await prisma.marketplaceListing.groupBy({
+        by: ["subType"],
+        where: { status: MarketplaceListingStatus.ACTIVE, nsfw: false, assetType: SERVICE_ASSET_TYPE },
+        _count: { _all: true },
+      })) as unknown as Array<{ subType: string | null; _count: { _all: number } }>;
+      subTypeFacets = raw
+        .filter((g) => g.subType)
+        .map((g) => ({ subType: g.subType as string, count: g._count._all }))
+        .sort((a, b) => b.count - a.count);
+    }
+
     return NextResponse.json({
       listings: formatted,
       pagination: {
@@ -295,7 +331,7 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / limit),
       },
-      facets: { assetTypes: assetTypeFacets },
+      facets: { assetTypes: assetTypeFacets, subTypes: subTypeFacets },
     });
   } catch (error) {
     console.error("Error fetching listings:", error);
@@ -383,16 +419,10 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    // Super-admin page visibility: refuse when /marketplace is hidden for this user.
-    const pageHidden = await assertPageVisible(session.user.id, "/marketplace");
-    if (pageHidden) return pageHidden;
     // Profile gate — see lib/profile-gate-server.ts. Checked on every route
     // that lets a user earn, or a locked user earns through the unchecked one.
     const profileGated = await profileGateResponse(session.user.id, "selling");
     if (profileGated) return profileGated;
-    if (!(await userCanFeature(session.user.id, "marketplace"))) {
-      return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
-    }
 
     const body = await request.json();
     const v = userCreateSchema.safeParse(body);
@@ -403,6 +433,11 @@ export async function POST(request: NextRequest) {
       );
     }
     const data = v.data;
+
+    // Page visibility (/marketplace or /services), the Marketplace section,
+    // and the seller programme for this type: sellServices / sellMarketplace.
+    const sellerGated = await listingSellerGate(session.user.id, data.assetType);
+    if (sellerGated) return sellerGated;
 
     if (data.subType) {
       const cat = getCategory(data.assetType);
@@ -420,6 +455,18 @@ export async function POST(request: NextRequest) {
       data.details ?? {}
     );
     if (err) return NextResponse.json({ error: err }, { status: 400 });
+
+    // Services: packages + order questions validated, headline price = the
+    // cheapest package. Never an auction — a won bid settles instantly, and
+    // services are paid through escrow only.
+    let servicePrice: number | null = null;
+    if (data.assetType === SERVICE_ASSET_TYPE) {
+      const n = normalizeServiceDetails(data.details ?? {});
+      if (!n.ok) return NextResponse.json({ error: n.error }, { status: 400 });
+      data.details = n.details;
+      servicePrice = n.startingPrice;
+      data.auctionMode = false;
+    }
 
     if (data.auctionMode && !data.auctionEndsAt) {
       return NextResponse.json(
@@ -541,7 +588,7 @@ export async function POST(request: NextRequest) {
         // The headline price IS the cheapest tier when tiers are used. Letting
         // the two drift means the card advertises one number while checkout,
         // or the cart which has no tier to pick, charges another.
-        price: tiers.length > 0 ? tiers[0].price : data.price,
+        price: tiers.length > 0 ? tiers[0].price : servicePrice ?? data.price,
         currency: data.currency,
         affiliateCommissionType:
           data.affiliateCommissionValue && data.affiliateCommissionValue > 0

@@ -8,9 +8,12 @@ import { hasPermission } from "@/lib/rbac";
 import type { UserRole } from "@/generated/prisma";
 import { z } from "zod";
 import { inspectStoredFiles, reportStoredFiles } from "@/lib/upload-safety";
-import { screenLinks } from "@/lib/link-safety";
+import { screenLinks, stringsIn } from "@/lib/link-safety";
+import { getCategory, isServiceType, validateDetails } from "@/lib/marketplace-categories";
+import { normalizeServiceDetails } from "@/lib/service-packages";
 import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 import { readTiers } from "@/lib/marketplace-selling";
+import { listingSellerGate } from "@/lib/marketplace-seller-gate";
 
 /**
  * Statuses in which the seller may still change what is sold (`files`) or
@@ -189,6 +192,9 @@ const updateSchema = z.object({
   files: z.array(z.string().url()).max(20).optional(),
   price: z.number().positive().max(1_000_000).optional(),
   category: z.string().min(1).max(60).optional(),
+  // Services only: the category fields + packages + order questions.
+  details: z.record(z.string(), z.unknown()).optional(),
+  subType: z.string().max(40).nullable().optional(),
 });
 
 // PUT /api/marketplace/listings/:id - Update listing
@@ -231,10 +237,39 @@ export async function PUT(
       );
     }
 
-    const { title, description, images, files, price, category } = parsed.data;
+    const sellerGated = await listingSellerGate(session.user.id, listing.assetType);
+    if (sellerGated) return sellerGated;
+
+    const { title, description, images, files, category } = parsed.data;
+    let { price } = parsed.data;
+
+    // Service edits may replace `details` (packages, order questions). The
+    // headline price then follows the cheapest package. An order already in
+    // escrow keeps the terms it was placed on (its own brief), so this never
+    // changes what a buyer has paid for.
+    let details: Record<string, unknown> | undefined;
+    let subType: string | null | undefined;
+    if (parsed.data.details !== undefined || parsed.data.subType !== undefined) {
+      if (!isServiceType(listing.assetType)) {
+        return NextResponse.json({ error: "Details can't be edited on this listing." }, { status: 400 });
+      }
+      subType = parsed.data.subType === undefined ? listing.subType : parsed.data.subType;
+      if (subType && !getCategory(listing.assetType)?.subTypes?.some((st) => st.slug === subType)) {
+        return NextResponse.json({ error: "Invalid service category." }, { status: 400 });
+      }
+      const raw =
+        parsed.data.details ??
+        ((listing.details && typeof listing.details === "object" ? listing.details : {}) as Record<string, unknown>);
+      const invalid = validateDetails(listing.assetType, subType ?? null, raw);
+      if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
+      const n = normalizeServiceDetails(raw);
+      if (!n.ok) return NextResponse.json({ error: n.error }, { status: 400 });
+      details = n.details;
+      if (n.startingPrice != null) price = n.startingPrice;
+    }
 
     if (
-      (files !== undefined || price !== undefined) &&
+      (files !== undefined || price !== undefined || details !== undefined) &&
       !DELIVERABLE_EDITABLE.includes(listing.status)
     ) {
       return NextResponse.json(
@@ -259,7 +294,7 @@ export async function PUT(
 
     // Phishing / malware links — the same screen as creating a listing.
     const links = await screenLinks(
-      { texts: [title, description] },
+      { texts: [title, description, ...stringsIn(details)] },
       { userId: session.user.id, entityType: "listing", entityId: id }
     );
     if (!links.ok) {
@@ -277,6 +312,7 @@ export async function PUT(
         images !== undefined ||
         files !== undefined ||
         price !== undefined ||
+        details !== undefined ||
         category !== undefined);
 
     // New deliverables are re-read like on create (see listings/route.ts):
@@ -321,6 +357,8 @@ export async function PUT(
         // Re-sync any drift on every write: headline price = cheapest tier.
         ...(tiers.length > 0 && { price: tiers[0].price }),
         ...(category !== undefined && { category }),
+        ...(details !== undefined && { details: JSON.parse(JSON.stringify(details)) }),
+        ...(subType !== undefined && { subType }),
         ...(needsReview && { status: MarketplaceListingStatus.PENDING_REVIEW }),
       },
     });

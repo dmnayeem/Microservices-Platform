@@ -54,7 +54,7 @@ export default async function BuyerHubPage() {
 
   const { enabled } = await getEffectiveFeatures(userId);
   if (!enabled.has("createTasks")) {
-    return <FeatureLock title="Buyer Hub" applyHref="/profile/become-creator" />;
+    return <FeatureLock title="Buyer Hub" applyHref="/apply?type=TASK_BUYER" />;
   }
 
   const [buyer, pointsPerUsd, me, tasks, ledger, scope] = await Promise.all([

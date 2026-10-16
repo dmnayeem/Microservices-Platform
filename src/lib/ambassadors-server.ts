@@ -79,7 +79,12 @@ export async function applyEligibility(userId: string, cfg: AmbassadorConfig): P
   return null;
 }
 
-export async function applyAsAmbassador(userId: string, message: string | null): Promise<{ ok: true } | Fail> {
+/** `answersBlock`: the Applications-center answers, appended after the message cap. */
+export async function applyAsAmbassador(
+  userId: string,
+  message: string | null,
+  answersBlock = ""
+): Promise<{ ok: true } | Fail> {
   const active = await requireActiveUser(userId);
   if (!active.ok) return fail(active.message, active.httpStatus);
   const cfg = await getAmbassadorConfig();
@@ -89,11 +94,12 @@ export async function applyAsAmbassador(userId: string, message: string | null):
   if (existing && existing.status !== "REJECTED") {
     return fail(existing.status === "APPROVED" ? "You're already an ambassador." : "Your application is being reviewed.");
   }
+  const text = `${message?.trim().slice(0, 1000) ?? ""}${answersBlock}`.trim() || null;
   try {
     await prisma.ambassadorApplication.upsert({
       where: { userId },
-      create: { userId, message: message?.trim().slice(0, 1000) || null },
-      update: { status: "PENDING", message: message?.trim().slice(0, 1000) || null, adminNote: null, decidedAt: null },
+      create: { userId, message: text },
+      update: { status: "PENDING", message: text, adminNote: null, decidedAt: null },
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return fail("Your application is being reviewed.");

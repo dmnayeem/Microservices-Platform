@@ -1,75 +1,12 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { toNum } from "@/lib/money";
-import {
-  SellerDashboardView,
-  type SellerListing,
-} from "@/components/user/marketplace/seller-dashboard-view";
+import { SellerDashboardView } from "@/components/user/marketplace/seller-dashboard-view";
+import { loadSellerDashboard } from "@/components/user/marketplace/seller-dashboard-data";
 
 export default async function MyListingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const listings = await prisma.marketplaceListing.findMany({
-    where: { sellerId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Fetch all purchases for these listings in one query, aggregate in memory
-  const purchases = listings.length
-    ? await prisma.marketplacePurchase.findMany({
-        where: { listingId: { in: listings.map((l) => l.id) } },
-        select: { listingId: true, sellerAmount: true },
-      })
-    : [];
-
-  // Sales money still inside the payout hold. Queried unconditionally: with
-  // the hold off no payout rows exist, so this is an empty aggregate and the
-  // tile stays hidden.
-  const heldAgg = await prisma.marketplacePayout.aggregate({
-    where: { sellerId: session.user.id, status: "HELD" },
-    _sum: { amount: true },
-    _count: { _all: true },
-  });
-  const nextRelease = await prisma.marketplacePayout.findFirst({
-    where: { sellerId: session.user.id, status: "HELD" },
-    orderBy: { releaseAt: "asc" },
-    select: { releaseAt: true },
-  });
-  const pendingPayout = {
-    amount: Number(heldAgg._sum.amount ?? 0),
-    count: heldAgg._count._all,
-    nextReleaseAt: nextRelease?.releaseAt.toISOString() ?? null,
-  };
-
-  const salesMap = new Map<string, { count: number; earned: number }>();
-  for (const p of purchases) {
-    const cur = salesMap.get(p.listingId) ?? { count: 0, earned: 0 };
-    cur.count += 1;
-    cur.earned += Number(p.sellerAmount);
-    salesMap.set(p.listingId, cur);
-  }
-
-  const sellerListings: SellerListing[] = listings.map((l) => {
-    const sales = salesMap.get(l.id);
-    return {
-      id: l.id,
-      title: l.title,
-      category: l.category,
-      price: toNum(l.price),
-      images: l.images,
-      views: l.views,
-      status: l.status,
-      salesCount: sales?.count ?? 0,
-      totalEarned: sales?.earned ?? 0,
-      createdAt: l.createdAt.toISOString(),
-      rejectionReason: l.rejectionReason,
-      featuredUntil: l.featuredUntil?.toISOString() ?? null,
-    };
-  });
-
-  return (
-    <SellerDashboardView listings={sellerListings} pendingPayout={pendingPayout} />
-  );
+  const { listings, pendingPayout } = await loadSellerDashboard(session.user.id, "products");
+  return <SellerDashboardView listings={listings} pendingPayout={pendingPayout} />;
 }

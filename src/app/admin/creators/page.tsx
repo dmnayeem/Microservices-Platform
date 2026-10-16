@@ -7,6 +7,8 @@ import type { CreatorApplicationType, CreatorApplicationStatus } from "@/generat
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { CreatorDecisionButtons } from "./_components/CreatorDecisionButtons";
+import { answersFromPayload } from "@/lib/application-requirements";
+import { ApplicationAnswers } from "@/components/shared/application-questions";
 
 const STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
 const STATUS_TONE: Record<string, string> = {
@@ -59,7 +61,10 @@ export default async function AdminCreatorsPage({ searchParams }: PageProps) {
   const countByStatus: Record<string, number> = {};
   for (const c of counts) countByStatus[c.status] = c._count;
 
-  const canManage = await can(session.user.id, "creators.review");
+  const [canManage, canGrantBadge] = await Promise.all([
+    can(session.user.id, "creators.review"),
+    can(session.user.id, "users.grant_badge"),
+  ]);
 
   return (
     <div className="space-y-4 max-w-4xl">
@@ -145,6 +150,7 @@ export default async function AdminCreatorsPage({ searchParams }: PageProps) {
                         <span className="text-slate-500">Detail:</span> {payload.detail}
                       </p>
                     )}
+                    <ApplicationAnswers answers={answersFromPayload(a.payload)} />
                     {a.links.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-2">
                         {a.links.map((l, i) => (
@@ -167,7 +173,11 @@ export default async function AdminCreatorsPage({ searchParams }: PageProps) {
                   </div>
 
                   {canManage && a.status === "PENDING" && (
-                    <CreatorDecisionButtons id={a.id} />
+                    <CreatorDecisionButtons
+                      id={a.id}
+                      isBadge={a.type === "BLUE_BADGE"}
+                      canGrantBadge={canGrantBadge}
+                    />
                   )}
                 </div>
               </div>

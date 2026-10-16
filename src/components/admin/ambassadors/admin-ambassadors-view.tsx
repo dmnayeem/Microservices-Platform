@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Medal } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { AmbassadorConfig } from "@/lib/ambassadors";
+import { splitAnswersText } from "@/lib/application-requirements";
+import { ApplicationAnswers } from "@/components/shared/application-questions";
 
 interface AppRow {
   userId: string;
@@ -159,7 +161,15 @@ export function AdminAmbassadorsView({ canManage }: { canManage: boolean }) {
                   </span>
                 )}
               </div>
-              {a.message && <p className="mt-1 text-xs text-slate-400">{a.message}</p>}
+              {a.message && (() => {
+                const { body, answers } = splitAnswersText(a.message);
+                return (
+                  <>
+                    {body && <p className="mt-1 text-xs text-slate-400 whitespace-pre-wrap">{body}</p>}
+                    <ApplicationAnswers answers={answers} />
+                  </>
+                );
+              })()}
             </div>
           ))
         )}

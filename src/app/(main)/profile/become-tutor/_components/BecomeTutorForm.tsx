@@ -4,8 +4,10 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { Loader2, Plus, X, Send, Upload, Image as ImageIcon } from "lucide-react";
+import { validateAnswers, type ApplicationQuestion } from "@/lib/application-requirements";
+import { ApplicationQuestionFields } from "@/components/shared/application-questions";
 
-export function BecomeTutorForm() {
+export function BecomeTutorForm({ questions = [] }: { questions?: ApplicationQuestion[] }) {
   const router = useRouter();
   const [bio, setBio] = useState("");
   const [expertise, setExpertise] = useState<string[]>([]);
@@ -13,6 +15,7 @@ export function BecomeTutorForm() {
   const [sampleOutline, setSampleOutline] = useState("");
   const [portfolioUrl, setPortfolioUrl] = useState("");
   const [idDocumentUrl, setIdDocumentUrl] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,6 +73,11 @@ export function BecomeTutorForm() {
       toast.error("Add at least one expertise tag");
       return;
     }
+    const qa = validateAnswers(questions, answers);
+    if (!qa.ok) {
+      toast.error(qa.error);
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/tutor/apply", {
@@ -81,6 +89,7 @@ export function BecomeTutorForm() {
           sampleOutline: sampleOutline || null,
           portfolioUrl: portfolioUrl || null,
           idDocumentUrl: idDocumentUrl || null,
+          answers,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -253,6 +262,21 @@ export function BecomeTutorForm() {
           </div>
         </div>
       </section>
+
+      {questions.length > 0 && (
+        <section className="bg-(--app-surface) rounded-xl border border-(--app-line) p-5 space-y-3">
+          <div>
+            <h2 className="text-base font-bold text-white">A few questions</h2>
+            <p className="text-xs text-(--app-ink-3)">Fields marked * are required.</p>
+          </div>
+          <ApplicationQuestionFields
+            questions={questions}
+            values={answers}
+            onChange={setAnswers}
+            inputClassName={inputCls}
+          />
+        </section>
+      )}
 
       <div className="flex justify-end gap-2 pt-2">
         <button

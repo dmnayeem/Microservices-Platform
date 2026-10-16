@@ -739,6 +739,26 @@ function SocialActionCard({
         defaultProofFields={def.proofFields}
         onChange={(pr) => onUpdate({ proofRequirements: pr })}
       />
+
+      {/* One account per member — enforced by the submit route. */}
+      <label className="flex items-start gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={!!item.uniqueAccount}
+          onChange={(e) => onUpdate({ uniqueAccount: e.target.checked || undefined })}
+          className="mt-0.5 rounded bg-gray-800 border-gray-600 text-sky-500"
+        />
+        <span className="text-xs">
+          <span className="font-semibold text-sky-300">One account per member</span>
+          <span className="block text-sky-400/70">
+            Refuse a submission whose username, profile or post link another
+            member already submitted on this task (pending or approved).
+            {!item.proofRequirements.url && !item.proofRequirements.username
+              ? " Turn on Proof URL or Username above — there is nothing to compare without one."
+              : ""}
+          </span>
+        </span>
+      </label>
     </Reorder.Item>
   );
 }
