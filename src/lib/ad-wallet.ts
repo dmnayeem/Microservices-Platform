@@ -88,12 +88,16 @@ export async function creditAdPoints(tx: LedgerDb, m: Move & { points: number },
     data: {
       userId: m.userId,
       // A conversion only moves value between the member's own balances —
-      // never a BONUS, which finance reads as a cost paid to the member.
+      // never a BONUS, which finance reads as a cost paid to the member. A
+      // donation is one member paying another (GIFT); finance files it as
+      // internal by its `donation_` reference (tx-sources.ts adWalletKind "peer").
       type: m.purpose.startsWith("refund")
         ? TransactionType.REFUND
         : m.purpose.startsWith("convert")
           ? TransactionType.POINTS_CONVERSION
-          : TransactionType.BONUS,
+          : m.purpose === "donation"
+            ? TransactionType.GIFT
+            : TransactionType.BONUS,
       status: TransactionStatus.COMPLETED,
       amount: n / r,
       points: 0,

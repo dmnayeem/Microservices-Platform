@@ -380,10 +380,10 @@ function FeaturedLotteryCard({
       {/* Bundle buttons */}
       <div className="mt-4 grid grid-cols-3 gap-2">
         {BUNDLES.map((b) => {
-          const cost = b.qty * lottery.ticketPrice;
-          // Apply small discount for 5 / 10 packs
-          const discount = b.qty === 5 ? 0.9 : b.qty === 10 ? 0.8 : 1;
-          const finalCost = Math.round(cost * discount);
+          // Exactly what the server charges (ticketPrice × quantity, /api/lottery).
+          // There is no bundle discount — a "-10% / -20% off" shown here used to
+          // promise a price the server never applied.
+          const finalCost = b.qty * lottery.ticketPrice;
           const busyKey = `${lottery.id}-${b.qty}`;
           return (
             <button
@@ -405,11 +405,6 @@ function FeaturedLotteryCard({
                   <p className="text-base font-extrabold mt-0.5 tabular-nums">
                     {lottery.entryMode && lottery.entryMode !== "PAID" ? "Free" : `${finalCost.toLocaleString()} Ad Points`}
                   </p>
-                  {discount < 1 && (!lottery.entryMode || lottery.entryMode === "PAID") && (
-                    <p className="text-[11px] text-amber-300 font-bold">
-                      -{((1 - discount) * 100).toFixed(0)}% off
-                    </p>
-                  )}
                 </>
               )}
             </button>

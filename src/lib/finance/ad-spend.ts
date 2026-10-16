@@ -19,6 +19,7 @@ import { withoutUsers } from "@/lib/finance/test-users";
  *   - Ad credit / task credit purchases are left out: they are revenue when
  *     SPENT (the ad stream, the buyer task commission).
  *   - A first plan term ("plan") is left out: Subscription.amount counts it.
+ *   - Feed donations ("peer") are left out: member-to-member, not the house's.
  *   - Spotlight wins and lottery house cuts paid this way are taken OUT of
  *     their legacy streams by the two id helpers below.
  *   - Deposits (Add fund) and Earn → Ad conversions are not PURCHASE/REFUND

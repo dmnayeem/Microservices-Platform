@@ -60,14 +60,20 @@ export function innerRef(reference?: string | null): string {
  *   "shopfee"  — the escrow mediation fee paid from Ad Fund (platform income).
  *   "adcredit" / "taskcredit" — balance changing shape; revenue lands on spend.
  *   "plan"     — a first plan term (revenue.ts counts Subscription.amount).
+ *   "peer"     — a feed donation (`donation_…`): Ad Points from one member to
+ *                another. Internal — neither revenue nor a cost.
  *   "platform" — everything else: platform spending (spotlight, lottery,
  *                promotions, badge, plan renewals, boosts…) — revenue, and its
  *                refunds reduce it.
  */
-export type AdWalletKind = "shop" | "shopfee" | "course" | "adcredit" | "taskcredit" | "plan" | "platform";
+export type AdWalletKind = "shop" | "shopfee" | "course" | "adcredit" | "taskcredit" | "plan" | "peer" | "platform";
 
 export function adWalletKind(reference?: string | null): AdWalletKind {
   const r = innerRef(reference);
+  if (r.startsWith("donation_")) return "peer";
+  // Paid promotions are platform revenue — before the "marketplace" test below,
+  // which would file promo_marketplace_* as a shop purchase and drop it.
+  if (r.startsWith("promo_")) return "platform";
   if (r.startsWith("deal_adminfee_") || r.startsWith("deal_escalatefee_")) return "shopfee";
   if (r.startsWith("course_")) return "course";
   if (
@@ -165,6 +171,10 @@ function adWalletSource(type: string, reference?: string | null): SourceKey {
       return "adcredit";
     case "taskcredit":
       return "taskcredit";
+    case "peer":
+      // Same buckets as the old Earn Points donation rows: the donor's side is
+      // a purchase, the author's receipt a bonus (GIFT).
+      return type === "PURCHASE" ? "purchase" : "bonus";
     default:
       if (type === "REFUND") return "refund";
       if (r.startsWith("lottery_")) return "lottery";

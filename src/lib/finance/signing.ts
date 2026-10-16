@@ -145,7 +145,8 @@ export function direction(row: LedgerRow): Direction {
 function adWalletDirection(row: LedgerRow): Direction {
   if (row.type === "DEPOSIT" || row.type === "POINTS_CONVERSION") return "internal";
   const kind = adWalletKind(row.reference);
-  if (kind === "shop" || kind === "adcredit" || kind === "taskcredit") return "internal";
+  // "peer": a feed donation — one member's Ad Points to another, never house money.
+  if (kind === "shop" || kind === "adcredit" || kind === "taskcredit" || kind === "peer") return "internal";
   if (row.type === "PURCHASE") return "revenue";
   if (row.type === "REFUND") return kind === "course" ? "internal" : "refund";
   // creditAdPoints writes BONUS for an Ad Points grant: the platform giving value.
