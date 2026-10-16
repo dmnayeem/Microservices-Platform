@@ -6,7 +6,7 @@ import { Smartphone, Users, Percent, CalendarDays, Gift, Globe, Search, Download
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import { parsePage } from "@/lib/paginate";
-import { getPwaRewardConfig } from "@/lib/pwa-install";
+import { getPwaPromptConfig, getPwaRewardConfig } from "@/lib/pwa-install";
 import { utcDay } from "@/lib/active-days";
 import { PWA_PLATFORMS, PWA_PLATFORM_LABEL, type PwaPlatform } from "@/lib/pwa-shared";
 import {
@@ -18,6 +18,7 @@ import {
   pwaInstallWhere,
 } from "@/lib/pwa-admin";
 import { PwaRewardSettings } from "@/components/admin/users/pwa-reward-settings";
+import { PwaPromptSettings } from "@/components/admin/users/pwa-prompt-settings";
 
 /**
  * Who installed the app (PWA) and who didn't. "Installed" = the app was opened
@@ -47,6 +48,7 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
     Promise.all([
       pwaInstallStats(),
       getPwaRewardConfig(),
+      getPwaPromptConfig(),
       can(session.user.id, "settings.edit"),
       prisma.user.count({ where }),
       prisma.user.findMany({
@@ -57,7 +59,7 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
         skip: (page - 1) * PAGE_SIZE,
       }),
     ]);
-  const [stats, cfg, canEdit, total, rows] = await load().catch(async () => {
+  const [stats, cfg, promptCfg, canEdit, total, rows] = await load().catch(async () => {
     await new Promise((r) => setTimeout(r, 500));
     return load();
   });
@@ -212,6 +214,7 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      <PwaPromptSettings initial={promptCfg} canEdit={canEdit} />
       <PwaRewardSettings initial={cfg} canEdit={canEdit} />
 
       <div className="space-y-3 rounded-xl border border-gray-800 bg-gray-900 p-4">

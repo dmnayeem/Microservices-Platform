@@ -101,3 +101,36 @@ export function parsePwaHost(v: unknown): string | null {
   const h = v.trim().toLowerCase();
   return /^[a-z0-9.-]{1,100}(:\d{1,5})?$/.test(h) ? h : null;
 }
+
+// ─────────────────────── Install prompt per platform ───────────────────────
+// Admin → Users → App installs (owner, 2026-10-16): for each kind of device,
+// whether members without the app are asked to install it, and how — the
+// small card at the bottom or a popup in the middle of the screen — and how
+// many hours before a dismissed prompt comes back.
+
+export const PROMPT_PLATFORMS = ["android", "ios", "desktop"] as const;
+export type PromptPlatform = (typeof PROMPT_PLATFORMS)[number];
+export type PromptMode = "off" | "card" | "center";
+export const PROMPT_MODES: PromptMode[] = ["off", "card", "center"];
+
+export interface PwaPromptConfig {
+  modes: Record<PromptPlatform, PromptMode>;
+  /** Hours a dismissed prompt stays away. */
+  snoozeHours: number;
+}
+
+export const PWA_PROMPT_KEYS = { modes: "pwa.prompt_modes", snoozeHours: "pwa.prompt_snooze_hours" } as const;
+export const PWA_PROMPT_DEFAULTS: PwaPromptConfig = {
+  modes: { android: "card", ios: "card", desktop: "card" },
+  snoozeHours: 24,
+};
+
+export function normalizePwaPromptConfig(raw: { modes?: unknown; snoozeHours?: unknown }): PwaPromptConfig {
+  const m = (raw.modes && typeof raw.modes === "object" ? raw.modes : {}) as Record<string, unknown>;
+  const modes = { ...PWA_PROMPT_DEFAULTS.modes };
+  for (const p of PROMPT_PLATFORMS) {
+    if (PROMPT_MODES.includes(m[p] as PromptMode)) modes[p] = m[p] as PromptMode;
+  }
+  const h = Number(raw.snoozeHours);
+  return { modes, snoozeHours: Number.isFinite(h) && h >= 1 && h <= 24 * 30 ? Math.round(h) : PWA_PROMPT_DEFAULTS.snoozeHours };
+}

@@ -11,9 +11,13 @@ import { recordUserAction } from "@/lib/goal-progress";
 import { raiseAbuseSignal } from "@/lib/abuse/signal";
 import { TransactionType, UserStatus } from "@/generated/prisma/client";
 import {
+  PWA_PROMPT_DEFAULTS,
+  PWA_PROMPT_KEYS,
   PWA_REWARD_DEFAULTS,
   PWA_SETTING_KEYS,
+  normalizePwaPromptConfig,
   normalizePwaRewardConfig,
+  type PwaPromptConfig,
   type PwaPlatform,
   type PwaRewardConfig,
   type PwaRewardStatus,
@@ -307,4 +311,13 @@ export function pwaRewardStatus(
     installed: !!user.pwaFirstSeenAt,
     rewarded: !!user.pwaRewardedAt,
   };
+}
+
+/** The install prompt's per-platform modes and snooze (lib/pwa-shared). */
+export async function getPwaPromptConfig(): Promise<PwaPromptConfig> {
+  const [modes, snoozeHours] = await Promise.all([
+    getSetting<unknown>(PWA_PROMPT_KEYS.modes, PWA_PROMPT_DEFAULTS.modes),
+    getSetting<unknown>(PWA_PROMPT_KEYS.snoozeHours, PWA_PROMPT_DEFAULTS.snoozeHours),
+  ]);
+  return normalizePwaPromptConfig({ modes, snoozeHours });
 }

@@ -23,7 +23,7 @@ import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { ThemeColorSync } from "@/components/providers/theme-color-sync";
 import { PwaSeenBeacon } from "@/components/pwa/pwa-seen-beacon";
 import { PwaLaunchHome } from "@/components/pwa/pwa-launch-home";
-import { getPwaRewardConfig } from "@/lib/pwa-install";
+import { getPwaPromptConfig, getPwaRewardConfig } from "@/lib/pwa-install";
 import { isStaffRole } from "@/lib/staff";
 import { maintenanceFor } from "@/lib/maintenance";
 import { MaintenanceScreen } from "@/components/dashboard/maintenance-screen";
@@ -86,7 +86,7 @@ export default async function MainLayout({
   //    — every request but the rare one — pays nothing extra for the check.
   //  - getAppNavConfig: the admin-edited tab bar / header / sidebar menus
   //    (Settings -> Navigation). Cached setting reads, in the same batch.
-  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav, pwaReward, vpnCfg] = await Promise.all([
+  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav, pwaReward, vpnCfg, pwaPrompt] = await Promise.all([
     getEffectiveFeatures(session.user.id),
     getHiddenPaths(session.user.id),
     prisma.user
@@ -118,6 +118,8 @@ export default async function MainLayout({
     // VPN page locks (cached settings) — in the batch rather than one more
     // serial await on every page once the settings memo expires.
     getVpnSettings().catch(() => null),
+    // Install prompt per platform (Admin → Users → App installs).
+    getPwaPromptConfig().catch(() => null),
   ]);
 
   // Server-side page-visibility guard: a hidden page never renders on a hard
@@ -254,6 +256,7 @@ export default async function MainLayout({
         enabled={ui?.pwaInstallPrompt ?? true}
         rewardPoints={installRewardPoints}
         installedPlatform={installedPlatform}
+        promptConfig={pwaPrompt}
       />
       {/* Reports opening the INSTALLED app (once a day) for install tracking
           and the install reward — src/lib/pwa-install.ts. */}
