@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
+import { rateLimit } from "@/lib/rate-limit";
 import { requireActiveUser } from "@/lib/require-active";
 import { getPointsPerUsd } from "@/lib/economy";
 import { startSession, heartbeat, reportScore, BEAT_INTERVAL_SECONDS } from "@/lib/game-session";
@@ -12,8 +13,8 @@ import { gameCors, gamePreflight, isAllowedGameOrigin, normalizeOrigin, verifyGa
  *
  *   GET  me         → the connected member's name and Earn Points
  *   POST session    { gameId }                    → open a play session
- *   POST heartbeat  { gameId, sessionId }         → server-measured play time
- *   POST score      { gameId, sessionId, total }  → running score total
+ *   POST heartbeat  { gameId, sessionId, scoreTotal?, final? } → play time + score
+ *   POST score      { gameId, sessionId, total }  → running score (SDK v2.0 only)
  *
  * Cookie-less (public in middleware): every call carries the connect token as
  * `Authorization: Bearer …`, must come from an allowed game website, and the
@@ -28,7 +29,11 @@ export async function OPTIONS(req: NextRequest) {
   return gamePreflight(origin && (await isAllowedGameOrigin(origin)) ? origin : null);
 }
 
-async function authorize(req: NextRequest) {
+/**
+ * `checkStatus` costs a query, so it runs where a session starts and on `me`;
+ * a beat's payout re-checks the account under its own lock instead.
+ */
+async function authorize(req: NextRequest, checkStatus = true) {
   const origin = normalizeOrigin(req.headers.get("origin"));
   if (!origin || !(await isAllowedGameOrigin(origin))) {
     return { error: gameCors(null, { error: "This website is not allowed to use RevType." }, { status: 403 }) };
@@ -38,9 +43,11 @@ async function authorize(req: NextRequest) {
   if (!p || p.o !== origin) {
     return { error: gameCors(origin, { error: "Please connect your RevType account again.", reason: "token" }, { status: 401 }) };
   }
-  const active = await requireActiveUser(p.u);
-  if (!active.ok) {
-    return { error: gameCors(origin, { error: active.message }, { status: active.httpStatus }) };
+  if (checkStatus) {
+    const active = await requireActiveUser(p.u);
+    if (!active.ok) {
+      return { error: gameCors(origin, { error: active.message }, { status: active.httpStatus }) };
+    }
   }
   return { origin, userId: p.u };
 }
@@ -66,9 +73,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ acti
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
-  const a = await authorize(req);
+  const a = await authorize(req, action === "session");
   if ("error" in a) return a.error;
-  const body = (await req.json().catch(() => ({}))) as { gameId?: string; sessionId?: string; total?: number };
+  const body = (await req.json().catch(() => ({}))) as {
+    gameId?: string;
+    sessionId?: string;
+    total?: number;
+    scoreTotal?: number;
+    final?: boolean;
+  };
   if (!body.gameId) return gameCors(a.origin, { error: "gameId required" }, { status: 400 });
 
   if (action === "session") {
@@ -82,9 +95,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
   if (!body.sessionId) return gameCors(a.origin, { error: "sessionId required" }, { status: 400 });
 
   if (action === "heartbeat") {
-    const limited = await enforceDbRateLimit(req, "game-beat", a.userId, 30, 60_000);
-    if (limited) return gameCors(a.origin, { error: "Too many requests" }, { status: 429 });
-    const out = await heartbeat(a.userId, body.gameId, body.sessionId, { loaded: true });
+    // In memory: see /api/games/[id]/heartbeat — money never depends on it.
+    if (!rateLimit(`game-beat:${a.userId}`, 20, 60_000).ok) {
+      return gameCors(a.origin, { error: "Too many requests" }, { status: 429 });
+    }
+    const out = await heartbeat(a.userId, body.gameId, body.sessionId, {
+      loaded: true,
+      scoreTotal: typeof body.scoreTotal === "number" ? body.scoreTotal : undefined,
+      final: body.final === true,
+    });
     if (!out.ok) return gameCors(a.origin, { error: "This play session is no longer open.", reason: out.reason }, { status: 409 });
     return gameCors(a.origin, out.result);
   }
@@ -92,8 +111,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
   if (action === "score") {
     const total = Number(body.total);
     if (!Number.isFinite(total) || total < 0) return gameCors(a.origin, { error: "total required" }, { status: 400 });
-    const limited = await enforceDbRateLimit(req, "game-score", a.userId, 20, 60_000);
-    if (limited) return gameCors(a.origin, { error: "Too many requests" }, { status: 429 });
+    if (!rateLimit(`game-score:${a.userId}`, 20, 60_000).ok) {
+      return gameCors(a.origin, { error: "Too many requests" }, { status: 429 });
+    }
     const out = await reportScore(a.userId, body.gameId, body.sessionId, total);
     if (!out.ok) {
       return gameCors(

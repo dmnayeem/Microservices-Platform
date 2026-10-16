@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { creditPoints } from "@/lib/ledger";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
-import { TransactionType } from "@/generated/prisma";
+import { TransactionType, type Game } from "@/generated/prisma";
 import {
   getGamesGlobalConfig,
   resolveGameReward,
@@ -43,7 +43,9 @@ import {
  */
 
 /** Client beat cadence, and the most one beat may ever credit. */
-export const BEAT_INTERVAL_SECONDS = 15;
+// 30 s (was 15 s): with the score riding on the beat this is the only
+// request a playing member makes — half the beats is half the load at scale.
+export const BEAT_INTERVAL_SECONDS = 30;
 const BEAT_MAX_STEP = BEAT_INTERVAL_SECONDS + 5;
 
 /** A session with no beat for this long is treated as abandoned. */
@@ -200,9 +202,10 @@ function remainingFor(
 
 export interface HeartbeatResult {
   playedSeconds: number;
-  /** Points credited by THIS beat. */
+  /** Points credited by THIS beat (time + score). */
   awarded: number;
   sessionPoints: number;
+  /** -1 = unlimited, or not worked out on this beat (nothing was due). */
   remainingToday: number;
   /** True when a cap stopped the payout — the client shows "daily limit hit". */
   capped: boolean;
@@ -214,169 +217,303 @@ export type HeartbeatOutcome =
   | { ok: true; result: HeartbeatResult }
   | { ok: false; reason: "no_session" | "ended" };
 
+export interface BeatOptions {
+  loaded: boolean;
+  /**
+   * Connected games: the session's running in-game score, carried on the beat
+   * instead of a separate request (half the traffic at scale).
+   */
+  scoreTotal?: number;
+  /** Last beat of a play (page closing): pay any score due now, not at the next minute. */
+  final?: boolean;
+}
+
+type GameRow = Game;
+
+/**
+ * Game rows change rarely and every beat needs one, so each server instance
+ * keeps them for a few seconds. An admin switching a game off or changing its
+ * reward takes effect within GAME_CACHE_MS.
+ */
+const GAME_CACHE_MS = 30_000;
+const gameCache = new Map<string, { at: number; game: GameRow | null }>();
+async function getGameCached(gameId: string): Promise<GameRow | null> {
+  const hit = gameCache.get(gameId);
+  if (hit && Date.now() - hit.at < GAME_CACHE_MS) return hit.game;
+  const game = (await prisma.game.findUnique({ where: { id: gameId } })) as GameRow | null;
+  if (gameCache.size > 5_000) gameCache.clear();
+  gameCache.set(gameId, { at: Date.now(), game });
+  return game;
+}
+
+type SessionRow = {
+  id: string;
+  lastBeatAt: Date | null;
+  playedSeconds: number;
+  creditedSeconds: number;
+  pointsAwarded: number;
+  scorePaid: number;
+  adsShown: number;
+  score: number | null;
+};
+const SESSION_SELECT = {
+  id: true,
+  lastBeatAt: true,
+  playedSeconds: true,
+  creditedSeconds: true,
+  pointsAwarded: true,
+  scorePaid: true,
+  adsShown: true,
+  score: true,
+} as const;
+
+/** What one beat would do to a session — pure arithmetic, no queries. */
+function planBeat(
+  s: SessionRow,
+  now: number,
+  game: GameRow,
+  reward: ResolvedGameReward,
+  scoreOn: boolean,
+  scoreMaxPerMinute: number,
+  opts: BeatOptions
+) {
+  // The FIRST beat credits 0 — it only anchors the clock. Otherwise the idle
+  // gap between opening the game and actually playing would be paid.
+  const step =
+    s.lastBeatAt === null
+      ? 0
+      : Math.max(0, Math.min(Math.floor((now - s.lastBeatAt.getTime()) / 1000), BEAT_MAX_STEP));
+  // Time only accrues once the game has actually loaded.
+  const played = s.playedSeconds + (opts.loaded ? step : 0);
+
+  let ticks = 0;
+  let awaitingAd = false;
+  if (reward.enabled) {
+    ticks = Math.floor((played - s.creditedSeconds) / reward.tickSeconds);
+    if (reward.requiresAd) {
+      // Payout is bounded by ads the SERVER served this session.
+      const allowed = s.adsShown * TICKS_PER_AD;
+      const alreadyPaidTicks = Math.floor(s.creditedSeconds / reward.tickSeconds);
+      const budget = Math.max(0, allowed - alreadyPaidTicks);
+      if (ticks > budget) {
+        ticks = budget;
+        awaitingAd = true;
+      }
+    }
+  }
+
+  // Score: a running total that never goes down.
+  const reported = Number(opts.scoreTotal);
+  const score =
+    scoreOn && Number.isFinite(reported) && reported > (s.score ?? 0)
+      ? Math.min(Math.floor(reported), 2_000_000_000)
+      : s.score;
+  let scoreDue = 0;
+  if (scoreOn && score) {
+    const worth = Math.floor((score * game.scorePointsPer1000) / 1000);
+    // A score comes from the player's browser and can be faked, so what it
+    // pays is bounded by the play time the SERVER measured.
+    const byTime = Math.floor((played / 60) * scoreMaxPerMinute);
+    scoreDue = Math.max(0, Math.min(worth, byTime) - s.scorePaid);
+    // Paid at most once per minute of play (or on the last beat), so an
+    // active scorer does not turn every beat into a locked transaction.
+    if (scoreDue > 0 && !opts.final && Math.floor(played / 60) === Math.floor(s.playedSeconds / 60)) {
+      scoreDue = 0;
+    }
+  }
+  return { played, ticks, awaitingAd, score, scoreDue };
+}
+
 /**
  * Credit one beat.
  *
- * Everything that decides money happens inside a transaction that opens by
- * locking the user row, so two tabs (or two replayed requests) cannot both read
- * "cap not reached" and both pay.
+ * Most beats have nothing to pay: they move the play clock (and the score) on
+ * with ONE conditional update — compare-and-set on `lastBeatAt`, so two beats
+ * racing each other cannot both count the same seconds. Only when a time tick
+ * or score is actually due does the beat take the locked transaction: the
+ * member row is locked, the account status checked (a banned member is never
+ * paid), the daily caps summed, the session re-read and updated with the same
+ * compare-and-set, and the points credited — all or nothing.
  */
 export async function heartbeat(
   userId: string,
   gameId: string,
   sessionId: string,
-  opts: { loaded: boolean }
+  opts: BeatOptions
 ): Promise<HeartbeatOutcome> {
-  const game = await prisma.game.findUnique({ where: { id: gameId } });
-  // A game the admin switched off must stop paying open sessions too —
-  // `startSession` checks `isActive`, but a tab opened before the switch
-  // would otherwise keep earning until its session went stale.
+  const game = await getGameCached(gameId);
+  // A game the admin switched off stops paying open sessions too.
   if (!game || !game.isActive) return { ok: false, reason: "no_session" };
 
   const globals = await getGamesGlobalConfig();
   const reward = resolveGameReward(game, globals);
+  const scoreOn = scoreEarningOn(game, globals);
+
+  // Ownership is part of the lookup: a session id belonging to someone else
+  // must not be a way to accrue time on their behalf.
+  const s = (await prisma.gameSession.findFirst({
+    where: { id: sessionId, userId, gameId, endedAt: null },
+    select: SESSION_SELECT,
+  })) as SessionRow | null;
+  if (!s) return { ok: false, reason: "ended" };
+
+  const now = Date.now();
+  const plan = planBeat(s, now, game, reward, scoreOn, globals.scoreMaxPerMinute, opts);
+
+  // ── Fast path: nothing to pay ──────────────────────────────────────────
+  if (plan.ticks <= 0 && plan.scoreDue <= 0) {
+    await prisma.gameSession.updateMany({
+      where: { id: s.id, endedAt: null, lastBeatAt: s.lastBeatAt },
+      data: {
+        playedSeconds: plan.played,
+        lastBeatAt: new Date(now),
+        ...(plan.score !== s.score ? { score: plan.score } : {}),
+      },
+    });
+    return {
+      ok: true,
+      result: {
+        playedSeconds: plan.played,
+        awarded: 0,
+        sessionPoints: s.pointsAwarded,
+        remainingToday: -1,
+        capped: false,
+        awaitingAd: plan.awaitingAd,
+      },
+    };
+  }
+
+  // ── Slow path: something is due ────────────────────────────────────────
   const { startOfDayUtc } = await getUserDayContext(userId);
   const pointsPerUsd = await getPointsPerUsd();
 
-  const outcome = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+  return prisma.$transaction(async (tx) => {
+    const lock = await tx.$queryRaw<Array<{ status: string }>>`SELECT status FROM "User" WHERE id = ${userId} FOR UPDATE`;
+    const status = lock[0]?.status;
+    const mayEarn = !!status && status !== "BANNED" && status !== "SUSPENDED";
 
-    // Ownership is part of the lookup: a session id belonging to someone else
-    // must not be a way to accrue time on their behalf.
-    const s = await tx.gameSession.findFirst({
+    // Re-read under the lock: the fast read may be stale.
+    const cur = (await tx.gameSession.findFirst({
       where: { id: sessionId, userId, gameId, endedAt: null },
-    });
-    if (!s) return { ok: false as const, reason: "ended" as const };
+      select: SESSION_SELECT,
+    })) as SessionRow | null;
+    if (!cur) return { ok: false as const, reason: "ended" as const };
+    const p = planBeat(cur, now, game, reward, scoreOn, globals.scoreMaxPerMinute, opts);
 
-    const now = Date.now();
-    // The FIRST beat credits 0 — it only anchors the clock. Otherwise the idle
-    // gap between opening the game and actually playing would be paid.
-    const step =
-      s.lastBeatAt === null
-        ? 0
-        : Math.max(
-            0,
-            Math.min(
-              Math.floor((now - s.lastBeatAt.getTime()) / 1000),
-              BEAT_MAX_STEP
-            )
-          );
-
-    // Time only accrues once the iframe has actually loaded. A game that never
-    // loads (an embed that refuses framing) must not pay for staring at a black
-    // rectangle.
-    const played = s.playedSeconds + (opts.loaded ? step : 0);
-
-    let awarded = 0;
+    let timeAwarded = 0;
+    let scoreAwarded = 0;
     let capped = false;
-    let awaitingAd = false;
-    let creditedSeconds = s.creditedSeconds;
+    let remaining = Number.MAX_SAFE_INTEGER;
+    const creditedSeconds = cur.creditedSeconds + Math.max(0, p.ticks) * reward.tickSeconds;
 
-    if (reward.enabled) {
-      let ticks = Math.floor((played - s.creditedSeconds) / reward.tickSeconds);
+    if (mayEarn && (p.ticks > 0 || p.scoreDue > 0)) {
+      const [todayAll, todayGame, todayGameScore] = await Promise.all([
+        tx.gameEarnLog
+          .aggregate({ where: { userId, createdAt: { gte: startOfDayUtc } }, _sum: { points: true } })
+          .then((a) => a._sum.points ?? 0),
+        tx.gameEarnLog
+          .aggregate({ where: { userId, gameId, createdAt: { gte: startOfDayUtc } }, _sum: { points: true } })
+          .then((a) => a._sum.points ?? 0),
+        p.scoreDue > 0
+          ? tx.gameEarnLog
+              .aggregate({
+                where: { userId, gameId, kind: "SCORE", createdAt: { gte: startOfDayUtc } },
+                _sum: { points: true },
+              })
+              .then((a) => a._sum.points ?? 0)
+          : Promise.resolve(0),
+      ]);
+      remaining = remainingFor(reward, todayAll, todayGame);
+      const sessionRoom = () =>
+        reward.maxPerSession > 0
+          ? Math.max(0, reward.maxPerSession - cur.pointsAwarded - timeAwarded)
+          : Number.MAX_SAFE_INTEGER;
 
-      if (reward.requiresAd) {
-        // Payout is bounded by ads the SERVER served this session, so it can
-        // never exceed the revenue funding it.
-        const allowed = s.adsShown * TICKS_PER_AD;
-        const alreadyPaidTicks = Math.floor(s.creditedSeconds / reward.tickSeconds);
-        const budget = Math.max(0, allowed - alreadyPaidTicks);
-        if (ticks > budget) {
-          ticks = budget;
-          awaitingAd = true;
-        }
+      if (p.ticks > 0) {
+        const wanted = p.ticks * reward.pointsPerTick;
+        // CLAMPED, not rejected — the last partial tick still pays what is left.
+        timeAwarded = Math.max(0, Math.min(wanted, remaining, sessionRoom()));
+        capped = timeAwarded < wanted;
+        if (remaining !== Number.MAX_SAFE_INTEGER) remaining -= timeAwarded;
       }
-
-      if (ticks > 0) {
-        const [todayAll, todayGame] = await Promise.all([
-          tx.gameEarnLog
-            .aggregate({
-              where: { userId, createdAt: { gte: startOfDayUtc } },
-              _sum: { points: true },
-            })
-            .then((a) => a._sum.points ?? 0),
-          tx.gameEarnLog
-            .aggregate({
-              where: { userId, gameId, createdAt: { gte: startOfDayUtc } },
-              _sum: { points: true },
-            })
-            .then((a) => a._sum.points ?? 0),
-        ]);
-
-        const remaining = remainingFor(reward, todayAll, todayGame);
-        const sessionRoom =
-          reward.maxPerSession > 0
-            ? Math.max(0, reward.maxPerSession - s.pointsAwarded)
-            : Number.MAX_SAFE_INTEGER;
-
-        const wanted = ticks * reward.pointsPerTick;
-        // CLAMPED, not rejected — the last partial tick still pays what is left
-        // of the allowance, which is what users expect and what browse-earn does.
-        awarded = Math.max(0, Math.min(wanted, remaining, sessionRoom));
-        capped = awarded < wanted;
-        creditedSeconds = s.creditedSeconds + ticks * reward.tickSeconds;
+      if (p.scoreDue > 0) {
+        // A score is bound by the session cap, the game's SCORE daily cap and
+        // the all-games daily cap — not by the time reward's per-game cap.
+        const limits = [p.scoreDue, sessionRoom()];
+        if (game.scoreDailyCapPoints > 0) limits.push(game.scoreDailyCapPoints - todayGameScore);
+        if (reward.globalDailyCap > 0) limits.push(reward.globalDailyCap - todayAll - timeAwarded);
+        scoreAwarded = Math.max(0, Math.min(...limits));
+        if (scoreAwarded < p.scoreDue) capped = true;
+        if (remaining !== Number.MAX_SAFE_INTEGER) remaining -= scoreAwarded;
       }
     }
 
-    const updated = await tx.gameSession.update({
-      where: { id: s.id },
+    const won = await tx.gameSession.updateMany({
+      where: { id: cur.id, endedAt: null, lastBeatAt: cur.lastBeatAt },
       data: {
-        playedSeconds: played,
+        playedSeconds: p.played,
+        // Ticks are consumed even when a cap or a ban paid nothing for them,
+        // exactly as before — a capped tick never pays later.
         creditedSeconds,
         lastBeatAt: new Date(now),
-        pointsAwarded: { increment: awarded },
+        score: p.score,
+        pointsAwarded: { increment: timeAwarded + scoreAwarded },
+        scorePaid: { increment: scoreAwarded },
       },
-      select: { pointsAwarded: true, playedSeconds: true },
     });
+    // Another beat got there first: it did this beat's work.
+    if (won.count === 0) {
+      return {
+        ok: true as const,
+        result: {
+          playedSeconds: cur.playedSeconds,
+          awarded: 0,
+          sessionPoints: cur.pointsAwarded,
+          remainingToday: -1,
+          capped: false,
+          awaitingAd: p.awaitingAd,
+        },
+      };
+    }
 
-    if (awarded > 0) {
+    if (timeAwarded > 0) {
       await creditPoints(tx, {
         userId,
-        points: awarded,
+        points: timeAwarded,
         type: TransactionType.BONUS,
         description: `Game reward: ${game.title}`,
-        // Deterministic: a replayed beat that somehow reached here again would
-        // collide on Transaction @@unique([userId, reference]) instead of
-        // paying twice.
+        // Deterministic: a replay collides on Transaction @@unique([userId, reference]).
         reference: `game_${sessionId}_${creditedSeconds}`,
         metadata: { gameId, sessionId },
         pointsPerUsd,
       });
-      await tx.gameEarnLog.create({
-        data: { userId, gameId, sessionId, points: awarded, kind: "TIME" },
-      });
+      await tx.gameEarnLog.create({ data: { userId, gameId, sessionId, points: timeAwarded, kind: "TIME" } });
     }
-
-    const [afterAll, afterGame] = await Promise.all([
-      tx.gameEarnLog
-        .aggregate({
-          where: { userId, createdAt: { gte: startOfDayUtc } },
-          _sum: { points: true },
-        })
-        .then((a) => a._sum.points ?? 0),
-      tx.gameEarnLog
-        .aggregate({
-          where: { userId, gameId, createdAt: { gte: startOfDayUtc } },
-          _sum: { points: true },
-        })
-        .then((a) => a._sum.points ?? 0),
-    ]);
-    const left = remainingFor(reward, afterAll, afterGame);
+    if (scoreAwarded > 0) {
+      await creditPoints(tx, {
+        userId,
+        points: scoreAwarded,
+        type: TransactionType.BONUS,
+        description: `Game score reward: ${game.title}`,
+        reference: `game_score_${sessionId}_${cur.scorePaid + scoreAwarded}`,
+        metadata: { gameId, sessionId, score: p.score, kind: "SCORE" },
+        pointsPerUsd,
+      });
+      await tx.gameEarnLog.create({ data: { userId, gameId, sessionId, points: scoreAwarded, kind: "SCORE" } });
+    }
 
     return {
       ok: true as const,
       result: {
-        playedSeconds: updated.playedSeconds,
-        awarded,
-        sessionPoints: updated.pointsAwarded,
-        remainingToday: left === Number.MAX_SAFE_INTEGER ? -1 : left,
+        playedSeconds: p.played,
+        awarded: timeAwarded + scoreAwarded,
+        sessionPoints: cur.pointsAwarded + timeAwarded + scoreAwarded,
+        remainingToday: remaining === Number.MAX_SAFE_INTEGER ? -1 : Math.max(0, remaining),
         capped,
-        awaitingAd,
+        awaitingAd: p.awaitingAd,
       },
     };
   });
-
-  return outcome;
 }
 
 /** Close a session and fold its totals into the game's denormalised counters. */
@@ -419,10 +556,6 @@ export interface ScoreResult {
   awarded: number;
   /** All points this session has paid (time + score). */
   sessionPoints: number;
-  /** The session's in-game total the server has accepted. */
-  score: number;
-  /** True when a limit held part of the score back (it may pay later as play time grows). */
-  held: boolean;
 }
 
 export type ScoreOutcome =
@@ -430,21 +563,9 @@ export type ScoreOutcome =
   | { ok: false; reason: "no_session" | "ended" | "off" };
 
 /**
- * Credit a connected game's score (RevType Games SDK, owner 2026-10-17).
- *
- * The game reports its in-game points as a RUNNING TOTAL for this session, so a
- * replayed or out-of-order report pays nothing extra: the payout is always
- * "what the total is worth" minus "what score has already paid this session".
- *
- * A score comes from the player's browser and can be faked, so it is never
- * trusted on its own. What it can pay is bounded by, in order:
- *   1. the game's rate (scorePointsPer1000);
- *   2. the time the SERVER measured the game being played (heartbeats) ×
- *      `games.score_max_per_minute` — a faked score earns no faster than this;
- *   3. the per-session cap, the game's score daily cap and the all-games daily
- *      cap (shared with time rewards).
- * Whatever a limit holds back is not lost while the session is open: the next
- * report re-computes against the longer play time.
+ * A connected game's running score sent on its own (SDK v1 and the old
+ * player). It is just a beat carrying the score — the same rules, the same
+ * once-a-minute payout; new clients put the score on the regular heartbeat.
  */
 export async function reportScore(
   userId: string,
@@ -452,78 +573,10 @@ export async function reportScore(
   sessionId: string,
   total: number
 ): Promise<ScoreOutcome> {
-  const game = await prisma.game.findUnique({ where: { id: gameId } });
+  const game = await getGameCached(gameId);
   if (!game || !game.isActive) return { ok: false, reason: "no_session" };
-  const globals = await getGamesGlobalConfig();
-  if (!scoreEarningOn(game, globals)) return { ok: false, reason: "off" };
-  const reward = resolveGameReward(game, globals);
-  const { startOfDayUtc } = await getUserDayContext(userId);
-  const pointsPerUsd = await getPointsPerUsd();
-  const reported = Math.max(0, Math.min(Math.floor(total), 2_000_000_000));
-
-  return prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-    const s = await tx.gameSession.findFirst({
-      where: { id: sessionId, userId, gameId, endedAt: null },
-    });
-    if (!s) return { ok: false as const, reason: "ended" as const };
-
-    // Running total: never goes down.
-    const score = Math.max(s.score ?? 0, reported);
-    const [scorePaid, todayAll, todayGameScore] = await Promise.all([
-      tx.gameEarnLog
-        .aggregate({ where: { sessionId: s.id, kind: "SCORE" }, _sum: { points: true } })
-        .then((a) => a._sum.points ?? 0),
-      tx.gameEarnLog
-        .aggregate({ where: { userId, createdAt: { gte: startOfDayUtc } }, _sum: { points: true } })
-        .then((a) => a._sum.points ?? 0),
-      tx.gameEarnLog
-        .aggregate({
-          where: { userId, gameId, kind: "SCORE", createdAt: { gte: startOfDayUtc } },
-          _sum: { points: true },
-        })
-        .then((a) => a._sum.points ?? 0),
-    ]);
-
-    const worth = Math.floor((score * game.scorePointsPer1000) / 1000);
-    const byTime = Math.floor((s.playedSeconds / 60) * globals.scoreMaxPerMinute);
-    const limits = [worth - scorePaid, byTime - scorePaid];
-    if (reward.maxPerSession > 0) limits.push(reward.maxPerSession - s.pointsAwarded);
-    if (game.scoreDailyCapPoints > 0) limits.push(game.scoreDailyCapPoints - todayGameScore);
-    if (reward.globalDailyCap > 0) limits.push(reward.globalDailyCap - todayAll);
-    const awarded = Math.max(0, Math.min(...limits));
-
-    const updated = await tx.gameSession.update({
-      where: { id: s.id },
-      data: { score, pointsAwarded: { increment: awarded } },
-      select: { pointsAwarded: true },
-    });
-
-    if (awarded > 0) {
-      await creditPoints(tx, {
-        userId,
-        points: awarded,
-        type: TransactionType.BONUS,
-        description: `Game score reward: ${game.title}`,
-        // Deterministic per cumulative amount — a duplicate collides on
-        // Transaction @@unique([userId, reference]) instead of paying twice.
-        reference: `game_score_${sessionId}_${scorePaid + awarded}`,
-        metadata: { gameId, sessionId, score, kind: "SCORE" },
-        pointsPerUsd,
-      });
-      await tx.gameEarnLog.create({
-        data: { userId, gameId, sessionId, points: awarded, kind: "SCORE" },
-      });
-    }
-
-    return {
-      ok: true as const,
-      result: {
-        awarded,
-        sessionPoints: updated.pointsAwarded,
-        score,
-        held: scorePaid + awarded < worth,
-      },
-    };
-  });
+  if (!scoreEarningOn(game, await getGamesGlobalConfig())) return { ok: false, reason: "off" };
+  const out = await heartbeat(userId, gameId, sessionId, { loaded: true, scoreTotal: total });
+  if (!out.ok) return out;
+  return { ok: true, result: { awarded: out.result.awarded, sessionPoints: out.result.sessionPoints } };
 }

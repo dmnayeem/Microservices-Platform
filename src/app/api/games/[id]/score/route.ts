@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { enforceDbRateLimit } from "@/lib/rate-limit-db";
+import { rateLimit } from "@/lib/rate-limit";
 import { reportScore } from "@/lib/game-session";
-import { requireActiveUser } from "@/lib/require-active";
 
 /**
  * POST /api/games/:id/score — a connected game's running score total.
  *
- * Sent by the RevType game player (never by the game itself): the game, on its
+ * Older clients only: current ones put the score on the heartbeat. Sent by
+ * the RevType game player (never by the game itself): the game, on its
  * own domain inside the player's iframe, posts its total to the player through
  * the RevType Games SDK (public/sdk/revtype-games.js); the player checks the
  * message came from that game's frame and origin, then forwards it here with
@@ -22,13 +22,11 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const activeCheck = await requireActiveUser(session.user.id);
-  if (!activeCheck.ok) {
-    return NextResponse.json({ error: activeCheck.message }, { status: activeCheck.httpStatus });
+  // Kept for older clients — new ones send the score on the heartbeat. Same
+  // in-memory limiter; account status is checked where points are paid.
+  if (!rateLimit(`game-score:${session.user.id}`, 20, 60_000).ok) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
-  // The player sends at most one report every few seconds.
-  const limited = await enforceDbRateLimit(req, "game-score", session.user.id, 20, 60_000);
-  if (limited) return limited;
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as { sessionId?: string; total?: number };

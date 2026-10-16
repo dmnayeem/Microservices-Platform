@@ -15,6 +15,8 @@
  *    RevType account, and they withdraw on revtype.com.
  *  - Inside RevType's Games page: already signed in, nothing to show.
  *
+ * Traffic: one small request every 30 seconds while the game is in front.
+ *
  * Optional:
  *   RevType.init({ gameId, badge: false })        // hide the built-in button
  *   RevType.init({ gameId, position: "top-left" }) // bottom-right (default) / bottom-left / top-right / top-left
@@ -137,7 +139,6 @@
   var sessionTotal = 0;
   var sentTotal = 0;
   var beatTimer = null;
-  var scoreTimer = null;
   var starting = false;
 
   function saveToken(t) {
@@ -164,8 +165,7 @@
   }
   function stopTimers() {
     if (beatTimer) clearInterval(beatTimer);
-    if (scoreTimer) clearInterval(scoreTimer);
-    beatTimer = scoreTimer = null;
+    beatTimer = null;
   }
   function dropToken() {
     token = null;
@@ -232,10 +232,11 @@
         sentTotal = 0;
         state.earning = !!(r.data.score && r.data.score.enabled);
         state.pointsPer1000 = (r.data.score && r.data.score.pointsPer1000) || 0;
-        var beatMs = (Number(r.data.beatSeconds) || 15) * 1000;
-        beat();
-        beatTimer = setInterval(beat, beatMs);
-        scoreTimer = setInterval(sendScore, 5000);
+        var beatMs = (Number(r.data.beatSeconds) || 30) * 1000;
+        beat(false);
+        beatTimer = setInterval(function () {
+          beat(false);
+        }, beatMs);
         ready();
       })
       .catch(function () {
@@ -254,26 +255,22 @@
     if (mode === "site" && !document.hidden && token && !sessionId) startSite();
   });
 
-  function beat() {
-    if (!sessionId || document.hidden) return;
-    api("POST", "heartbeat", { gameId: cfg.gameId, sessionId: sessionId }).then(function (r) {
-      if (r.status === 409) restartSession();
-      else if (r.ok && r.data.awarded > 0) onAwarded(r.data);
-    });
-  }
-
-  function sendScore() {
-    if (!sessionId) return;
+  // One request per beat: play time AND the running score together.
+  // `final` = the page is closing; pay any score due now.
+  function beat(final) {
+    if (!sessionId || (document.hidden && !final)) return;
     sessionTotal += pending;
     pending = 0;
-    if (sessionTotal <= sentTotal) return;
     var total = sessionTotal;
-    api("POST", "score", { gameId: cfg.gameId, sessionId: sessionId, total: total }).then(function (r) {
+    var body = { gameId: cfg.gameId, sessionId: sessionId };
+    if (total > 0) body.scoreTotal = total;
+    if (final) body.final = true;
+    api("POST", "heartbeat", body).then(function (r) {
       if (r.ok) {
         sentTotal = total;
         if (r.data.awarded > 0) onAwarded(r.data);
       } else if (r.status === 409) {
-        // Session closed (another tab, or idle too long): keep the unsent points.
+        // Session closed (another tab, or idle too long): keep unsent points.
         pending += total - sentTotal;
         restartSession();
       }
@@ -312,11 +309,8 @@
   });
 
   window.addEventListener("pagehide", function () {
-    if (mode === "site") sendScore();
+    if (mode === "site") beat(true);
     if (mode === "player") flushPlayer();
-  });
-  document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden" && mode === "site") sendScore();
   });
 
   // ── The built-in button ──────────────────────────────────────────────────
