@@ -33,6 +33,11 @@ interface SessionInfo {
     maxPerSession: number;
     requiresAd: boolean;
   };
+  /** Absent on servers older than the Games SDK. */
+  score?: {
+    enabled: boolean;
+    pointsPer1000: number;
+  };
   ads: {
     enabled: boolean;
     onOpen: boolean;
@@ -68,6 +73,9 @@ export function GamePlayer({
   const loadedRef = useRef(false);
   const sessionRef = useRef<SessionInfo | null>(null);
   const endedRef = useRef(false);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  /** Latest running score from a connected game, and the last one sent. */
+  const scoreRef = useRef<{ total: number; sent: number }>({ total: 0, sent: 0 });
 
   useEffect(() => {
     loadedRef.current = loaded;
@@ -179,6 +187,85 @@ export function GamePlayer({
     return () => clearInterval(id);
   }, [session, started, game.id]);
 
+  // ── Connected games (RevType Games SDK, public/sdk/revtype-games.js) ──────
+  // The game posts its running score to this page. Only messages from THIS
+  // game's frame and THIS game's origin count; the server still bounds what a
+  // score can pay by measured play time, because the game runs in the
+  // member's browser and its score can be faked.
+  const gameOrigin = (() => {
+    try {
+      return new URL(game.embedUrl).origin;
+    } catch {
+      return null;
+    }
+  })();
+
+  const welcome = useCallback(() => {
+    const w = frameRef.current?.contentWindow;
+    if (!w || !gameOrigin) return;
+    const s = sessionRef.current;
+    w.postMessage(
+      {
+        source: "revtype-player",
+        type: "welcome",
+        earning: !!s?.score?.enabled,
+        pointsPer1000: s?.score?.pointsPer1000 ?? 0,
+      },
+      gameOrigin
+    );
+  }, [gameOrigin]);
+
+  useEffect(() => {
+    if (!started || !gameOrigin) return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== gameOrigin || e.source !== frameRef.current?.contentWindow) return;
+      const d = e.data as { source?: string; type?: string; total?: unknown } | null;
+      if (!d || d.source !== "revtype-sdk") return;
+      if (d.type === "hello") welcome();
+      else if (d.type === "score") {
+        const n = Math.floor(Number(d.total));
+        if (Number.isFinite(n) && n > scoreRef.current.total) scoreRef.current.total = n;
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [started, gameOrigin, welcome]);
+
+  useEffect(() => {
+    if (!session?.score?.enabled || !started) return;
+    const send = async () => {
+      const sc = scoreRef.current;
+      if (sc.total <= sc.sent) return;
+      const total = sc.total;
+      try {
+        const r = await fetch(`/api/games/${game.id}/score`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: session.sessionId, total }),
+        });
+        if (!r.ok) return;
+        sc.sent = total;
+        const d = (await r.json()) as { awarded?: number; sessionPoints?: number };
+        if (typeof d.sessionPoints === "number") setEarned(d.sessionPoints);
+        if ((d.awarded ?? 0) > 0) {
+          setFlash(d.awarded ?? 0);
+          setTimeout(() => setFlash(0), 2000);
+          frameRef.current?.contentWindow?.postMessage(
+            { source: "revtype-player", type: "earned", awarded: d.awarded, sessionPoints: d.sessionPoints },
+            gameOrigin ?? "*"
+          );
+        }
+      } catch {
+        // The next round retries with the latest total.
+      }
+    };
+    const id = setInterval(send, 5_000);
+    return () => {
+      clearInterval(id);
+      void send();
+    };
+  }, [session, started, game.id, gameOrigin]);
+
   // ── Load watchdog ────────────────────────────────────────────────────────
   // Cross-origin JS cannot see `X-Frame-Options: DENY` — no error fires, the
   // frame is simply blank. Without this the user stares at black forever.
@@ -282,11 +369,13 @@ export function GamePlayer({
         {started ? (
           <>
             <iframe
+              ref={frameRef}
               src={game.embedUrl}
               title={game.title}
               onLoad={() => {
                 setLoaded(true);
                 setLoadFailed(false);
+                welcome();
               }}
               className="absolute inset-0 w-full h-full border-0"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-orientation-lock"

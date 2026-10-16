@@ -25,6 +25,13 @@ export interface GamesGlobalConfig {
   globalDailyCap: number;
   /** Points one user may earn per session, whatever the game says. */
   maxPerSession: number;
+  /**
+   * Connected games (RevType Games SDK): the most RevType points a reported
+   * score may pay per minute the SERVER measured the game being played. A score
+   * comes from the player's browser and can be faked, so this — not the score —
+   * is what bounds the payout. 0 = score earning off everywhere.
+   */
+  scoreMaxPerMinute: number;
 }
 
 export const GAMES_DEFAULTS: GamesGlobalConfig = {
@@ -33,6 +40,7 @@ export const GAMES_DEFAULTS: GamesGlobalConfig = {
   minTickSeconds: 30,
   globalDailyCap: 200,
   maxPerSession: 100,
+  scoreMaxPerMinute: 5,
 };
 
 export const GAMES_SETTING_KEYS = {
@@ -41,6 +49,7 @@ export const GAMES_SETTING_KEYS = {
   minTickSeconds: "games.min_tick_seconds",
   globalDailyCap: "games.global_daily_cap",
   maxPerSession: "games.max_per_session",
+  scoreMaxPerMinute: "games.score_max_per_minute",
 } as const;
 
 const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
@@ -52,12 +61,13 @@ const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
 /** Read the admin-tuned global config, with safe clamped fallbacks. */
 export async function getGamesGlobalConfig(): Promise<GamesGlobalConfig> {
   try {
-    const [enabled, perTick, tickSecs, dailyCap, perSession] = await Promise.all([
+    const [enabled, perTick, tickSecs, dailyCap, perSession, scorePerMin] = await Promise.all([
       getSetting<boolean>(GAMES_SETTING_KEYS.enabled, GAMES_DEFAULTS.enabled),
       getSetting<number>(GAMES_SETTING_KEYS.maxPointsPerTick, GAMES_DEFAULTS.maxPointsPerTick),
       getSetting<number>(GAMES_SETTING_KEYS.minTickSeconds, GAMES_DEFAULTS.minTickSeconds),
       getSetting<number>(GAMES_SETTING_KEYS.globalDailyCap, GAMES_DEFAULTS.globalDailyCap),
       getSetting<number>(GAMES_SETTING_KEYS.maxPerSession, GAMES_DEFAULTS.maxPerSession),
+      getSetting<number>(GAMES_SETTING_KEYS.scoreMaxPerMinute, GAMES_DEFAULTS.scoreMaxPerMinute),
     ]);
     return {
       enabled: enabled !== false,
@@ -65,6 +75,7 @@ export async function getGamesGlobalConfig(): Promise<GamesGlobalConfig> {
       minTickSeconds: clampInt(tickSecs, B.minTickSeconds.min, B.minTickSeconds.max, GAMES_DEFAULTS.minTickSeconds),
       globalDailyCap: clampInt(dailyCap, B.globalDailyCap.min, B.globalDailyCap.max, GAMES_DEFAULTS.globalDailyCap),
       maxPerSession: clampInt(perSession, B.maxPerSession.min, B.maxPerSession.max, GAMES_DEFAULTS.maxPerSession),
+      scoreMaxPerMinute: clampInt(scorePerMin, B.scoreMaxPerMinute.min, B.scoreMaxPerMinute.max, GAMES_DEFAULTS.scoreMaxPerMinute),
     };
   } catch {
     // Fails soft: a settings blip must not turn earning off mid-session, nor

@@ -62,6 +62,12 @@ export interface StartSessionResult {
     maxPerSession: number;
     requiresAd: boolean;
   };
+  /** Score earning for connected games (RevType Games SDK). */
+  score: {
+    enabled: boolean;
+    /** RevType points per 1,000 in-game points. */
+    pointsPer1000: number;
+  };
   ads: {
     enabled: boolean;
     onOpen: boolean;
@@ -149,6 +155,10 @@ export async function startSession(
       maxPerSession: reward.maxPerSession,
       requiresAd: reward.requiresAd,
     },
+    score: {
+      enabled: scoreEarningOn(game, globals),
+      pointsPer1000: game.scorePointsPer1000,
+    },
     ads: {
       enabled: game.adsEnabled,
       onOpen: game.adOnOpen,
@@ -159,6 +169,20 @@ export async function startSession(
     },
     beatSeconds: BEAT_INTERVAL_SECONDS,
   };
+}
+
+/** Whether a game's reported scores may pay at all. */
+function scoreEarningOn(
+  game: { scoreRewardEnabled: boolean; scoreTrusted: boolean; scorePointsPer1000: number },
+  globals: { enabled: boolean; scoreMaxPerMinute: number }
+): boolean {
+  return (
+    globals.enabled &&
+    globals.scoreMaxPerMinute > 0 &&
+    game.scoreTrusted &&
+    game.scoreRewardEnabled &&
+    game.scorePointsPer1000 > 0
+  );
 }
 
 /** How much this user may still earn, honouring whichever cap binds first. */
@@ -388,4 +412,118 @@ export async function endSession(
   });
 
   return { playedSeconds: s.playedSeconds, pointsAwarded: s.pointsAwarded };
+}
+
+export interface ScoreResult {
+  /** RevType points credited by THIS report. */
+  awarded: number;
+  /** All points this session has paid (time + score). */
+  sessionPoints: number;
+  /** The session's in-game total the server has accepted. */
+  score: number;
+  /** True when a limit held part of the score back (it may pay later as play time grows). */
+  held: boolean;
+}
+
+export type ScoreOutcome =
+  | { ok: true; result: ScoreResult }
+  | { ok: false; reason: "no_session" | "ended" | "off" };
+
+/**
+ * Credit a connected game's score (RevType Games SDK, owner 2026-10-17).
+ *
+ * The game reports its in-game points as a RUNNING TOTAL for this session, so a
+ * replayed or out-of-order report pays nothing extra: the payout is always
+ * "what the total is worth" minus "what score has already paid this session".
+ *
+ * A score comes from the player's browser and can be faked, so it is never
+ * trusted on its own. What it can pay is bounded by, in order:
+ *   1. the game's rate (scorePointsPer1000);
+ *   2. the time the SERVER measured the game being played (heartbeats) ×
+ *      `games.score_max_per_minute` — a faked score earns no faster than this;
+ *   3. the per-session cap, the game's score daily cap and the all-games daily
+ *      cap (shared with time rewards).
+ * Whatever a limit holds back is not lost while the session is open: the next
+ * report re-computes against the longer play time.
+ */
+export async function reportScore(
+  userId: string,
+  gameId: string,
+  sessionId: string,
+  total: number
+): Promise<ScoreOutcome> {
+  const game = await prisma.game.findUnique({ where: { id: gameId } });
+  if (!game || !game.isActive) return { ok: false, reason: "no_session" };
+  const globals = await getGamesGlobalConfig();
+  if (!scoreEarningOn(game, globals)) return { ok: false, reason: "off" };
+  const reward = resolveGameReward(game, globals);
+  const { startOfDayUtc } = await getUserDayContext(userId);
+  const pointsPerUsd = await getPointsPerUsd();
+  const reported = Math.max(0, Math.min(Math.floor(total), 2_000_000_000));
+
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+    const s = await tx.gameSession.findFirst({
+      where: { id: sessionId, userId, gameId, endedAt: null },
+    });
+    if (!s) return { ok: false as const, reason: "ended" as const };
+
+    // Running total: never goes down.
+    const score = Math.max(s.score ?? 0, reported);
+    const [scorePaid, todayAll, todayGameScore] = await Promise.all([
+      tx.gameEarnLog
+        .aggregate({ where: { sessionId: s.id, kind: "SCORE" }, _sum: { points: true } })
+        .then((a) => a._sum.points ?? 0),
+      tx.gameEarnLog
+        .aggregate({ where: { userId, createdAt: { gte: startOfDayUtc } }, _sum: { points: true } })
+        .then((a) => a._sum.points ?? 0),
+      tx.gameEarnLog
+        .aggregate({
+          where: { userId, gameId, kind: "SCORE", createdAt: { gte: startOfDayUtc } },
+          _sum: { points: true },
+        })
+        .then((a) => a._sum.points ?? 0),
+    ]);
+
+    const worth = Math.floor((score * game.scorePointsPer1000) / 1000);
+    const byTime = Math.floor((s.playedSeconds / 60) * globals.scoreMaxPerMinute);
+    const limits = [worth - scorePaid, byTime - scorePaid];
+    if (reward.maxPerSession > 0) limits.push(reward.maxPerSession - s.pointsAwarded);
+    if (game.scoreDailyCapPoints > 0) limits.push(game.scoreDailyCapPoints - todayGameScore);
+    if (reward.globalDailyCap > 0) limits.push(reward.globalDailyCap - todayAll);
+    const awarded = Math.max(0, Math.min(...limits));
+
+    const updated = await tx.gameSession.update({
+      where: { id: s.id },
+      data: { score, pointsAwarded: { increment: awarded } },
+      select: { pointsAwarded: true },
+    });
+
+    if (awarded > 0) {
+      await creditPoints(tx, {
+        userId,
+        points: awarded,
+        type: TransactionType.BONUS,
+        description: `Game score reward: ${game.title}`,
+        // Deterministic per cumulative amount — a duplicate collides on
+        // Transaction @@unique([userId, reference]) instead of paying twice.
+        reference: `game_score_${sessionId}_${scorePaid + awarded}`,
+        metadata: { gameId, sessionId, score, kind: "SCORE" },
+        pointsPerUsd,
+      });
+      await tx.gameEarnLog.create({
+        data: { userId, gameId, sessionId, points: awarded, kind: "SCORE" },
+      });
+    }
+
+    return {
+      ok: true as const,
+      result: {
+        awarded,
+        sessionPoints: updated.pointsAwarded,
+        score,
+        held: scorePaid + awarded < worth,
+      },
+    };
+  });
 }
