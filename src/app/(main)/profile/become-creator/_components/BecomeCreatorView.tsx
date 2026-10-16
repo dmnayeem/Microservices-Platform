@@ -16,6 +16,8 @@ import {
   X,
   Loader2,
   Sparkles,
+  Briefcase,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +38,8 @@ const ICONS: Record<string, LucideIcon> = {
   ADVERTISER: Megaphone,
   AGENCY: Building2,
   AFFILIATE: Share2,
+  SERVICE_PROVIDER: Briefcase,
+  TASK_BUYER: Target,
 };
 
 const DETAIL_LABEL: Record<string, string> = {
@@ -43,6 +47,8 @@ const DETAIL_LABEL: Record<string, string> = {
   ADVERTISER: "Business / brand name",
   AGENCY: "Agency name",
   AFFILIATE: "Where will you promote? (channels / audience)",
+  SERVICE_PROVIDER: "What services will you offer?",
+  TASK_BUYER: "What will you ask people to do? (e.g. follows, shares, reviews)",
 };
 
 export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
@@ -135,7 +141,8 @@ export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
   );
 }
 
-function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) {
+/** Also used by the Applications center (/apply). */
+export function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [detail, setDetail] = useState("");

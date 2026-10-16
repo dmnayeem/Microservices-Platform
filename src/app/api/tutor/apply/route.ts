@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { createTutorApplication } from "@/lib/tutor-application";
+import { requirementsRefusal } from "@/lib/application-requirements-server";
 
 const applySchema = z.object({
   bio: z.string().min(50, "Bio must be at least 50 characters").max(2000),
@@ -73,6 +74,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    const refusal = await requirementsRefusal(session.user.id, "TUTOR");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
     const app = await createTutorApplication(session.user.id, {
       bio: v.data.bio,
       expertise: v.data.expertise,

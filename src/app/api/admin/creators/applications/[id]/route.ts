@@ -3,7 +3,8 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
-import { deliverToUser } from "@/lib/notify";
+import { sendApplicationDecision } from "@/lib/application-decision";
+import { PROGRAMS } from "@/lib/application-requirements";
 import {
   approveCreatorApplication,
   rejectCreatorApplication,
@@ -60,17 +61,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     });
 
     const meta = CREATOR_TYPES[app.type];
-    void deliverToUser({ category: "account_review",
+    sendApplicationDecision({
       userId: app.userId,
-      title:
-        action === "approve"
-          ? `Approved: ${meta.label}`
-          : `${meta.label} application update`,
-      message:
-        action === "approve"
-          ? `You now have ${meta.label} access.`
-          : "Your application wasn't approved this time.",
-      link: action === "approve" ? meta.dashboardHref : "/profile/become-creator",
+      program: PROGRAMS[app.type].label,
+      approved: action === "approve",
+      adminNote: adminNote ?? null,
+      link: action === "approve" ? meta.dashboardHref : `/apply?type=${app.type}`,
     });
 
     return NextResponse.json({ success: true, application: { id: app.id, status: app.status } });

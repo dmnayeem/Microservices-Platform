@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { createCreatorApplication } from "@/lib/creator-application";
+import { createCreatorApplication, CREATOR_TYPES } from "@/lib/creator-application";
+import { requirementsRefusal } from "@/lib/application-requirements-server";
 import type { CreatorApplicationType } from "@/generated/prisma";
 
 const applySchema = z.object({
-  type: z.enum(["MARKETPLACE_SELLER", "ADVERTISER", "AGENCY", "AFFILIATE"]),
+  // Every creator type — a hard-coded list here once left TASK_BUYER (and then
+  // SERVICE_PROVIDER) failing with "Invalid input" while the page offered them.
+  type: z.string().refine((t): t is CreatorApplicationType => t in CREATOR_TYPES, "Unknown application type."),
   message: z.string().trim().min(20, "Tell us a bit more (min 20 chars).").max(2000),
   links: z.array(z.string().url()).max(6).optional(),
   payload: z.record(z.string(), z.string().max(1000)).optional(),
@@ -26,6 +29,8 @@ export async function POST(request: NextRequest) {
     );
   }
   const { type, message, links, payload } = parsed.data;
+  const refusal = await requirementsRefusal(session.user.id, type as CreatorApplicationType);
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   try {
     const app = await createCreatorApplication(
       session.user.id,

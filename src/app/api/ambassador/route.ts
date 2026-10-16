@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { ambassadorBonus, monthOf } from "@/lib/ambassadors";
+import { requirementsRefusal } from "@/lib/application-requirements-server";
 import { applyAsAmbassador, applyEligibility, getAmbassadorConfig, qualifiedInMonth } from "@/lib/ambassadors-server";
 
 /**
@@ -47,6 +48,10 @@ export async function POST(request: NextRequest) {
   const limited = await enforceDbRateLimit(request, "ambassador-apply", session.user.id, 5, 60_000);
   if (limited) return limited;
   const body = (await request.json().catch(() => ({}))) as { message?: unknown };
+  // The Applications center's requirements; applyAsAmbassador still runs the
+  // program's own checks (level, KYC, referrals) after this.
+  const refusal = await requirementsRefusal(session.user.id, "AMBASSADOR");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const r = await applyAsAmbassador(session.user.id, body.message ? String(body.message) : null);
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
   return NextResponse.json({ ok: true });

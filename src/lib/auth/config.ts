@@ -111,6 +111,7 @@ export const authConfig: NextAuthConfig = {
         "/advertise",
         "/referral",
         "/pricing",
+        "/programs", // every program + its Apply link (the apply hub itself needs a session)
         // A shared post. The page itself decides what a logged-out reader
         // may see (lib/public-post.ts).
         "/post",

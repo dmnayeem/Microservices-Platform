@@ -22,7 +22,7 @@ export default async function CreateTaskPage() {
   // The second lock below deliberately has no apply link: that one means the
   // admin has switched buyer creation off, which applying cannot fix.
   if (!enabled.has("createTasks")) {
-    return <FeatureLock title="Create Task" applyHref="/profile/become-creator" />;
+    return <FeatureLock title="Create Task" applyHref="/apply?type=TASK_BUYER" />;
   }
 
   const [pointsPerUsd, buyer, taskCredit, scope] = await Promise.all([

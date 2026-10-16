@@ -6,6 +6,7 @@ import { deliverToUser } from "@/lib/notify";
 import { usd } from "@/lib/utils";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { requireActiveUser } from "@/lib/require-active";
+import { requirementsRefusal } from "@/lib/application-requirements-server";
 import {
   BADGE_CONFIG_SETTING,
   BADGE_PERIOD_DAYS,
@@ -157,6 +158,13 @@ export async function buyBadge(userId: string, method: Method): Promise<BuyResul
     return { ok: false, error: "Your verified badge is permanent — nothing to buy.", status: 400 };
   }
   const now = new Date();
+  // Applications-center requirements gate a NEW badge only: a member who holds
+  // one keeps extending it even if the admin raises the bar later.
+  const holding = u.isBlueVerified && !!u.blueBadgeExpiresAt && u.blueBadgeExpiresAt > now;
+  if (!holding) {
+    const refusal = await requirementsRefusal(userId, "BLUE_BADGE");
+    if (refusal) return { ok: false, error: refusal, status: 403 };
+  }
   const base = u.blueBadgeExpiresAt && u.blueBadgeExpiresAt > now ? u.blueBadgeExpiresAt : now;
   const expiresAt = addDays(base, BADGE_PERIOD_DAYS);
   // Same shape the renewal sweep uses (`badge_blue_<user>_<oldExpiry>`): a

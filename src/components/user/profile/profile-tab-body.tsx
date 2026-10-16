@@ -269,9 +269,9 @@ export function ProfileTabBody({
 
           <BecomeTutorCard />
 
-          {/* Sell & earn — apply for marketplace / advertiser / agency / affiliate access */}
+          {/* Sell & earn — the Applications center: every program, its requirements and status */}
           <Link
-            href="/profile/become-creator"
+            href="/apply"
             className="app-press block rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-transparent p-4 hover:border-(--app-accent-edge)/50 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
@@ -282,9 +282,9 @@ export function ProfileTabBody({
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-white">Sell, advertise or buy tasks</p>
                   <p className="text-xs text-(--app-ink-3) mt-0.5">
-                    Apply to sell on the marketplace, run ads, become an affiliate, start a
-                    promotion agency, or buy tasks — pay people here to do a job you set.
-                    Admin reviews each request.
+                    Apply to sell on the marketplace, offer services, run ads, become an
+                    affiliate, tutor or ambassador, or buy tasks — pay people here to do a job
+                    you set. See each program&apos;s requirements and your status in one place.
                   </p>
                 </div>
               </div>

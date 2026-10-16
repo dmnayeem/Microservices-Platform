@@ -70,6 +70,15 @@ export const EMAIL_CATEGORIES = [
     defaultOn: true,
   },
   {
+    key: "application_decision",
+    label: "Application decisions",
+    description:
+      "Approved or not approved — seller, service provider, task buyer, advertiser, agency, affiliate, tutor and ambassador applications, with the reviewer's note. The applicant asked and is waiting for the answer.",
+    group: "always",
+    locked: true,
+    defaultOn: true,
+  },
+  {
     key: "support_inbox",
     label: "Contact form → support inbox",
     description: "Goes to your own support address, not to users.",
@@ -95,8 +104,8 @@ export const EMAIL_CATEGORIES = [
   },
   {
     key: "account_review",
-    label: "KYC & creator applications",
-    description: "KYC verified / rejected, creator or seller application decided.",
+    label: "KYC decisions",
+    description: "KYC verified / rejected. (Program application decisions are always sent — see above.)",
     group: "account",
     defaultOn: false,
   },
