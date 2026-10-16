@@ -18,11 +18,9 @@ import {
   CheckCircle2,
   Search,
   Tags,
-  Copy,
   ListPlus,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { copyText } from "@/lib/clipboard";
 import { confirmDialog } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
@@ -36,6 +34,7 @@ import {
   parseBulkGames,
 } from "@/lib/games-admin";
 import { GameCategoriesModal, type AdminGameCategory } from "./game-categories-modal";
+import { GameSetupGuide } from "./game-setup-guide";
 
 export interface AdminGame {
   id: string;
@@ -489,9 +488,10 @@ function GameRow({
 
 // ── The modal ───────────────────────────────────────────────────────────────
 
-type Tab = "basics" | "embed" | "ads" | "rewards";
+type Tab = "setup" | "basics" | "embed" | "ads" | "rewards";
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: "setup", label: "Setup guide" },
   { id: "basics", label: "Basics" },
   { id: "embed", label: "Embed" },
   { id: "ads", label: "Ads" },
@@ -510,7 +510,8 @@ function GameModal({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("basics");
+  // Adding a game opens on the setup guide; editing opens on Basics.
+  const [tab, setTab] = useState<Tab>(game ? "basics" : "setup");
   const [busy, setBusy] = useState(false);
   const [probing, setProbing] = useState(false);
   const [probe, setProbe] = useState<{ ok: boolean; reason?: string } | null>(
@@ -648,6 +649,8 @@ function GameModal({
         </div>
 
         <div className="p-5 space-y-4">
+          {tab === "setup" && <GameSetupGuide onGoToTab={setTab} />}
+
           {tab === "basics" && (
             <>
               <Field label="Title">
@@ -971,7 +974,7 @@ function GameModal({
                 form={form}
                 set={set}
                 scoreMaxPerMinute={scoreMaxPerMinute}
-                onOpenEmbedTab={() => setTab("embed")}
+                onOpenSetupTab={() => setTab("setup")}
               />
             </>
           )}
@@ -1000,46 +1003,6 @@ function GameModal({
 
 // ── Connect your game (RevType Games SDK) ───────────────────────────────────
 
-/**
- * The address games load the SDK from and must allow framing by. The build-time
- * site URL when set; otherwise whatever origin this admin page is open on.
- */
-function siteOrigin(): string {
-  const env = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
-  if (env) {
-    try {
-      return new URL(env).origin;
-    } catch {
-      /* not a URL — fall back to the page's own origin */
-    }
-  }
-  return typeof window !== "undefined" ? window.location.origin : "https://revtype.com";
-}
-
-function CopyBlock({ label, value }: { label: string; value: string }) {
-  const copy = async () => {
-    if (await copyText(value)) toast.success("Copied");
-    else toast.error("Couldn't copy", { description: "Select the text and copy it manually." });
-  };
-  return (
-    <div className="rounded-lg border border-slate-800 bg-slate-950 overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-slate-800">
-        <span className="text-[11px] text-slate-400">{label}</span>
-        <button
-          type="button"
-          onClick={copy}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-white/5"
-        >
-          <Copy className="w-3.5 h-3.5" /> Copy
-        </button>
-      </div>
-      <pre className="px-3 py-2 text-[11px] leading-relaxed text-slate-200 font-mono whitespace-pre-wrap break-all">
-        {value}
-      </pre>
-    </div>
-  );
-}
-
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3">
@@ -1065,21 +1028,13 @@ function ConnectGamePanel({
   form,
   set,
   scoreMaxPerMinute,
-  onOpenEmbedTab,
+  onOpenSetupTab,
 }: {
   form: ScoreFields;
   set: (patch: Partial<ScoreFields>) => void;
   scoreMaxPerMinute: number;
-  onOpenEmbedTab: () => void;
+  onOpenSetupTab: () => void;
 }) {
-  const origin = siteOrigin();
-  const scriptTag = `<script src="${origin}/sdk/revtype-games.js"></script>`;
-  const example = `${scriptTag}
-<script>
-  // call whenever the player's points change (running total for this play)
-  RevType.setScore(playerPoints);
-</script>`;
-  const header = `Content-Security-Policy: frame-ancestors ${origin}`;
   const earnFor5000 = Math.floor((5000 * form.scorePointsPer1000) / 1000);
 
   return (
@@ -1088,39 +1043,19 @@ function ConnectGamePanel({
         <p className="text-sm font-bold text-white">Connect your game</p>
         <p className="text-[11px] text-slate-500 mt-0.5">
           For games you built yourself. Players earn RevType points from their
-          in-game score. Four steps, all copy and paste.
-        </p>
-      </div>
-
-      <Step n={1} title="Add the RevType script to your game">
-        <CopyBlock label="Script tag — paste into your game's HTML" value={scriptTag} />
-        <CopyBlock label="Example — send the score" value={example} />
-        <p className="text-[11px] text-slate-500">
-          Replace <code className="text-slate-300">playerPoints</code> with your
-          game&apos;s score. Or call{" "}
-          <code className="text-slate-300">RevType.addScore(10)</code> each time the
-          player gains points.
-        </p>
-      </Step>
-
-      <Step n={2} title="Your game's server must allow RevType to show it">
-        <CopyBlock label="Response header" value={header} />
-        <p className="text-[11px] text-slate-500">
-          On Netlify, Vercel, Cloudflare Pages or GitHub Pages: just make sure no{" "}
-          <code className="text-slate-300">X-Frame-Options</code> header is set. Then
-          check it with{" "}
+          in-game score. How to add the RevType script to your game:{" "}
           <button
             type="button"
-            onClick={onOpenEmbedTab}
+            onClick={onOpenSetupTab}
             className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
           >
-            Test this URL
+            Setup guide
           </button>
           .
         </p>
-      </Step>
+      </div>
 
-      <Step n={3} title="Turn on paying for scores">
+      <Step n={1} title="Turn on paying for scores">
         <Toggle
           label="My own game with the RevType SDK"
           hint="Only for games you built and added the script to. A score from someone else's game can be any number."
@@ -1188,12 +1123,6 @@ function ConnectGamePanel({
           ))}
       </Step>
 
-      <Step n={4} title="How players get paid">
-        <p className="text-[11px] text-slate-500">
-          Points go to the player&apos;s Earn Points and are withdrawn through the
-          normal Withdraw page — nothing else to set up.
-        </p>
-      </Step>
     </div>
   );
 }
@@ -1340,7 +1269,7 @@ function BulkAddModal({
             <div className="grid sm:grid-cols-2 gap-3">
               <Toggle
                 label="Connected with the RevType SDK"
-                hint="Your own games with the RevType script. Players earn from their score."
+                hint="Your own games with the RevType script added (see Setup guide when adding one game). Players earn from their score."
                 checked={connected}
                 onChange={setConnected}
               />

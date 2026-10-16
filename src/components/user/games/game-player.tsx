@@ -219,12 +219,14 @@ export function GamePlayer({
     if (!started || !gameOrigin) return;
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== gameOrigin || e.source !== frameRef.current?.contentWindow) return;
-      const d = e.data as { source?: string; type?: string; total?: unknown } | null;
+      const d = e.data as { source?: string; type?: string; n?: unknown } | null;
       if (!d || d.source !== "revtype-sdk") return;
       if (d.type === "hello") welcome();
-      else if (d.type === "score") {
-        const n = Math.floor(Number(d.total));
-        if (Number.isFinite(n) && n > scoreRef.current.total) scoreRef.current.total = n;
+      else if (d.type === "add") {
+        // The SDK sends gains; this page keeps the session's running total
+        // (what the server expects), so a round reset or reload loses nothing.
+        const n = Math.floor(Number(d.n));
+        if (Number.isFinite(n) && n > 0 && n <= 10_000_000) scoreRef.current.total += n;
       }
     };
     window.addEventListener("message", onMessage);
