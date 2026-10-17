@@ -13,6 +13,8 @@ declare module "next-auth" {
        * is redirected — the gate fails open by construction.
        */
       needsOnboarding?: boolean;
+      /** When this session signed in (ms). Absent on tokens issued before 2026-10-17. */
+      loginAt?: number;
     } & DefaultSession["user"];
   }
 
@@ -29,5 +31,7 @@ declare module "next-auth/jwt" {
     role?: string;
     /** Onboarding completed. Absent on pre-feature tokens — see above. */
     onb?: boolean;
+    /** Sign-in time (ms) — set only when the token is issued at sign-in. */
+    lat?: number;
   }
 }

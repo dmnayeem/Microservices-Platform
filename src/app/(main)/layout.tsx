@@ -19,6 +19,7 @@ import { isPathHidden } from "@/lib/page-visibility";
 import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
 import { CelebrationHost } from "@/components/user/primitives/celebration-host";
+import { SplashScreen } from "@/components/pwa/splash-screen";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { ThemeColorSync } from "@/components/providers/theme-color-sync";
 import { PwaSeenBeacon } from "@/components/pwa/pwa-seen-beacon";
@@ -241,6 +242,9 @@ export default async function MainLayout({
       {/* Lottery wins, leaderboard prizes, big achievements, payments — shown
           once as a popup the next time the user opens the app. */}
       <CelebrationHost />
+      {/* Once, right after a sign-in / registration — members' app only,
+          never the landing page or admin. */}
+      <SplashScreen />
       {/* Balances update after a claim/reward without a manual refresh. */}
       <BalanceSync />
       {/* Sends a new account's saved sign-up source once. */}

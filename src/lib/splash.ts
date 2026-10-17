@@ -5,7 +5,29 @@ import { sanitizeDeviceTarget } from "@/lib/device-target";
 
 export const SPLASH_SETTING_KEY = "splash_config";
 
-export type SplashFrequency = "once" | "session" | "always";
+/**
+ * When it shows (owner, 2026-10-17): only right after a member signs in or
+ * registers — once per sign-in, never to visitors and never on ordinary app
+ * opens. The sign-in time travels in the session (`session.user.loginAt`);
+ * the splash is offered for this long after it.
+ */
+export const SPLASH_LOGIN_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/** Browser key holding the sign-in (loginAt) the splash was last shown for. */
+export const SPLASH_SEEN_KEY = "splash_login_seen";
+
+/**
+ *   slides — image, title and text, with Next / Get started buttons.
+ *   images — image only (9:16), full screen, nothing else on screen; tap
+ *            for the next image, the last tap closes it. The whole image is
+ *            always visible (never cropped), centred on wide screens.
+ */
+export type SplashMode = "slides" | "images";
+
+/** login = everyone, once per sign-in · new = only accounts created in the last day. */
+export type SplashAudience = "login" | "new";
+
+export const SPLASH_MAX_SLIDES = 10;
 
 export interface SplashSlide {
   title: string;
@@ -15,9 +37,10 @@ export interface SplashSlide {
 
 export interface SplashConfig {
   enabled: boolean;
-  /** Per-slide auto-advance time in ms (admin-adjustable). */
+  mode: SplashMode;
+  audience: SplashAudience;
+  /** Per-slide auto-advance time in ms ("slides" mode only; images advance on tap). */
   durationMs: number;
-  frequency: SplashFrequency;
   slides: SplashSlide[];
   /** Shown only from / until these times (ISO; "" = no limit). */
   startsAt?: string;
@@ -30,8 +53,9 @@ export interface SplashConfig {
 
 export const DEFAULT_SPLASH: SplashConfig = {
   enabled: false,
+  mode: "slides",
+  audience: "login",
   durationMs: 3500,
-  frequency: "once",
   slides: [
     { title: "Welcome to RevType", content: "Complete tasks and earn real rewards.", imageUrl: "" },
     { title: "Do Tasks, Earn Points", content: "Watch videos, take surveys, engage on social.", imageUrl: "" },
@@ -53,14 +77,14 @@ export function normalizeSplashConfig(raw: unknown): SplashConfig {
           content: typeof s.content === "string" ? s.content : "",
           imageUrl: typeof s.imageUrl === "string" ? s.imageUrl : "",
         }))
-        .slice(0, 6)
+        .slice(0, SPLASH_MAX_SLIDES)
     : DEFAULT_SPLASH.slides;
   const durationMs = Number(r.durationMs);
   return {
     enabled: !!r.enabled,
+    mode: r.mode === "images" ? "images" : "slides",
+    audience: r.audience === "new" ? "new" : "login",
     durationMs: Number.isFinite(durationMs) && durationMs >= 500 ? durationMs : DEFAULT_SPLASH.durationMs,
-    frequency:
-      r.frequency === "session" || r.frequency === "always" ? r.frequency : "once",
     slides,
     startsAt: isoOrEmpty(r.startsAt),
     endsAt: isoOrEmpty(r.endsAt),
