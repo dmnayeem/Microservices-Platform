@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
-import { cn } from "@/lib/utils";
+import { cn, pts } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { GAME_AD_PLACEMENTS } from "@/lib/ad-placements";
@@ -50,6 +50,8 @@ export interface AdminGame {
   order: number;
   isActive: boolean;
   playsCount: number;
+  /** Sessions started in the last 7 days (what "Popular this week" ranks by). */
+  plays7d: number;
 
   adsEnabled: boolean;
   adOnOpen: boolean;
@@ -218,6 +220,30 @@ export function GamesClient({
     }
   };
 
+  // One click from the list: Featured = the member page's hero carousel.
+  const toggleFeatured = async (g: AdminGame) => {
+    setBusyId(g.id);
+    try {
+      const res = await fetch(`/api/admin/games/${g.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFeatured: !g.isFeatured }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Failed");
+      setGames((gs) =>
+        gs.map((x) => (x.id === g.id ? { ...x, isFeatured: !x.isFeatured } : x))
+      );
+    } catch (err) {
+      toast.error("Couldn't change Featured", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const featuredCount = games.filter((g) => g.isActive && g.isFeatured).length;
+
   const toggleActive = async (g: AdminGame) => {
     setBusyId(g.id);
     try {
@@ -287,6 +313,16 @@ export function GamesClient({
         )}
       </div>
 
+      <p className="text-[11px] text-slate-500 leading-relaxed">
+        How the member Games page uses this list: <span className="text-slate-300">Featured</span> (star)
+        = the hero carousel at the top ({featuredCount} live, first 8 shown) ·{" "}
+        <span className="text-slate-300">order</span> (drag) = the carousel and row order ·{" "}
+        <span className="text-slate-300">New</span> = added in the last 30 days ·{" "}
+        <span className="text-slate-300">Popular</span> = most played this week (7d plays) ·{" "}
+        <span className="text-slate-300">Earn points</span> = games that pay for time, a trusted score or via
+        their own server.
+      </p>
+
       {!canDrag && canManage && games.length > 1 && (
         <p className="text-[11px] text-slate-500">
           Clear the search and category filter to drag games into a new order.
@@ -324,6 +360,7 @@ export function GamesClient({
               onEdit={() => setModal(g)}
               onDelete={() => del(g)}
               onToggle={() => toggleActive(g)}
+              onToggleFeatured={() => toggleFeatured(g)}
             />
           ))}
         </Reorder.Group>
@@ -363,6 +400,7 @@ function GameRow({
   onEdit,
   onDelete,
   onToggle,
+  onToggleFeatured,
 }: {
   game: AdminGame;
   categories: AdminGameCategory[];
@@ -372,6 +410,7 @@ function GameRow({
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  onToggleFeatured: () => void;
 }) {
   const controls = useDragControls();
   const catName = categories.find((c) => c.id === game.categoryId)?.name ?? game.category;
@@ -404,13 +443,17 @@ function GameRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          {game.isFeatured && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
           <p className="text-sm font-bold text-white truncate">{game.title}</p>
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] text-slate-500">
           {catName && <span className="text-slate-400">{catName}</span>}
-          <span className="tabular-nums">
-            {game.playsCount.toLocaleString()} plays · {game.uniquePlayersCount} players
+          <span className="tabular-nums" title="Sessions started in the last 7 days / all-time">
+            <span className="text-slate-300">{pts(game.plays7d)}</span> plays 7d ·{" "}
+            {pts(game.playsCount)} all-time
+          </span>
+          <span className="tabular-nums">{pts(game.uniquePlayersCount)} players</span>
+          <span className="tabular-nums" title="Points paid to players, all-time">
+            {pts(game.pointsAwardedTotal)} pts paid
           </span>
           {game.rewardEnabled && (
             <span className="text-amber-400">
@@ -440,6 +483,22 @@ function GameRow({
           </p>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={onToggleFeatured}
+        disabled={!canManage || busy}
+        aria-pressed={game.isFeatured}
+        title={game.isFeatured ? "Featured — click to remove from the carousel" : "Click to feature in the carousel"}
+        className={cn(
+          "p-1.5 rounded shrink-0 transition-colors disabled:opacity-50",
+          game.isFeatured
+            ? "text-amber-400 hover:bg-amber-500/10"
+            : "text-slate-600 hover:text-amber-300 hover:bg-slate-800"
+        )}
+      >
+        <Star className={cn("w-4 h-4", game.isFeatured && "fill-amber-400")} />
+      </button>
 
       <button
         onClick={onToggle}
