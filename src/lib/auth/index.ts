@@ -171,6 +171,10 @@ export const {
         token.onb = (user as { onboarded?: boolean }).onboarded === true;
       }
 
+      // `user` is present only at sign-in (credentials, Google, a fresh
+      // registration): that moment is what the splash screen keys on.
+      if (user) token.lat = Date.now();
+
       if (trigger === "update" && session) {
         const s = session as { name?: string; image?: string };
         if (s.name) token.name = s.name;

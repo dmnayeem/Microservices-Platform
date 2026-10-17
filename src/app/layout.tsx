@@ -37,7 +37,6 @@ import { getSetting } from "@/lib/system-settings";
 import { Toaster } from "sonner";
 import { CookieConsent } from "@/components/user/primitives/cookie-consent";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
-import { SplashScreen } from "@/components/pwa/splash-screen";
 import { ConfirmHost } from "@/components/providers/confirm-host";
 import { NotifyCenterHost } from "@/components/providers/notify-center-host";
 import { RewardInterstitialHost } from "@/components/providers/reward-interstitial-host";
@@ -376,7 +375,6 @@ export default async function RootLayout({
             scope={seo["code.scope"]}
             requireConsent={ui.cookiesPopup && !googleCmp}
           />
-          <SplashScreen />
           {/* Home-screen icon that opens in a browser tab (a shortcut, not the
               installed app) → offer the real install. */}
           <ShortcutInstallBanner />

@@ -10,7 +10,6 @@ import {
   Gamepad2,
   Layers,
   Play,
-  Radio,
   Search,
   Sparkles,
   Star,
@@ -18,7 +17,6 @@ import {
   X,
 } from "lucide-react";
 import { EmptyState } from "@/components/user/primitives/empty-state";
-import { StatCard } from "@/components/user/primitives/stat-card";
 import { ScrollFadeRow } from "@/components/user/primitives/scroll-fade-row";
 import { cn, pts } from "@/lib/utils";
 import { GamePlayer, type PlayableGame } from "./game-player";
@@ -483,6 +481,34 @@ function PagedGrid({
   );
 }
 
+/** One small stat inside the compact strip. */
+function MiniStat({
+  icon,
+  value,
+  label,
+  accent,
+}: {
+  icon: React.ReactNode;
+  value: React.ReactNode;
+  label: string;
+  accent?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-2 text-center">
+      <span className={cn("inline-flex items-center gap-1 text-sm font-bold tabular-nums leading-none text-(--app-ink)", accent)}>
+        {icon}
+        <span className="truncate">{value}</span>
+      </span>
+      <span className="w-full truncate text-[10px] leading-tight text-(--app-ink-3)">{label}</span>
+    </div>
+  );
+}
+
+/**
+ * The games stats, compact (owner, 2026-10-17: the four big cards took too
+ * much room): one slim card with four small cells, and the best game as a thin
+ * line inside it.
+ */
 function StatsStrip({
   stats,
   onPlayBest,
@@ -491,54 +517,57 @@ function StatsStrip({
   onPlayBest: (id: string) => void;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        <StatCard
-          label="Games available"
+    <div className="overflow-hidden rounded-2xl border border-(--app-line) bg-(--app-surface)">
+      <div className="grid grid-cols-4 divide-x divide-(--app-line)">
+        <MiniStat
+          icon={<Gamepad2 className="w-3.5 h-3.5 text-sky-400" />}
           value={stats.gamesAvailable}
-          icon={<Gamepad2 className="w-4 h-4" />}
+          label="Games"
         />
         <Link
           href="/wallet"
-          className="block rounded-(--app-r-card) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--app-ring-focus)"
           aria-label={`Your game points: ${pts(stats.todayPoints)} today, ${pts(stats.allTimePoints)} all-time. Open wallet`}
+          title={`${pts(stats.allTimePoints)} points all-time`}
+          className="block hover:bg-(--app-surface-2) transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-(--app-ring-focus)"
         >
-          <StatCard
-            label="Your points today"
+          <MiniStat
+            icon={<Coins className="w-3.5 h-3.5" />}
             value={pts(stats.todayPoints)}
-            unit="pts"
-            hint={`${pts(stats.allTimePoints)} all-time`}
-            icon={<Coins className="w-4 h-4" />}
-            tone="green"
-            className="h-full hover:border-(--app-line-strong) transition-colors"
+            label="Pts today"
+            accent="text-emerald-400"
           />
         </Link>
-        <StatCard
-          label="Games you've played"
+        <MiniStat
+          icon={<Star className="w-3.5 h-3.5 text-amber-400" />}
           value={stats.gamesPlayed}
-          icon={<Star className="w-4 h-4" />}
+          label="Played"
         />
-        <StatCard
-          label="Playing now"
+        <MiniStat
+          icon={
+            <span className="relative inline-flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            </span>
+          }
           value={stats.playingNow}
-          hint="members, live"
-          icon={<Radio className="w-4 h-4" />}
+          label="Playing now"
         />
       </div>
       {stats.bestGame && (
         <button
           type="button"
           onClick={() => onPlayBest(stats.bestGame!.id)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-(--app-surface) border border-(--app-line) text-left hover:border-(--app-line-strong) transition-colors"
+          className="flex w-full items-center gap-2 border-t border-(--app-line) px-3 py-1.5 text-left hover:bg-(--app-surface-2) transition-colors"
         >
-          <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
-          <span className="min-w-0 flex-1 text-xs text-(--app-ink-3) truncate">
-            Your best game:{" "}
-            <span className="font-semibold text-(--app-ink)">{stats.bestGame.title}</span>
+          <Trophy className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+          <span className="min-w-0 flex-1 truncate text-[11px] text-(--app-ink-3)">
+            Best: <span className="font-semibold text-(--app-ink)">{stats.bestGame.title}</span>
             {" · "}
             <span className="tabular-nums">{pts(stats.bestGame.points)} pts</span>
+            {" · "}
+            <span className="tabular-nums">{pts(stats.allTimePoints)} all-time</span>
           </span>
-          <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-emerald-400">
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-emerald-400">
             <Play className="w-3 h-3 fill-current" /> Play
           </span>
         </button>

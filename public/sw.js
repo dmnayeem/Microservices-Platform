@@ -66,14 +66,18 @@ function offlineResponse() {
   });
 }
 
-// Precache the app shell for an offline navigation fallback. We intentionally do
-// NOT call skipWaiting() here: on first install there is no controller so this SW
-// activates immediately anyway, but for an UPDATE it stays "waiting" until the
-// client applies it at a safe moment (pull-to-refresh / reopen) — see the
-// SKIP_WAITING message below. This prevents surprise mid-use reloads.
+// A new build takes over AT ONCE (owner, 2026-10-17: "the app never
+// updates"). It used to wait for a "safe moment" the page had to announce —
+// and a home-screen app opened long ago runs that OLD page code, which may
+// never announce anything, so new builds sat in "waiting" forever: members
+// kept an old app (no notifications, no red counts) unless they uninstalled.
+// Taking over is safe here: page loads are network-first and assets are
+// fingerprinted, so the new worker serves the new site. The PAGE decides when
+// to reload (service-worker-register.tsx: while hidden, on reopen, or via the
+// "Update available" card) — no surprise reload in the middle of typing.
 self.addEventListener("install", (event) => {
   // The offline page is built in this file (OFFLINE_HTML) — nothing to fetch.
-  event.waitUntil(caches.open(CACHE).catch(() => {}));
+  event.waitUntil(caches.open(CACHE).catch(() => {}).then(() => self.skipWaiting()));
 });
 
 // The page tells a waiting SW to take over (after pull-to-refresh / reopen). The
@@ -112,9 +116,15 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => !keep.has(k)).map((k) => caches.delete(k)))
-      )
+      .then((keys) => {
+        // Keep the PREVIOUS build's runtime cache one more round: a page still
+        // running the old build (member pressed "Later" on the update card)
+        // keeps the chunks it already fetched. Older ones go.
+        const olderRuntimes = keys.filter((k) => k.startsWith("revtype-runtime-") && k !== RUNTIME);
+        const previous = olderRuntimes[olderRuntimes.length - 1];
+        if (previous) keep.add(previous);
+        return Promise.all(keys.filter((k) => !keep.has(k)).map((k) => caches.delete(k)));
+      })
       .then(() => self.clients.claim())
   );
 });
