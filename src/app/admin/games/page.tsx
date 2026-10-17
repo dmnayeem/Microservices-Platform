@@ -56,7 +56,9 @@ export default async function GamesAdminPage({
       </div>
     );
   }
-  const [games, categoryRows, counts, gamesConfig] = await Promise.all([
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
+  const [games, categoryRows, counts, gamesConfig, weekRows] = await Promise.all([
     prisma.game.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] }),
     prisma.gameCategory.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }] }),
     prisma.game.groupBy({ by: ["categoryId"], _count: { _all: true } }) as unknown as Promise<
@@ -65,7 +67,17 @@ export default async function GamesAdminPage({
     // Only feeds the "Connect your game" example, so a settings hiccup must not
     // take the whole games list down with it.
     getGamesGlobalConfig().catch(() => GAMES_DEFAULTS),
+    // Sessions started per game in the last 7 days — the same count the
+    // member page ranks "Popular this week" by. A stat, so it fails soft.
+    (
+      prisma.gameSession.groupBy({
+        by: ["gameId"],
+        where: { startedAt: { gte: weekAgo } },
+        _count: { gameId: true },
+      }) as unknown as Promise<{ gameId: string; _count: { gameId: number } }[]>
+    ).catch(() => []),
   ]);
+  const plays7dById = new Map(weekRows.map((r) => [r.gameId, r._count.gameId]));
 
   const countByCategory = new Map<string, number>();
   for (const c of counts) {
@@ -95,6 +107,7 @@ export default async function GamesAdminPage({
     order: g.order,
     isActive: g.isActive,
     playsCount: g.playsCount,
+    plays7d: plays7dById.get(g.id) ?? 0,
     adsEnabled: g.adsEnabled,
     adOnOpen: g.adOnOpen,
     adOnResume: g.adOnResume,

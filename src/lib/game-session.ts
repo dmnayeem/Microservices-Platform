@@ -9,6 +9,7 @@ import {
   resolveGameReward,
   type ResolvedGameReward,
 } from "@/lib/game-settings";
+import { notifyGameSessionsClosed, type ClosedGameSession } from "@/lib/game-notify";
 
 /**
  * Game play sessions and the points they earn.
@@ -121,17 +122,24 @@ export async function startSession(
     }),
   ]);
 
-  const session = await prisma.$transaction(async (tx) => {
-    // One open session per user, globally.
-    await tx.gameSession.updateMany({
+  const { session, forceEnded } = await prisma.$transaction(async (tx) => {
+    // One open session per user, globally. RETURNING exactly the rows this
+    // statement closed, so a session the player's own Quit closed in the
+    // meantime is not notified twice.
+    const forceEnded: ClosedGameSession[] = await tx.gameSession.updateManyAndReturn({
       where: { userId, endedAt: null },
       data: { endedAt: new Date() },
+      select: { id: true, userId: true, gameId: true, pointsAwarded: true },
     });
-    return tx.gameSession.create({
+    const session = await tx.gameSession.create({
       data: { userId, gameId },
       select: { id: true },
     });
+    return { session, forceEnded };
   });
+  // A session left open (the game's website has no "quit", a tab that was
+  // killed) still gets its one "you earned N points" notice.
+  await notifyGameSessionsClosed(forceEnded);
 
   // `playsCount` now counts authenticated, server-created sessions rather than
   // client mounts, so it legitimately grows more slowly than the old number.
@@ -530,14 +538,14 @@ export async function endSession(
     return { playedSeconds: s.playedSeconds, pointsAwarded: s.pointsAwarded };
   }
 
-  await prisma.$transaction(async (tx) => {
+  const claimed = await prisma.$transaction(async (tx) => {
     // CAS on `endedAt` so a `sendBeacon` racing an explicit quit folds the
     // totals in exactly once.
     const claim = await tx.gameSession.updateMany({
       where: { id: sessionId, endedAt: null },
       data: { endedAt: new Date() },
     });
-    if (claim.count === 0) return;
+    if (claim.count === 0) return false;
     await tx.game.update({
       where: { id: gameId },
       data: {
@@ -546,7 +554,25 @@ export async function endSession(
         pointsAwardedTotal: { increment: s.pointsAwarded },
       },
     });
+    return true;
   });
+
+  // Exactly one "you earned N points" notice: only the call that won the CAS
+  // sends it, after the commit. Re-read the total — no beat can add to a
+  // closed session, so this is final. Never fails the session end.
+  if (claimed) {
+    try {
+      const fin = await prisma.gameSession.findUnique({
+        where: { id: sessionId },
+        select: { pointsAwarded: true },
+      });
+      await notifyGameSessionsClosed([
+        { id: sessionId, userId, gameId, pointsAwarded: fin?.pointsAwarded ?? s.pointsAwarded },
+      ]);
+    } catch (err) {
+      console.error(`[game-session] end notification failed for ${sessionId}:`, err);
+    }
+  }
 
   return { playedSeconds: s.playedSeconds, pointsAwarded: s.pointsAwarded };
 }

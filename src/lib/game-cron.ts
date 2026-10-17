@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { SESSION_STALE_SECONDS } from "@/lib/game-session";
+import { notifyGameSessionsClosed, type ClosedGameSession } from "@/lib/game-notify";
 
 /**
  * Close play sessions that stopped beating.
@@ -55,14 +56,17 @@ export async function sweepStaleGameSessions(): Promise<{
   }
 
   const now = new Date();
-  const closed = await prisma.$transaction(async (tx) => {
+  const closedRows = await prisma.$transaction(async (tx) => {
     // `endedAt: null` in the filter is the CAS: a session the player closed in
     // the meantime is skipped rather than double-counted into the totals.
-    const res = await tx.gameSession.updateMany({
+    // RETURNING the rows THIS statement closed — exactly the sessions whose
+    // "you earned N points" notice is this sweep's to send.
+    const res: ClosedGameSession[] = await tx.gameSession.updateManyAndReturn({
       where: { id: { in: stale.map((s) => s.id) }, endedAt: null },
       data: { endedAt: now },
+      select: { id: true, userId: true, gameId: true, pointsAwarded: true },
     });
-    if (res.count === 0) return 0;
+    if (res.length === 0) return res;
     for (const [gameId, t] of byGame) {
       await tx.game.update({
         where: { id: gameId },
@@ -73,11 +77,14 @@ export async function sweepStaleGameSessions(): Promise<{
         },
       });
     }
-    return res.count;
+    return res;
   });
 
+  // After the commit, and never able to fail the sweep (it catches its own).
+  await notifyGameSessionsClosed(closedRows);
+
   return {
-    closed,
+    closed: closedRows.length,
     seconds: stale.reduce((s, x) => s + x.playedSeconds, 0),
     points: stale.reduce((s, x) => s + x.pointsAwarded, 0),
   };
