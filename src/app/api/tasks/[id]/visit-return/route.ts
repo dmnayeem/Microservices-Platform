@@ -27,8 +27,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
   if (done) return NextResponse.json({ outcome: "DONE", elapsed: done.elapsedSec ?? need, need });
 
+  // New-tab opens only (`viewer` null): an in-app open is closed by
+  // visit-progress, which also checks the viewer's scroll / click steps —
+  // closing it here would skip them.
   const open = await prisma.taskVisit.findFirst({
-    where: { submissionId: String(body.submissionId ?? ""), userId, taskId: id, outcome: "OPEN" },
+    where: { submissionId: String(body.submissionId ?? ""), userId, taskId: id, outcome: "OPEN", viewer: null },
     orderBy: { openedAt: "desc" },
     select: { id: true, openedAt: true },
   });

@@ -1,4 +1,5 @@
 import { coerceQuizQuestions } from "@/lib/quiz-shape";
+import { hostOf, normalizeVisitConfig } from "@/lib/visit-tasks";
 
 /**
  * Strip everything the browser must not see from a Task before sending it.
@@ -94,18 +95,26 @@ export function toPlayerTask<T extends Record<string, unknown>>(
   // VISIT: the link opens only through /go/task (which records the open), so
   // it is never sent to the browser — just what the task screen needs.
   if ("visitConfig" in out && out.visitConfig != null) {
-    const v = out.visitConfig as Record<string, unknown>;
+    // Normalised, so tasks saved before a field existed get its default.
+    const v = normalizeVisitConfig(out.visitConfig);
     // The host alone (not the URL) so the user can see where "Open link" goes
     // before pressing it; the full link still only travels via /go/task.
-    let host: string | null = null;
-    try {
-      host = typeof v.url === "string" && v.url
-        ? new URL(v.url).host.toLowerCase().replace(/^www\./, "")
-        : null;
-    } catch {
-      host = null;
-    }
-    out.visitConfig = { kind: v.kind, staySeconds: v.staySeconds, minSeconds: v.minSeconds, host };
+    // Search tasks need it too: it is the result the member must pick.
+    out.visitConfig = {
+      kind: v.kind,
+      staySeconds: v.staySeconds,
+      minSeconds: v.minSeconds,
+      host: v.url ? hostOf(v.url) : null,
+      // In-app viewer checklist (DIRECT): scroll % and clicks are 0 = off.
+      viewer: v.viewer,
+      scrollPercent: v.scrollPercent,
+      clicks: v.clicks,
+      // Traffic source (DIRECT): where /go/task sends the member first.
+      source: v.source,
+      searchKeyword: v.source === "search" ? v.searchKeyword : null,
+      searchEngine: v.source === "search" ? v.searchEngine : null,
+      postHost: v.source === "social" && v.socialPostUrl ? hostOf(v.socialPostUrl) : null,
+    };
   }
 
   return out;

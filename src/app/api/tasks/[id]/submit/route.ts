@@ -1,5 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
-import { normalizeVisitConfig, normVisitCode } from "@/lib/visit-tasks";
+import { normalizeVisitConfig, normVisitCode, visitHasViewerSteps } from "@/lib/visit-tasks";
 import { redeemVisitPass, visitCodeFor, visitEvidence } from "@/lib/visit-tasks-server";
 import { taskTypePage } from "@/lib/page-visibility";
 import { NextRequest, NextResponse } from "next/server";
@@ -704,8 +704,34 @@ export async function POST(
             { status: 400 }
           );
         }
-        visitMeta = { kind: "DIRECT", opens: ev.visits.length, early, stayedSec: ev.done.elapsedSec, needSec: vcfg.staySeconds };
-        visitAutoApprove = vcfg.autoApprove;
+        // In-app viewer tasks: prefer the open finished in the viewer (it
+        // checked the steps). A DONE reached through the new-tab fallback
+        // (visit-return) never saw scroll / clicks, so it is held when the task
+        // asks for them. Scroll / clicks are viewer-reported, time is server-measured.
+        const done = ev.visits.find((v) => v.outcome === "DONE" && v.viewer === "inapp") ?? ev.done;
+        const inappDone = done.viewer === "inapp";
+        visitMeta = {
+          kind: "DIRECT",
+          opens: ev.visits.length,
+          early,
+          stayedSec: done.elapsedSec,
+          needSec: vcfg.staySeconds,
+          viewer: inappDone ? "inapp" : "tab",
+          taskViewer: vcfg.viewer,
+          source: vcfg.source,
+          ...(vcfg.viewer === "inapp"
+            ? {
+                scrollPct: inappDone ? (done.scrollPct ?? 0) : null,
+                needScroll: vcfg.scrollPercent,
+                clicks: inappDone ? (done.clicks ?? 0) : null,
+                needClicks: vcfg.clicks,
+              }
+            : {}),
+        };
+        if (visitHasViewerSteps(vcfg) && !inappDone) {
+          visitHold = "Opened outside the in-app viewer — scroll/clicks not checked";
+        }
+        visitAutoApprove = vcfg.autoApprove && !visitHold;
       } else {
         const typed = String(visitCode ?? "").trim();
         if (!typed) {
