@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Loader2, Coins, ExternalLink, AlertTriangle } from "lucide-react";
 import { AdInterstitialOverlay } from "@/components/user/primitives/ad-interstitial-overlay";
 import type { AdPlacementName } from "@/lib/ad-placements";
+import { notifyCenter } from "@/lib/notify-center";
+import { pts } from "@/lib/utils";
 
 export interface PlayableGame {
   id: string;
@@ -22,6 +24,13 @@ export interface PlayableGame {
 
 /** How long to wait for the iframe's load event before calling it broken. */
 const LOAD_WATCHDOG_MS = 8_000;
+
+/**
+ * At most one centered "points earned" card per this long. Points that arrive
+ * inside the window are added up and shown together when it ends, so a member
+ * sees the full amount without a card on every beat.
+ */
+const REWARD_TOAST_GAP_MS = 60_000;
 
 interface SessionInfo {
   sessionId: string;
@@ -80,6 +89,13 @@ export function GamePlayer({
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   /** Latest running score from a connected game, and the last one sent. */
   const scoreRef = useRef<{ total: number }>({ total: 0 });
+  /** Session total for the reward card, and the card's throttle state. */
+  const earnedRef = useRef(0);
+  const rewardToastRef = useRef<{ lastAt: number; pending: number; timer: ReturnType<typeof setTimeout> | null }>({
+    lastAt: 0,
+    pending: 0,
+    timer: null,
+  });
   /** Only this origin's messages count (the game's own address). */
   const gameOrigin = (() => {
     try {
@@ -167,6 +183,48 @@ export function GamePlayer({
     };
   }, [endSession]);
 
+  // ── Centered reward card (throttled) ─────────────────────────────────────
+  // No interstitial in front of it: the player runs its own ads, and an extra
+  // full-screen ad on every reward would cover the game.
+  const queueRewardToast = useCallback(
+    (awarded: number) => {
+      const t = rewardToastRef.current;
+      t.pending += awarded;
+      if (t.timer) return; // already waiting for the window to end
+      const flush = () => {
+        t.timer = null;
+        if (t.pending <= 0) return;
+        // Not while nobody is looking — show it when they come back.
+        if (document.hidden) {
+          t.timer = setTimeout(flush, 5_000);
+          return;
+        }
+        const amount = t.pending;
+        t.pending = 0;
+        t.lastAt = Date.now();
+        notifyCenter.reward({
+          amount,
+          title: `Earned in ${game.title}`,
+          description: `${pts(earnedRef.current)} points this session, added to your Earn Points.`,
+          durationMs: 2500,
+          withAd: false,
+        });
+      };
+      const wait = t.lastAt + REWARD_TOAST_GAP_MS - Date.now();
+      if (wait <= 0) flush();
+      else t.timer = setTimeout(flush, wait);
+    },
+    [game.title]
+  );
+
+  useEffect(() => {
+    const t = rewardToastRef.current;
+    return () => {
+      if (t.timer) clearTimeout(t.timer);
+      t.timer = null;
+    };
+  }, []);
+
   // ── Heartbeat ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!session || !started) return;
@@ -194,10 +252,14 @@ export function GamePlayer({
           return;
         }
         const d = await r.json();
-        if (typeof d.sessionPoints === "number") setEarned(d.sessionPoints);
+        if (typeof d.sessionPoints === "number") {
+          earnedRef.current = d.sessionPoints;
+          setEarned(d.sessionPoints);
+        }
         if (d.awarded > 0) {
           setFlash(d.awarded);
           setTimeout(() => setFlash(0), 2000);
+          queueRewardToast(d.awarded);
           frameRef.current?.contentWindow?.postMessage(
             { source: "revtype-player", type: "earned", awarded: d.awarded, sessionPoints: d.sessionPoints },
             gameOrigin ?? "*"
@@ -212,7 +274,7 @@ export function GamePlayer({
     };
     const id = setInterval(beat, session.beatSeconds * 1000);
     return () => clearInterval(id);
-  }, [session, started, game.id, gameOrigin]);
+  }, [session, started, game.id, gameOrigin, queueRewardToast]);
 
   // ── Connected games (RevType Games SDK, public/sdk/revtype-games.js) ──────
   // The game posts its running score to this page. Only messages from THIS

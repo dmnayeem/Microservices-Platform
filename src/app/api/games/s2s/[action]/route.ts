@@ -5,6 +5,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
 import { getGamesGlobalConfig } from "@/lib/game-settings";
 import { TransactionType } from "@/generated/prisma";
+import { notifyGameServerCredit } from "@/lib/game-notify";
 import { absoluteAvatar, isAllowedGameOrigin, normalizeOrigin, siteId, verifyPlayerKey, verifySiteSignature } from "@/lib/game-connect";
 
 /**
@@ -133,6 +134,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     await tx.game.update({ where: { id: game.id }, data: { pointsAwardedTotal: { increment: credit } } });
     return { code: 200 as const, body: { ok: true, credited: credit, capped: credit < points } };
   });
+
+  // The member hears about it (bell + push, and a popup next time they are on
+  // RevType) — after the commit, coalesced per game, and never able to turn a
+  // paid credit into an error for the game server (it catches its own).
+  const credited = ("credited" in out.body ? out.body.credited : 0) ?? 0;
+  if (credited > 0) {
+    await notifyGameServerCredit({ userId, gameId: game.id, gameTitle: game.title, points: credited });
+  }
 
   return json(out.body, out.code);
 }

@@ -242,6 +242,11 @@ export interface NotifyOptions {
    * (src/lib/celebration.ts). For big moments only.
    */
   popup?: CelebrationPayload;
+  /**
+   * false = never email this one (in-app row + push only) — for frequent,
+   * low-stakes notices such as game earnings, whatever the email switches say.
+   */
+  email?: boolean;
 }
 
 /**
@@ -283,6 +288,7 @@ export async function notifyUser(opts: NotifyOptions) {
   const allowed = await typeAllowed(type);
 
   if (
+    opts.email !== false &&
     allowed &&
     user?.emailNotifications &&
     user.email &&

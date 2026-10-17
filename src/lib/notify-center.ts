@@ -32,6 +32,12 @@ export interface RewardOptions {
   amount?: number;
   unit?: "pts" | "USD";
   durationMs?: number;
+  /**
+   * false = show the card straight away, without the REWARD_INTERSTITIAL ad
+   * gate — for rewards that arrive while something else runs its own ads
+   * (the game player), where an extra full-screen ad would cover the game.
+   */
+  withAd?: boolean;
 }
 
 let queue: NotifyItem[] = [];
@@ -108,7 +114,8 @@ export const notifyCenter = {
         unit: opts.unit ?? "pts",
         durationMs: opts.durationMs ?? 2200,
       });
-    void runInterstitial().then(show, show);
+    if (opts.withAd === false) show();
+    else void runInterstitial().then(show, show);
     return 0;
   },
   success(title: string, description?: string, durationMs = 3500) {
