@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import {
   changedTargetingFields,
@@ -866,10 +867,15 @@ export async function DELETE() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const id = session.user.id;
+    const now = new Date();
     await prisma.user.update({
       where: { id },
       data: {
         status: "BANNED",
+        // Admins saw "Banned" with no reason and took it for an automatic ban
+        // (owner, 2026-10-18). It is the member's own Delete my account.
+        suspendedReason: `Deleted by the member (Settings → Delete my account) on ${now.toISOString().slice(0, 10)}.`,
+        suspendedAt: now,
         password: null,
         email: `deleted+${id}@deleted.local`,
         name: "Deleted User",
@@ -882,6 +888,14 @@ export async function DELETE() {
         twoFactorSecret: null,
       },
     });
+    await writeAudit({
+      actorId: id,
+      action: "ACCOUNT_DELETED_BY_MEMBER",
+      entity: "User",
+      entityId: id,
+      targetUserId: id,
+      summary: "The member deleted their own account (Delete my account)",
+    }).catch(() => {});
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting account:", error);

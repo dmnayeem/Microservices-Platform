@@ -6,6 +6,7 @@ import { enforceRateLimit, clientIp } from "@/lib/rate-limit";
 import { publicOrigin } from "@/lib/public-origin";
 import { assertPageVisible } from "@/lib/page-visibility-server";
 import { loadVisitTask, MAX_OPENS_PER_ATTEMPT } from "@/lib/visit-tasks-server";
+import { visitOutboundUrl } from "@/lib/visit-tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,13 @@ export const dynamic = "force-dynamic";
  * never sent to the browser before this. Refusals go back to the task page
  * with ?error=REASON (NOT_FOUND, BLOCKED, RATE_LIMITED, NO_ATTEMPT,
  * TOO_MANY_OPENS, BAD_LINK).
+ *
+ * `&inapp=1` (DIRECT tasks set to the in-app viewer only): the open is marked
+ * as in-app, so only /api/tasks/[id]/visit-progress can close it. Without it
+ * (a new tab, or the viewer's fallback) visit-return closes it as before.
+ * Where it goes: the target link with the task's UTM tags, the social post
+ * (source = social — the member taps the link inside it), or a real search
+ * results page (source = search).
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,9 +61,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const opens = await prisma.taskVisit.count({ where: { submissionId: attempt.id } });
   if (opens >= MAX_OPENS_PER_ATTEMPT) return back("TOO_MANY_OPENS");
 
+  const inapp =
+    request.nextUrl.searchParams.get("inapp") === "1" &&
+    task.config.kind === "DIRECT" &&
+    task.config.viewer === "inapp";
+
   let target: URL;
   try {
-    target = new URL(task.config.url);
+    target = new URL(visitOutboundUrl(task.config));
     if (target.protocol !== "https:" && target.protocol !== "http:") return back("BAD_LINK");
   } catch {
     return back("BAD_LINK");
@@ -67,6 +80,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       submissionId: attempt.id,
       userId,
       kind: task.config.kind,
+      viewer: inapp ? "inapp" : null,
       ip: clientIp(request),
       userAgent: request.headers.get("user-agent")?.slice(0, 500) ?? null,
     },
@@ -74,6 +88,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const res = NextResponse.redirect(target, 302);
   res.headers.set("Cache-Control", "no-store");
-  res.headers.set("Referrer-Policy", "no-referrer");
+  // Direct: as before. Social / search: the target is reached from the post or
+  // the results page, so its referrer is set by that site, not by us.
+  if (task.config.kind !== "DIRECT" || task.config.source === "direct") {
+    res.headers.set("Referrer-Policy", "no-referrer");
+  }
   return res;
 }

@@ -12,7 +12,22 @@ interface VisitMeta {
   secondsToArrive?: number | null;
   minSec?: number;
   signedOutCode?: boolean;
+  /** DIRECT: where the finished open happened, and the task's own setting. */
+  viewer?: "tab" | "inapp";
+  taskViewer?: "tab" | "inapp";
+  source?: "direct" | "social" | "search";
+  /** In-app tasks: what the viewer reported (null = opened outside it). */
+  scrollPct?: number | null;
+  needScroll?: number;
+  clicks?: number | null;
+  needClicks?: number;
 }
+
+const SOURCE: Record<string, string> = {
+  direct: "Direct",
+  social: "Through a social post",
+  search: "Through a search",
+};
 
 const VERDICT: Record<string, { text: string; tone: string }> = {
   OK: { text: "Came through the shortener", tone: "text-emerald-300" },
@@ -59,9 +74,26 @@ export function VisitProofPanel({ submission }: { submission: PanelSubmission })
         <>
           {row("Stayed", meta.stayedSec != null ? `${meta.stayedSec}s (needed ${meta.needSec ?? "?"}s)` : "—")}
           {row("Came back too early", meta.early ?? 0)}
+          {meta.source && row("Traffic source", SOURCE[meta.source] ?? meta.source)}
+          {meta.taskViewer === "inapp" &&
+            row(
+              "Opened in",
+              meta.viewer === "inapp" ? (
+                <span className="text-emerald-300">RevType&apos;s in-app viewer</span>
+              ) : (
+                <span className="text-amber-300">A new tab (viewer fallback)</span>
+              )
+            )}
+          {meta.taskViewer === "inapp" && (meta.needScroll ?? 0) > 0 &&
+            row("Scrolled", meta.scrollPct != null ? `${meta.scrollPct}% (needed ${meta.needScroll}%)` : "Not checked")}
+          {meta.taskViewer === "inapp" && (meta.needClicks ?? 0) > 0 &&
+            row("Clicks", meta.clicks != null ? `${meta.clicks} (needed ${meta.needClicks})` : "Not checked")}
         </>
       )}
-      <p className="pt-1 text-gray-500">Times are measured on our server, not the user&apos;s device.</p>
+      <p className="pt-1 text-gray-500">
+        Times are measured on our server, not the user&apos;s device.
+        {meta.taskViewer === "inapp" && " Scroll and clicks are reported by the viewer and can't be verified on another site."}
+      </p>
     </div>
   );
 }

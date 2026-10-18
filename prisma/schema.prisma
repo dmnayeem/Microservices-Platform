@@ -6418,6 +6418,13 @@ model TaskVisit {
   referrerHost String?
   ip           String?
   userAgent    String?
+  /// "inapp" = opened inside RevType's in-app viewer (closed by
+  /// /api/tasks/[id]/visit-progress); null = a new tab (closed by visit-return).
+  viewer       String?
+  /// In-app only: best scroll % / click count the viewer REPORTED (cross-origin
+  /// page, so not verifiable — the server-measured time is the hard check).
+  scrollPct    Int?
+  clicks       Int?
   createdAt    DateTime  @default(now())
 
   @@index([taskId, openedAt])

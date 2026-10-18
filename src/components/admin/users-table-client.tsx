@@ -337,7 +337,11 @@ export function UsersTableClient({
                                 : "bg-red-500/10 text-red-400"
                             )}
                           >
-                            {u.status === "PENDING_VERIFICATION" ? "Unverified" : u.status.charAt(0) + u.status.slice(1).toLowerCase()}
+                            {u.email.endsWith("@deleted.local")
+                              ? "Deleted by member"
+                              : u.status === "PENDING_VERIFICATION"
+                                ? "Unverified"
+                                : u.status.charAt(0) + u.status.slice(1).toLowerCase()}
                           </span>
                           <span className={cn("px-2 py-0.5 rounded-full text-[11px] font-medium", roleConfig.bgColor, roleConfig.color)}>
                             {roleConfig.label}
@@ -531,7 +535,7 @@ export function UsersTableClient({
                           : "bg-red-500/10 text-red-400"
                       )}
                     >
-                      {u.status.replace(/_/g, " ")}
+                      {u.email.endsWith("@deleted.local") ? "Deleted by member" : u.status.replace(/_/g, " ")}
                     </span>
                     <span
                       className={cn(
