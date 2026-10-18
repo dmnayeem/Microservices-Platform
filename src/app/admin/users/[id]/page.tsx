@@ -569,8 +569,17 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                   : "bg-red-500/10 text-red-400 border border-red-500/30"
               }`}
             >
-              {user.status.replace(/_/g, " ")}
+              {user.email.endsWith("@deleted.local") ? "Deleted by member" : user.status.replace(/_/g, " ")}
             </span>
+            {(user.status === "BANNED" || user.status === "SUSPENDED") && (
+              <span className="basis-full text-xs text-slate-400">
+                Why:{" "}
+                {user.suspendedReason ??
+                  (user.email.endsWith("@deleted.local")
+                    ? "The member deleted their own account (Delete my account)."
+                    : "No reason was recorded — see Admin activity for who changed the status.")}
+              </span>
+            )}
             <span
               title={roleDescription(user.role)}
               className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border border-current/30 ${roleConfig.bgColor} ${roleConfig.color}`}
