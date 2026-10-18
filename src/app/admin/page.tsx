@@ -600,34 +600,36 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
   if (perms.has("withdrawals.view") && overdueWithdrawals._count > 0)
     alerts.push({
       level: "critical",
-      title: `${overdueWithdrawals._count} withdrawal${overdueWithdrawals._count === 1 ? "" : "s"} waiting over ${WITHDRAWAL_SLA_HOURS}h`,
+      count: overdueWithdrawals._count,
+      label: `withdrawal${overdueWithdrawals._count === 1 ? "" : "s"} waiting over ${WITHDRAWAL_SLA_HOURS}h`,
       detail: overdueWithdrawals._min.createdAt ? `oldest since ${format(overdueWithdrawals._min.createdAt, "MMM d, HH:mm")}` : undefined,
       href: "/admin/withdrawals?status=PENDING",
     });
   if (perms.has("fraud.view") && abuseSevere > 0)
-    alerts.push({ level: "critical", title: `${abuseSevere} high-severity abuse case${abuseSevere === 1 ? "" : "s"} open`, detail: `${abuseTotal} open in total`, href: "/admin/abuse" });
+    alerts.push({ level: "critical", count: abuseSevere, label: `high-severity abuse case${abuseSevere === 1 ? "" : "s"} open`, detail: `${abuseTotal} open in total`, href: "/admin/abuse" });
   else if (perms.has("fraud.view") && abuseTotal > 0)
-    alerts.push({ level: "warning", title: `${abuseTotal} abuse case${abuseTotal === 1 ? "" : "s"} open`, href: "/admin/abuse" });
+    alerts.push({ level: "warning", count: abuseTotal, label: `abuse case${abuseTotal === 1 ? "" : "s"} open`, href: "/admin/abuse" });
   if ((pend("fraudOpen") ?? 0) > 0)
-    alerts.push({ level: "warning", title: `${pend("fraudOpen")} open fraud alert${pend("fraudOpen") === 1 ? "" : "s"}`, href: "/admin/fraud" });
+    alerts.push({ level: "warning", count: pend("fraudOpen")!, label: `open fraud alert${pend("fraudOpen") === 1 ? "" : "s"}`, href: "/admin/fraud" });
   if (perms.has("fraud.view") && highRiskUsers > 0)
-    alerts.push({ level: "warning", title: `${highRiskUsers} high-risk account${highRiskUsers === 1 ? "" : "s"}`, detail: `fraud risk ${HIGH_RISK}+ · not banned`, href: "/admin/fraud" });
+    alerts.push({ level: "warning", count: highRiskUsers, label: `high-risk account${highRiskUsers === 1 ? "" : "s"}`, detail: `fraud risk ${HIGH_RISK}+ · not banned`, href: "/admin/fraud" });
   if (perms.has("submissions.view") && pendingApprovalsCount > 0)
     alerts.push({
       level: pendingApprovalsCount >= 50 ? "warning" : "info",
-      title: `${pendingApprovalsCount.toLocaleString()} submission${pendingApprovalsCount === 1 ? "" : "s"} awaiting review`,
+      count: pendingApprovalsCount,
+      label: `submission${pendingApprovalsCount === 1 ? "" : "s"} awaiting review`,
       href: "/admin/submissions?status=PENDING",
     });
   if ((pend("withdrawals") ?? 0) > 0)
-    alerts.push({ level: "info", title: `${pend("withdrawals")} withdrawal${pend("withdrawals") === 1 ? "" : "s"} to process`, detail: "pending + processing", href: "/admin/withdrawals" });
+    alerts.push({ level: "info", count: pend("withdrawals")!, label: `withdrawal${pend("withdrawals") === 1 ? "" : "s"} to process`, detail: "pending + processing", href: "/admin/withdrawals" });
   if ((pend("mktDisputes") ?? 0) > 0)
-    alerts.push({ level: "warning", title: `${pend("mktDisputes")} marketplace dispute${pend("mktDisputes") === 1 ? "" : "s"} open`, href: "/admin/marketplace" });
+    alerts.push({ level: "warning", count: pend("mktDisputes")!, label: `marketplace dispute${pend("mktDisputes") === 1 ? "" : "s"} open`, href: "/admin/marketplace" });
   if ((pend("socialReports") ?? 0) > 0)
-    alerts.push({ level: "info", title: `${pend("socialReports")} content report${pend("socialReports") === 1 ? "" : "s"} pending`, href: "/admin/social-moderation" });
+    alerts.push({ level: "info", count: pend("socialReports")!, label: `content report${pend("socialReports") === 1 ? "" : "s"} pending`, href: "/admin/social-moderation" });
   if ((pend("suspensionAppeals") ?? 0) > 0)
-    alerts.push({ level: "info", title: `${pend("suspensionAppeals")} suspension appeal${pend("suspensionAppeals") === 1 ? "" : "s"}`, href: "/admin/fraud" });
+    alerts.push({ level: "info", count: pend("suspensionAppeals")!, label: `suspension appeal${pend("suspensionAppeals") === 1 ? "" : "s"}`, href: "/admin/fraud" });
   if (perms.has("fraud.view") && vpnUsers7d > 0)
-    alerts.push({ level: "info", title: `${vpnUsers7d} member${vpnUsers7d === 1 ? "" : "s"} seen on a VPN this week`, href: "/admin/fraud?tab=vpn" });
+    alerts.push({ level: "info", count: vpnUsers7d, label: `member${vpnUsers7d === 1 ? "" : "s"} seen on a VPN this week`, href: "/admin/fraud?tab=vpn" });
 
   // ── Quick actions: only screens this viewer can open ─────────────────────
   const actionDefs: Array<QuickAction & { perm: Parameters<typeof perms.has>[0] }> = [
@@ -711,15 +713,27 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
     .slice(0, 15);
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <QuickActions actions={quickActions} />
 
-      {/* At a glance — people, work, and what needs a person */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <MetricPanel title="Users" icon={Users} accent="blue" href="/admin/users" metrics={userMetrics} />
-        <MetricPanel title="Tasks & submissions" icon={ListTodo} accent="purple" href="/admin/submissions" metrics={taskMetrics} />
-        <AlertsPanel alerts={alerts} />
-      </div>
+      {/* At a glance — each its own full-width section, stacked (owner, 2026-10-18) */}
+      <AlertsPanel alerts={alerts} />
+      <MetricPanel
+        title="Users"
+        icon={Users}
+        accent="blue"
+        href="/admin/users"
+        description="Sign-ups, who is active, account status and verification"
+        metrics={userMetrics}
+      />
+      <MetricPanel
+        title="Tasks & submissions"
+        icon={ListTodo}
+        accent="purple"
+        href="/admin/submissions"
+        description="Listed tasks by status, submissions by review state, completions"
+        metrics={taskMetrics}
+      />
 
       {/* Money — finance only */}
       {seesMoney && (

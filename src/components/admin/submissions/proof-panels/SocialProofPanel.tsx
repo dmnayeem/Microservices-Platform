@@ -31,6 +31,8 @@ interface ItemProof {
     | "failed"
     | "criteria_failed"
     | "unverifiable"
+    | "not_own"
+    | "account_mismatch"
     | null;
   /** Per-rule outcome from Smart Auto Verification. */
   verifyDetails?: VerifyDetail[] | null;
@@ -49,8 +51,20 @@ const VERIFY_BADGE: Record<
     label: "⚠ code not found",
     cls: "bg-red-500/15 text-red-400",
   },
+  // Off-platform link (CODE / CONTENT) or a bot saying "not a member" — the
+  // item's verifySummary says which.
   failed: {
-    label: "⚠ not a member",
+    label: "⚠ check failed",
+    cls: "bg-red-500/15 text-red-400",
+  },
+  // Held for a person, never paid automatically: the proof link is the
+  // original post, or a post from a different account than the one typed.
+  not_own: {
+    label: "⚠ original post, not their share",
+    cls: "bg-red-500/15 text-red-400",
+  },
+  account_mismatch: {
+    label: "⚠ different account",
     cls: "bg-red-500/15 text-red-400",
   },
   // Amber, not red: the page WAS read and did not match, which is a real
@@ -209,6 +223,11 @@ export function SocialProofPanel({ submission, task }: Props) {
                     match" is a verdict; this is the evidence behind it, so
                     approving anyway is an informed decision rather than a
                     guess about what the machine objected to. */}
+                {!proof.verifyDetails?.length && proof.verifySummary && (
+                  <p className="text-[11px] text-gray-400">
+                    Auto-verification — {proof.verifySummary}
+                  </p>
+                )}
                 {!!proof.verifyDetails?.length && (
                   <div className="rounded-lg bg-gray-950 border border-gray-800 p-2.5">
                     <p className="text-[11px] text-gray-500 mb-1.5">

@@ -13,6 +13,7 @@
  */
 
 import { createHmac } from "crypto";
+import { detectLoginWall, looksUnreadable, toPageContent } from "@/lib/link-verify";
 
 function getSecret(): string {
   const s =
@@ -53,4 +54,26 @@ export function verifyCodeFor(
 export function contentHasCode(content: string, code: string): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   return norm(content).includes(norm(code));
+}
+
+/**
+ * The CODE check on a fetched proof page, with the same "could we actually
+ * read it?" test the CONTENT check uses (lib/link-verify).
+ *
+ * A login wall or an empty JavaScript shell does not contain the member's code
+ * because we never saw their post — not because the code is missing. That must
+ * come back `unverifiable` (re-checked later, or a person decides), never
+ * `code_missing`, which is a definite failure. Only a page we really read that
+ * lacks the code is `code_missing`.
+ */
+export function codeVerdict(
+  html: string | null,
+  code: string
+): "verified" | "code_missing" | "unverifiable" {
+  if (html === null) return "unverifiable";
+  const page = toPageContent(html);
+  if (detectLoginWall(page.html, page.text) || looksUnreadable(page)) {
+    return "unverifiable";
+  }
+  return contentHasCode(html, code) ? "verified" : "code_missing";
 }

@@ -493,7 +493,10 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         emoji: "🔁",
         description: "Retweet a tweet to your followers",
         adminFields: [fieldUrl("targetUrl", "Tweet URL")],
-        proofFields: [fieldUrl("proofUrl", "Your retweet URL"), fieldScreenshot],
+        // A plain retweet has no link of its own (the link is the original
+        // tweet), so the username + screenshot are the proof. New tasks only;
+        // the admin can still turn the URL on.
+        proofFields: [fieldProofUsername, fieldScreenshot],
         supportsAiPrompt: false,
         suggestedReward: { min: 10, max: 30 },
       },
@@ -1092,7 +1095,8 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         emoji: "🔁",
         description: "Repost a thread",
         adminFields: [fieldUrl("targetUrl", "Thread URL")],
-        proofFields: [fieldScreenshot],
+        // A repost has no link of its own on Threads — username + screenshot.
+        proofFields: [fieldProofUsername, fieldScreenshot],
         supportsAiPrompt: false,
         suggestedReward: { min: 10, max: 25 },
       },

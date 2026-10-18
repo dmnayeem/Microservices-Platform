@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { normalizeVisitConfig, validateVisitConfig } from "@/lib/visit-tasks";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { announceTask, parseTaskNotify } from "@/lib/task-announce";
+import { runNewTasksPush } from "@/lib/new-tasks-push";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -339,6 +340,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       after(() => announceTask(task, notify, actorId));
     }
 
+    // Just went live (was paused / draft / hidden) → "New tasks are waiting"
+    // push, throttled per member (lib/new-tasks-push.ts).
+    const wasLive = existingTask.status === "ACTIVE" && !existingTask.hidden;
+    if (!wasLive && task.status === "ACTIVE" && !task.hidden) {
+      after(() => runNewTasksPush({ liveTaskIds: [task.id], maxMs: 20_000 }));
+    }
+
     return NextResponse.json({ success: true, task });
   } catch (error) {
     console.error("Error updating task:", error);
@@ -584,6 +592,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       summary: `${existingTask.status} → ${newStatus} on "${existingTask.title}"`,
       meta: { from: existingTask.status, to: newStatus, action },
     });
+
+    // Resumed → "New tasks are waiting" push (throttled per member).
+    if (existingTask.status !== "ACTIVE" && newStatus === "ACTIVE" && !task.hidden) {
+      after(() => runNewTasksPush({ liveTaskIds: [task.id], maxMs: 20_000 }));
+    }
 
     return NextResponse.json({ success: true, task });
   } catch (error) {

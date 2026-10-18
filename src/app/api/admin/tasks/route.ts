@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { normalizeVisitConfig, validateVisitConfig } from "@/lib/visit-tasks";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { announceTask, parseTaskNotify } from "@/lib/task-announce";
+import { runNewTasksPush } from "@/lib/new-tasks-push";
 import { auth } from "@/lib/auth";
 import { can, canAny } from "@/lib/permissions";
 import { taskCreatePermFor, TASK_CREATE_PERMISSIONS } from "@/lib/rbac";
@@ -320,6 +321,12 @@ export async function POST(request: NextRequest) {
     if (notify) {
       const actorId = session.user.id;
       after(() => announceTask(task, notify, actorId));
+    }
+
+    // "New tasks are waiting" push to members (throttled per member, see
+    // lib/new-tasks-push.ts). After the response; never fails the save.
+    if (task.status === "ACTIVE" && !task.hidden) {
+      after(() => runNewTasksPush({ liveTaskIds: [task.id], maxMs: 20_000 }));
     }
 
     return NextResponse.json({ success: true, task }, { status: 201 });

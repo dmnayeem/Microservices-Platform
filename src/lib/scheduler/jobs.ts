@@ -337,6 +337,19 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     },
   },
   {
+    name: "new-tasks-push",
+    label: "New tasks push",
+    description:
+      "Sends “New tasks are waiting” to members who allowed push when tasks they can do have gone live, so the app icon on their phone shows a count. At most one per member every 4 hours — tasks added in between are counted in the next one. Only members whose account is active and whose push setting is on. Settings → Notifications.",
+    intervalMs: 10 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const { runNewTasksPush, summariseNewTasksPush } = await import("@/lib/new-tasks-push");
+      const r = await runNewTasksPush({ maxMs: 4 * MINUTE });
+      return { ok: true, summary: summariseNewTasksPush(r), result: r };
+    },
+  },
+  {
     name: "course-reminders",
     label: "Course reminders",
     description:

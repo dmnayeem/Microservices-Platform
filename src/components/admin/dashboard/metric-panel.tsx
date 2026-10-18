@@ -59,6 +59,7 @@ export function MetricPanel({
   icon: Icon,
   accent = "blue",
   href,
+  description,
   note,
   metrics,
   className,
@@ -67,42 +68,47 @@ export function MetricPanel({
   icon: LucideIcon;
   accent?: keyof typeof ACCENT;
   href?: string;
+  /** What this section is about, in one line. */
+  description?: string;
   /** One short line under the title — what the figures leave out, for example. */
   note?: string;
   metrics: Metric[];
   className?: string;
 }) {
+  // Full-width (landscape) section: each group is one row — its name on the
+  // left on desktop, its figures in a row of up to six (owner, 2026-10-18).
   return (
-    <section className={cn("card p-4 h-full", className)}>
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={cn("p-1.5 rounded-lg shrink-0", ACCENT[accent])}>
-            <Icon className="w-4 h-4" />
+    <section className={cn("card p-4 sm:p-5", className)}>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={cn("p-2 rounded-lg shrink-0", ACCENT[accent])}>
+            <Icon className="w-5 h-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-white truncate">{title}</h2>
-            {note && <p className="text-[11px] text-slate-500 truncate">{note}</p>}
+            <h2 className="text-base font-semibold text-white">{title}</h2>
+            {description && <p className="text-xs text-slate-400">{description}</p>}
+            {note && <p className="text-[11px] text-slate-500">{note}</p>}
           </div>
         </div>
         {href && (
           <Link
             href={href}
-            className="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-400 hover:text-white"
+            className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-slate-400 hover:text-white"
           >
-            Open <ArrowUpRight className="w-3 h-3" />
+            View all <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         )}
       </div>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {grouped(metrics).map((g, gi) => (
-          <div key={g.name ?? `g${gi}`}>
+          <div key={g.name ?? `g${gi}`} className={cn(g.name && "lg:flex lg:items-start lg:gap-4")}>
             {g.name && (
-              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 lg:mb-0 lg:w-36 lg:shrink-0 lg:pt-3">
                 {g.name}
-                <span className="h-px flex-1 bg-slate-800" />
+                <span className="h-px flex-1 bg-slate-800 lg:hidden" />
               </p>
             )}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 lg:flex-1">
               {g.items.map((m) => {
                 const body = (
                   <>
