@@ -153,6 +153,7 @@ const DEFAULTS: SettingsBag = {
   // Notifications
   push_notifications_enabled: true,
   notify_new_task: true,
+  "notifications.push_new_tasks": true,
   notify_withdrawal: true,
   "reengage.enabled": true,
   "reengage.inactive_days": 3,
@@ -1029,6 +1030,13 @@ export function SystemSettingsForm({
       <SwitchRow settingKey="notify_new_task"
         checked={values.notify_new_task !== false}
         onChange={(v) => set("notify_new_task", v)}
+        disabled={!canEdit}
+      />
+    ),
+    "notifications.push_new_tasks": () => (
+      <SwitchRow settingKey="notifications.push_new_tasks"
+        checked={values["notifications.push_new_tasks"] !== false}
+        onChange={(v) => set("notifications.push_new_tasks", v)}
         disabled={!canEdit}
       />
     ),

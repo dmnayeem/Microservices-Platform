@@ -255,7 +255,7 @@ export default async function MainLayout({
       {/* "Allow notifications" and "Install the app" — signed-in users only
           (a visitor on the landing page has nothing to be notified about),
           and asked again at the moment it matters: starting a task. */}
-      <PushPermissionPrompt enabled={ui?.notificationPopup ?? true} />
+      <PushPermissionPrompt enabled={ui?.notificationPopup ?? true} userId={session.user.id} />
       <PwaInstallPrompt
         enabled={ui?.pwaInstallPrompt ?? true}
         rewardPoints={installRewardPoints}

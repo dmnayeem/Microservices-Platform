@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { notifyUser } from "@/lib/notify";
+import { runNewTasksPush } from "@/lib/new-tasks-push";
 import { NotificationType } from "@/generated/prisma/client";
 
 interface RouteParams {
@@ -93,6 +94,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         requiredAccessLevel,
       },
     });
+    // Now live for members → "New tasks are waiting" push (throttled per
+    // member, lib/new-tasks-push.ts). After the response.
+    after(() => runNewTasksPush({ liveTaskIds: [id], maxMs: 20_000 }));
     return NextResponse.json({ success: true, status: "ACTIVE" });
   }
 

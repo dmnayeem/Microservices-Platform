@@ -276,6 +276,7 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "push_notifications_enabled", group: "notifications", label: "Push notifications", description: "Web push (VAPID) to phones and browsers that allowed it.", effect: "Off mutes push for everyone, whatever each user has chosen. In-app notifications still arrive." },
   { key: "celebrate.achievement_min_points", group: "notifications", label: "Big achievement popup from", unit: "points", description: "An achievement worth at least this many points also shows a celebration popup, not only a bell notification.", effect: "0 = every achievement with a reward gets the popup." },
   { key: "notify_new_task", group: "notifications", label: "New task available", description: "Notify users when a task they are eligible for is published.", effect: "Off = no email or push; the in-app record is still kept." },
+  { key: "notifications.push_new_tasks", group: "notifications", label: "Push when new tasks go live", description: "Members who allowed notifications get “New tasks are waiting — N new tasks were added” when tasks they can do go live, at most once every 4 hours each (the rest are counted in the next one). This is what puts a count on the app icon on Android phones.", effect: "Off = no automatic new-task push. Also needs “New task available” and Push notifications on." },
   { key: "reengage.enabled", group: "notifications", label: "Remind inactive users", description: "When someone hasn't visited for a few days, send them an in-app notification and a push saying how much in tasks is waiting for them (the real amount they can do). Email too when \"Inactive-user reminders\" is on in Settings → Email.", effect: "Off = no reminders at all." },
   { key: "reengage.inactive_days", group: "notifications", label: "Remind after", unit: "days without a visit", description: "How long someone must have been away before the first reminder.", effect: "1–60. People away more than 60 days are not reminded." },
   { key: "reengage.max_per_run", group: "notifications", label: "Reminders per run", unit: "people", description: "The most people reminded each time the scheduler runs, so a big backlog is spread out instead of sent at once.", effect: "1–2,000." },
@@ -647,7 +648,7 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         id: "auto-notify",
         title: "Automatic notifications",
         blurb: "Off means the email and push are not sent. The in-app notification is still recorded either way — muting a channel should not erase the record of what happened to a user.",
-        keys: ["notify_new_task", "notify_withdrawal", "notify_level_up"],
+        keys: ["notify_new_task", "notifications.push_new_tasks", "notify_withdrawal", "notify_level_up"],
         links: [
           {
             label: "New referral",

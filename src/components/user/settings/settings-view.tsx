@@ -17,6 +17,7 @@ import {
   Key,
   ChevronRight,
   Loader2,
+  Send,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { subscribeToPush } from "@/lib/push-client";
@@ -79,6 +80,86 @@ function Toggle({
       />
       <div className="relative w-11 h-6 bg-(--app-surface-2) rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-(--app-cta) peer-disabled:opacity-50"></div>
     </label>
+  );
+}
+
+type DevicePlatform = "android" | "iphone" | "desktop";
+
+function DeviceStatePill({ state }: { state: "unsupported" | "denied" | "off" | "on" }) {
+  const label = state === "on" ? "On" : state === "denied" ? "Blocked" : state === "off" ? "Off" : "Not available";
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-2.5 py-1 text-xs font-bold",
+        state === "on" && "bg-emerald-500/15 text-emerald-400",
+        state === "denied" && "bg-red-500/15 text-red-400",
+        (state === "off" || state === "unsupported") && "bg-(--app-surface) text-(--app-ink-3)"
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+const BLOCKED_STEPS: Record<DevicePlatform, { title: string; steps: React.ReactNode[] }> = {
+  android: {
+    title: "Android (Chrome or the installed app)",
+    steps: [
+      <>Long-press the <b>RevType</b> app icon → <b>App info</b>.</>,
+      <>Tap <b>Notifications</b> → <b>Allow</b>, and turn on <b>App icon badges</b>.</>,
+      <>In Chrome instead of the app: tap the icon left of the address → <b>Permissions</b> → <b>Notifications</b> → <b>Allow</b>.</>,
+    ],
+  },
+  iphone: {
+    title: "iPhone",
+    steps: [
+      <>Open the iPhone <b>Settings</b> → <b>Notifications</b> → <b>RevType</b>.</>,
+      <>Turn on <b>Allow Notifications</b> and <b>Badges</b>.</>,
+      <>Needs iOS 16.4 or later and RevType added to your Home Screen.</>,
+    ],
+  },
+  desktop: {
+    title: "Computer",
+    steps: [
+      <>Click the lock icon in the address bar.</>,
+      <>Set <b>Notifications</b> to <b>Allow</b>, then reload this page.</>,
+    ],
+  },
+};
+
+function StepList({ platform }: { platform: DevicePlatform }) {
+  return (
+    <ol className="list-decimal space-y-0.5 pl-5">
+      {BLOCKED_STEPS[platform].steps.map((s, i) => (
+        <li key={i}>{s}</li>
+      ))}
+    </ol>
+  );
+}
+
+/** "Notifications are blocked on this device" — how to unblock, per platform. */
+function BlockedSteps({ platform }: { platform: DevicePlatform }) {
+  const others = (Object.keys(BLOCKED_STEPS) as DevicePlatform[]).filter((p) => p !== platform);
+  return (
+    <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm text-(--app-ink-2)">
+      <p className="font-semibold text-(--app-ink)">Notifications are blocked on this device</p>
+      <p>
+        The browser won&apos;t ask again, so allow them in the device settings, then come back and tap <b>Turn on</b>.
+      </p>
+      <p className="font-medium text-(--app-ink)">{BLOCKED_STEPS[platform].title}</p>
+      <StepList platform={platform} />
+      <details className="pt-1">
+        <summary className="cursor-pointer text-(--app-ink-3)">Other devices</summary>
+        <div className="mt-2 space-y-2">
+          {others.map((p) => (
+            <div key={p}>
+              <p className="font-medium text-(--app-ink)">{BLOCKED_STEPS[p].title}</p>
+              <StepList platform={p} />
+            </div>
+          ))}
+        </div>
+      </details>
+    </div>
   );
 }
 
@@ -147,14 +228,19 @@ export function SettingsView({
   const [devicePush, setDevicePush] = useState<"unknown" | "unsupported" | "denied" | "off" | "on">("unknown");
   const [enablingPush, setEnablingPush] = useState(false);
   const [isIphone, setIsIphone] = useState(false);
+  const [platform, setPlatform] = useState<DevicePlatform>("desktop");
+  const [testing, setTesting] = useState(false);
   useEffect(() => {
     let alive = true;
-    (async () => {
+    const iphone =
+      /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const check = async () => {
+      if (alive) {
+        setIsIphone(iphone);
+        setPlatform(iphone ? "iphone" : /Android/i.test(navigator.userAgent) ? "android" : "desktop");
+      }
       if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-        if (alive) {
-          setIsIphone(/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
-          setDevicePush("unsupported");
-        }
+        if (alive) setDevicePush("unsupported");
         return;
       }
       if (Notification.permission === "denied") {
@@ -169,11 +255,32 @@ export function SettingsView({
         /* treat as not subscribed */
       }
       if (alive) setDevicePush(Notification.permission === "granted" && sub ? "on" : "off");
-    })();
+    };
+    void check();
+    // Back from the phone's settings (where they unblocked notifications):
+    // show the new state without a reload.
+    const onVis = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       alive = false;
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
+  const sendTestPush = async () => {
+    setTesting(true);
+    try {
+      const res = await fetch("/api/push/test", { method: "POST" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || "Try again in a moment.");
+      toast.success("Test sent", { description: "It should appear on this device in a few seconds." });
+    } catch (err) {
+      toast.error("Couldn't send the test", { description: err instanceof Error ? err.message : "Try again" });
+    } finally {
+      setTesting(false);
+    }
+  };
   const enableDevicePush = async () => {
     setEnablingPush(true);
     try {
@@ -389,47 +496,88 @@ export function SettingsView({
                   </div>
                   <Toggle checked={pushNotif} onChange={onPushNotif} disabled={savingPref} />
                 </div>
-                {/* This browser can't do push at all. On iPhone that means Safari
-                    outside the Home Screen app (Apple only allows push there);
-                    elsewhere an in-app browser (Facebook, Messenger …). The
-                    reminder sends members HERE, so say what to do instead of
-                    showing nothing (owner, 2026-10-13). */}
-                {devicePush === "unsupported" && (
-                  <div className="space-y-1.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-(--app-ink-2)">
-                    {isIphone ? (
-                      <>
-                        <p className="font-semibold text-(--app-ink)">On iPhone, notifications work only in the RevType app on your Home Screen.</p>
-                        <ol className="list-decimal space-y-0.5 pl-5">
-                          <li>Open revtype.com in <b>Safari</b>.</li>
-                          <li>Tap <b>Share</b> (the square with the arrow) → <b>Add to Home Screen</b>.</li>
-                          <li>Open RevType from the new icon, come back here and tap <b>Turn on notifications</b>.</li>
-                        </ol>
-                      </>
-                    ) : (
-                      <p>
-                        This browser can&apos;t show notifications. Open <b>revtype.com</b> in <b>Chrome</b> (or install the
-                        RevType app from the browser menu), then turn them on here.
+                {/* What THIS device does, whatever the account switch says:
+                    On / Off / Blocked, with the fix right next to it. */}
+                <div className="space-y-3 rounded-xl border border-(--app-line) bg-(--app-surface-2) p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-(--app-ink)">This device</p>
+                      <p className="text-sm text-(--app-ink-3)">
+                        {devicePush === "unknown"
+                          ? "Checking…"
+                          : devicePush === "unsupported"
+                            ? "This browser can't show notifications"
+                            : devicePush === "denied"
+                              ? "Notifications are blocked on this device"
+                              : devicePush === "on" && pushNotif
+                                ? "New tasks, rewards and withdrawal updates arrive here"
+                                : "You won't get notifications here — turn them on to earn more"}
                       </p>
+                    </div>
+                    {devicePush !== "unknown" && (
+                      <DeviceStatePill state={devicePush === "on" && !pushNotif ? "off" : devicePush} />
                     )}
                   </div>
-                )}
-                {(devicePush === "off" || devicePush === "denied" || (devicePush === "on" && !pushNotif)) && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--app-line) bg-(--app-surface-2) p-3">
-                    <p className="text-sm text-(--app-ink-2)">
-                      {devicePush === "denied"
-                        ? "Notifications are blocked in this browser. Allow them for this site in your browser settings, then tap the button."
-                        : "Be first to new offers, tasks and events — turn notifications on to earn more."}
+
+                  {/* This browser can't do push at all. On iPhone that means Safari
+                      outside the Home Screen app (Apple only allows push there);
+                      elsewhere an in-app browser (Facebook, Messenger …). The
+                      reminder sends members HERE, so say what to do instead of
+                      showing nothing (owner, 2026-10-13). */}
+                  {devicePush === "unsupported" && (
+                    <div className="space-y-1.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-(--app-ink-2)">
+                      {isIphone ? (
+                        <>
+                          <p className="font-semibold text-(--app-ink)">On iPhone, notifications work only in the RevType app on your Home Screen.</p>
+                          <ol className="list-decimal space-y-0.5 pl-5">
+                            <li>Open revtype.com in <b>Safari</b>.</li>
+                            <li>Tap <b>Share</b> (the square with the arrow) → <b>Add to Home Screen</b>.</li>
+                            <li>Open RevType from the new icon, come back here and tap <b>Turn on</b>.</li>
+                          </ol>
+                        </>
+                      ) : (
+                        <p>
+                          This browser can&apos;t show notifications. Open <b>revtype.com</b> in <b>Chrome</b> (or install the
+                          RevType app from the browser menu), then turn them on here.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {devicePush === "denied" && <BlockedSteps platform={platform} />}
+
+                  {(devicePush === "off" || devicePush === "denied" || devicePush === "on") && (
+                    <div className="flex flex-wrap gap-2">
+                      {(devicePush !== "on" || !pushNotif) && (
+                        <button
+                          onClick={devicePush === "on" ? () => onPushNotif(true) : enableDevicePush}
+                          disabled={enablingPush || savingPref}
+                          className="app-press app-tap-row inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-(--app-cta) px-3 py-2 text-sm font-bold text-(--app-on-cta) disabled:opacity-50"
+                        >
+                          {enablingPush ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                          Turn on
+                        </button>
+                      )}
+                      {devicePush === "on" && pushNotif && (
+                        <button
+                          onClick={sendTestPush}
+                          disabled={testing}
+                          className="app-press app-tap-row inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-(--app-line) px-3 py-2 text-sm font-semibold text-(--app-ink) disabled:opacity-50"
+                        >
+                          {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                          Send test notification
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {devicePush === "on" && pushNotif && platform === "android" && (
+                    <p className="text-xs text-(--app-ink-3)">
+                      No number on the app icon? Long-press the RevType icon → <b>App info</b> → <b>Notifications</b>, and
+                      turn on <b>App icon badges</b>.
                     </p>
-                    <button
-                      onClick={devicePush === "on" ? () => onPushNotif(true) : enableDevicePush}
-                      disabled={enablingPush || savingPref}
-                      className="app-press app-tap-row inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-(--app-cta) px-3 py-1.5 text-sm font-bold text-(--app-on-cta) disabled:opacity-50"
-                    >
-                      {enablingPush ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
-                      Turn on notifications
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium text-white">Email Notifications</p>

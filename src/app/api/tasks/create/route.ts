@@ -1,5 +1,6 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { runNewTasksPush } from "@/lib/new-tasks-push";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -530,6 +531,11 @@ export async function POST(req: NextRequest) {
     });
 
     links.report(task.id);
+    // A trusted buyer's task goes live at once (no review) → "New tasks are
+    // waiting" push to members, throttled per member (lib/new-tasks-push.ts).
+    if (buyer.autoApproveTasks) {
+      after(() => runNewTasksPush({ liveTaskIds: [task.id], maxMs: 20_000 }));
+    }
     return NextResponse.json(
       {
         success: true,
