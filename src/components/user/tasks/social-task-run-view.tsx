@@ -1385,6 +1385,18 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                   <p className="text-[10px] text-(--app-ink-3) mt-1">
                     URL of your post / comment / share / profile.
                   </p>
+                  {/* These create a link of their own; the original post's
+                      link is held for review instead of approved. */}
+                  {platform.key === "TWITTER" && item.action === "QUOTE_TWEET" && (
+                    <p className="text-[11px] text-amber-300 mt-1">
+                      Paste the link of YOUR quote, not the original post.
+                    </p>
+                  )}
+                  {platform.key === "FACEBOOK" && item.action === "SHARE_POST" && (
+                    <p className="text-[11px] text-amber-300 mt-1">
+                      Paste the link of YOUR share, not the original post.
+                    </p>
+                  )}
                 </div>
               )}
 

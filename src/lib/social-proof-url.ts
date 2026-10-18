@@ -20,6 +20,8 @@
  * URLs have not been checked would reject honest work.
  */
 
+import { postUrlKey } from "@/lib/social-account-key";
+
 /** Pinterest serves the same site from many country domains. */
 function isPinterestHost(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^www\./, "");
@@ -58,6 +60,55 @@ export function isPinterestNonPinUrl(url: string): boolean {
   return !/^\/pin\//i.test(u.pathname);
 }
 
+/** Like `parse`, but a link pasted without `https://` is still read. */
+function parseLoose(url: string): URL | null {
+  const t = url.trim();
+  if (!t) return null;
+  return parse(/^[a-z][a-z0-9+.-]*:\/\//i.test(t) ? t : `https://${t}`);
+}
+
+function hostIs(hostname: string, domains: string[]): boolean {
+  const h = hostname.toLowerCase();
+  return domains.some((d) => hostMatches(h, d));
+}
+
+/**
+ * The tweet id of an X post link, or null when the link is not one post.
+ * `/<handle>/status/<digits>` (also `/statuses/`), `/i/web/status/<digits>`;
+ * anything after the id (`/photo/1`, a query) is ignored.
+ */
+export function xStatusId(url: string): string | null {
+  const u = parseLoose(url);
+  if (!u || !hostIs(u.hostname, ["x.com", "twitter.com"])) return null;
+  const m =
+    u.pathname.match(/^\/[A-Za-z0-9_]{1,15}\/status(?:es)?\/(\d{1,25})(?:\/.*)?$/i) ??
+    u.pathname.match(/^\/i\/web\/status\/(\d{1,25})(?:\/.*)?$/i);
+  return m ? m[1] : null;
+}
+
+/** A link to one Threads post: `/@<handle>/post/<id>`. */
+export function isThreadsPostUrl(url: string): boolean {
+  const u = parseLoose(url);
+  if (!u || !hostIs(u.hostname, ["threads.net", "threads.com"])) return false;
+  return /^\/@[A-Za-z0-9._]{1,40}\/post\/[A-Za-z0-9_-]+\/?(?:\/.*)?$/.test(u.pathname);
+}
+
+const X_POST_RULE: ProofUrlRule = {
+  test: (url) => xStatusId(url) !== null,
+  hint:
+    "Paste the link to your post on X — it looks like " +
+    "https://x.com/yourname/status/1234567890. A profile, search or home " +
+    "link will not be accepted.",
+};
+
+const THREADS_POST_RULE: ProofUrlRule = {
+  test: isThreadsPostUrl,
+  hint:
+    "Paste the link to your post on Threads — it looks like " +
+    "https://www.threads.net/@yourname/post/ABC123. A profile link will not " +
+    "be accepted.",
+};
+
 export interface ProofUrlRule {
   /** True when the submitted URL is the right kind of link. */
   test: (url: string) => boolean;
@@ -66,6 +117,15 @@ export interface ProofUrlRule {
 }
 
 const RULES: Record<string, ProofUrlRule> = {
+  // X and Threads post links name their author and carry a post id, so a
+  // profile link pasted in place of a post is refused here, and the author
+  // can be compared with the username the member typed (`ownPostActions`).
+  "TWITTER/POST_TWEET": X_POST_RULE,
+  "TWITTER/QUOTE_TWEET": X_POST_RULE,
+  "TWITTER/CREATE_THREAD": X_POST_RULE,
+  "TWITTER/MENTION_IN_POST": X_POST_RULE,
+  "THREADS/POST_THREAD": THREADS_POST_RULE,
+  "THREADS/MENTION_IN_POST": THREADS_POST_RULE,
   "PINTEREST/CREATE_PIN": {
     test: isPinterestPinUrl,
     hint:
@@ -157,4 +217,58 @@ export function proofHostAllowed(
   if (!u) return false;
   const host = u.hostname.toLowerCase();
   return hosts.some((d) => hostMatches(host, d));
+}
+
+/**
+ * Actions whose target is SOMEONE ELSE's post, which the member reposts,
+ * shares, quotes or reblogs. Pasting that target back as proof proves nothing:
+ * it is the original, open to anyone. (On X and Threads a plain repost has no
+ * link of its own at all, so the screenshot and username decide those.)
+ */
+const RESHARE_ACTIONS = new Set([
+  "SHARE_POST",
+  "RETWEET",
+  "QUOTE_TWEET",
+  "REPOST",
+  "REPOST_TO_FEED",
+  "BOOST",
+  "SHARE_VIDEO",
+  "SHARE_TO_STORY",
+  "SHARE_LINK",
+  "REPIN",
+  "DUET_OR_STITCH",
+  "CROSS_POST",
+]);
+
+export function isReshareAction(actionKey: string | null | undefined): boolean {
+  return !!actionKey && RESHARE_ACTIONS.has(actionKey.toUpperCase());
+}
+
+/**
+ * Do two links name the same post? Host without `www.`/`m.`, the
+ * twitter.com/x.com, threads.com/threads.net and fb.com/facebook.com aliases,
+ * path without a trailing slash, tracking query and hash ignored (the query
+ * params that identify a Facebook post, like `story_fbid`, are kept — without
+ * them every `permalink.php` link would look like one post). Two X links are
+ * the same post when their tweet ids match, however the path is spelled.
+ */
+export function isSamePost(a: string, b: string): boolean {
+  const xa = xStatusId(a);
+  const xb = xStatusId(b);
+  if (xa || xb) return !!xa && xa === xb;
+  const ka = postUrlKey(a);
+  const kb = postUrlKey(b);
+  return !!ka && ka === kb;
+}
+
+/**
+ * Post-creation actions on X and Threads, where the post link names its
+ * author — so it can be compared with the username the member typed.
+ */
+export function ownPostActionChecksAuthor(
+  platformKey: string | null | undefined,
+  actionKey: string | null | undefined
+): boolean {
+  const k = `${platformKey ?? ""}/${(actionKey ?? "").toUpperCase()}`;
+  return RULES[k] === X_POST_RULE || RULES[k] === THREADS_POST_RULE;
 }

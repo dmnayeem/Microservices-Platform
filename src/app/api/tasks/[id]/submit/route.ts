@@ -67,7 +67,7 @@ import {
   getAction,
   isPostCreationAction,
 } from "@/lib/social-tasks";
-import { verifyCodeFor, contentHasCode } from "@/lib/task-verify-code";
+import { verifyCodeFor, contentHasCode, codeVerdict } from "@/lib/task-verify-code";
 import {
   defaultContentRules,
   evaluateContentRules,
@@ -88,6 +88,7 @@ import {
 } from "@/lib/link-preview";
 import { getSetting } from "@/lib/system-settings";
 import { bumpTrust, TRUST_APPROVE } from "@/lib/trust";
+import { autoApproveHold } from "@/lib/auto-approve-gates";
 import { addFraudRisk } from "@/lib/fraud-risk";
 import {
   perceptualHash,
@@ -100,6 +101,9 @@ import {
   proofUrlRule,
   destinationFieldFor,
   proofHostAllowed,
+  isReshareAction,
+  isSamePost,
+  ownPostActionChecksAuthor,
 } from "@/lib/social-proof-url";
 import {
   postUrlKey,
@@ -966,6 +970,23 @@ export async function POST(
     // admin's rules, on a task configured to reject rather than review. Stays
     // null for every "we couldn't read it" case — see lib/link-verify.
     let socialAutoRejectReason: string | null = null;
+    // Set when an action that HAS a check (CODE / CONTENT / the pin's
+    // destination) came back a definite failure: the page was read and did
+    // not match, the code is not on a page we could read, or the link is not
+    // on the platform at all. `task.autoApprove` may not pay over it — see the
+    // decision below. "unverifiable" (we could not read the page) never sets
+    // it, so task.autoApprove keeps approving those exactly as before.
+    let socialCheckFailed = false;
+    // Proof that cannot be the member's own work, judged from the links alone
+    // (bundle index → status + reason). Never auto-approved by verification
+    // or by task.autoApprove, and never auto-rejected: a person decides.
+    const socialItemHolds = new Map<
+      number,
+      { status: "not_own" | "account_mismatch"; summary: string }
+    >();
+    // A check the task asks for that never ran, because the proof arrived
+    // without the per-action `items` (legacy body). Not a pass.
+    let socialChecksSkipped = false;
     if (isSocial) {
       if (socialBundle) {
         // Store per-action proof; mirror item[0] into the legacy keys so any
@@ -1297,6 +1318,54 @@ export async function POST(
         }
       }
 
+      // Proof that is not the member's own, decided from the links alone (no
+      // network, so before the page checks below):
+      //  - a repost / share / quote whose proof link IS the post it was meant
+      //    to share. On X and Threads a plain repost has no link of its own,
+      //    so this is held for the screenshot and username, not rejected.
+      //  - an X / Threads post whose link names a different account than the
+      //    username the member typed.
+      {
+        const hcfg = normalizeSocialConfig(task.socialConfig);
+        hcfg.items.forEach((it, i) => {
+          const p =
+            socialBundle?.[i] ??
+            (!socialBundle && hcfg.items.length === 1
+              ? { proofUrl, username }
+              : null);
+          const url = String(p?.proofUrl ?? "").trim();
+          if (!url) return;
+          const target = String(it.fields?.targetUrl ?? "").trim();
+          if (isReshareAction(it.action) && target && isSamePost(url, target)) {
+            socialItemHolds.set(i, {
+              status: "not_own",
+              summary: "This is the original post, not your repost/share",
+            });
+            return;
+          }
+          const typed = String(p?.username ?? "").trim();
+          if (typed && ownPostActionChecksAuthor(hcfg.platform, it.action)) {
+            const fromUrl = accountKeyFromUrl(hcfg.platform, url);
+            const fromTyped = accountKeyFromUsername(hcfg.platform, typed);
+            if (fromUrl && fromTyped && fromUrl !== fromTyped) {
+              const handle = (k: string) => k.slice(k.indexOf(":") + 1);
+              socialItemHolds.set(i, {
+                status: "account_mismatch",
+                summary: `The post belongs to @${handle(fromUrl)}, not @${handle(fromTyped)}`,
+              });
+            }
+          }
+        });
+        if (!socialBundle) {
+          socialChecksSkipped = hcfg.items.some(
+            (it) =>
+              it.verify === "CODE" ||
+              it.verify === "CONTENT" ||
+              !!destinationFieldFor(hcfg.platform, it.action)
+          );
+        }
+      }
+
       // Server-side auto-verification per item (anti-fake proof). Each method
       // proves the action really happened, so a matching bundle can auto-approve
       // without a fakeable screenshot:
@@ -1432,14 +1501,22 @@ export async function POST(
               if (!proofUrl) status = "code_missing";
               // A page off the platform proves nothing: anyone can publish the
               // code on a site of their own. To a human reviewer, not rejected.
-              else if (!proofHostAllowed(cfg.platform, proofUrl)) status = "failed";
-              else {
-                const html = pageByUrl.get(proofUrl) ?? null;
-                if (html === null) status = "unverifiable";
-                else
-                  status = contentHasCode(html, expected)
-                    ? "verified"
-                    : "code_missing";
+              else if (!proofHostAllowed(cfg.platform, proofUrl)) {
+                status = "failed";
+                socialCheckFailed = true;
+                if (metaItems[i]) {
+                  metaItems[i].verifySummary = "The link is not on this task's platform";
+                }
+              } else {
+                // A login wall / empty shell is "unverifiable" (re-checked
+                // later), never "code_missing" — see `codeVerdict`.
+                status = codeVerdict(pageByUrl.get(proofUrl) ?? null, expected);
+                if (status === "code_missing") {
+                  socialCheckFailed = true;
+                  if (metaItems[i]) {
+                    metaItems[i].verifySummary = "The page was read, but your code is not on it";
+                  }
+                }
               }
             } else if (it.verify === "CONTENT" || implicit) {
               // Smart Auto Verification: compare the published page against the
@@ -1466,6 +1543,9 @@ export async function POST(
                 : (configured ?? defaultContentRules());
               const offPlatform = !!proofUrl && !proofHostAllowed(cfg.platform, proofUrl);
               const html = proofUrl && !offPlatform ? (pageByUrl.get(proofUrl) ?? null) : null;
+              // Off the platform is a definite failure (nothing to read is not
+              // the same as "couldn't read"): task.autoApprove may not pay it.
+              if (offPlatform) socialCheckFailed = true;
               const evaluation = evaluateContentRules(
                 html === null ? null : toPageContent(html),
                 rules,
@@ -1477,20 +1557,28 @@ export async function POST(
                   userTag: memberTag,
                 }
               );
-              status =
-                evaluation.verdict === "verified"
+              status = offPlatform
+                ? "failed"
+                : evaluation.verdict === "verified"
                   ? "verified"
                   : evaluation.verdict === "criteria_failed"
                     ? "criteria_failed"
                     : "unverifiable";
+              if (status === "criteria_failed") socialCheckFailed = true;
               if (metaItems[i]) {
                 metaItems[i].verifyDetails = evaluation.results;
-                metaItems[i].verifySummary = evaluation.summary;
+                metaItems[i].verifySummary = offPlatform
+                  ? "The link is not on this task's platform"
+                  : evaluation.summary;
               }
               // Only a page we actually READ, that genuinely did not match, on a
               // task whose admin asked for it. `shouldAutoReject` is the single
-              // place that judgement lives.
-              if (shouldAutoReject(evaluation.verdict, rules, evaluation.matched)) {
+              // place that judgement lives. A proof held for a person
+              // (`not_own` / `account_mismatch`) is never rejected by a fetch.
+              if (
+                !socialItemHolds.has(i) &&
+                shouldAutoReject(evaluation.verdict, rules, evaluation.matched)
+              ) {
                 socialAutoRejectReason ??= autoRejectMessage(evaluation.summary);
               }
             } else if (
@@ -1509,15 +1597,40 @@ export async function POST(
                   it.verify === "TELEGRAM_MEMBER"
                     ? await verifyTelegramMember(target, linkedId)
                     : await verifyDiscordMember(target, linkedId);
+                if (status === "failed" && metaItems[i]) {
+                  metaItems[i].verifySummary = "Not a member of the target chat";
+                }
               }
             }
-            if (metaItems[i]) metaItems[i].verifyStatus = status;
-            if (status !== "verified") allVerified = false;
+            // A proof held for a person overrides whatever the check said:
+            // the original post can carry the right words and still not be
+            // the member's own share. Annotated (with the reason) below.
+            const held = socialItemHolds.get(i);
+            if (metaItems[i]) metaItems[i].verifyStatus = held?.status ?? status;
+            if (held || status !== "verified") allVerified = false;
           }
           // Auto-approve only when EVERY item is auto-verified — a mixed bundle
           // still needs manual review of its non-verified actions.
           socialCodeAutoApprove =
             allVerified && verifyIdx.length === cfg.items.length;
+        }
+      }
+      // Record each held proof's reason where the review screen reads it, on
+      // every held action — verified or not. A legacy body has no `items`, so
+      // its reasons go on the submission instead.
+      if (socialItemHolds.size > 0) {
+        socialCodeAutoApprove = false;
+        const metaItemsH = Array.isArray(submissionMetadata.items)
+          ? (submissionMetadata.items as Array<Record<string, unknown>>)
+          : null;
+        socialItemHolds.forEach((h, i) => {
+          if (metaItemsH?.[i]) {
+            metaItemsH[i].verifyStatus = h.status;
+            metaItemsH[i].verifySummary = h.summary;
+          }
+        });
+        if (!metaItemsH) {
+          submissionMetadata.socialHold = [...socialItemHolds.values()];
         }
       }
     }
@@ -1601,6 +1714,18 @@ export async function POST(
       );
     }
 
+    // task.autoApprove pays a SOCIAL claim without a check passing — but never
+    // over a check that ran and FAILED, a proof that is not the member's own,
+    // or a check that was skipped. Those go the way they would with the switch
+    // off: the action's own onMismatch (reject / partial, via
+    // socialAutoRejectReason) or PENDING with the reason on the item.
+    // "unverifiable" (the page couldn't be read) is NOT blocked here: as
+    // before, task.autoApprove may still approve it. Actions with no
+    // verification are unaffected.
+    const socialAutoApproveBlocked =
+      isSocial &&
+      (socialCheckFailed || socialItemHolds.size > 0 || socialChecksSkipped);
+
     // Auto-approve decision (computed here so social code-verification can feed
     // it). SOCIAL auto-approves when the admin set task.autoApprove OR the whole
     // bundle was server-verified by code.
@@ -1622,7 +1747,8 @@ export async function POST(
           // the admin's own switch: a VIDEO or QUIZ task with auto-approve
           // explicitly turned OFF still paid out instantly. The toggle is the
           // decision; the type is not.
-          task.autoApprove));
+          task.autoApprove &&
+          !socialAutoApproveBlocked));
 
     // VIDEO YouTube-style engagement that requires a screenshot is manually
     // reviewed (a screenshot only has value if a human checks it). Honor-based
@@ -1653,38 +1779,23 @@ export async function POST(
     // it for MANUAL review when the submitter's trust is below the admin bar, or
     // when it's caught by the random spot-check sample. Keeps auto-approve fast
     // for trusted users while auditing the rest.
-    if (shouldAutoApprove) {
-      const [minTrust, spotPct] = await Promise.all([
-        getSetting<number>("antifraud.auto_approve_min_trust", 0),
-        getSetting<number>("antifraud.spot_check_percent", 0),
-      ]);
-      if (minTrust > 0 || spotPct > 0) {
-        const me = await prisma.user.findUnique({
-          where: { id: session.user.id },
-          select: { trustScore: true },
-        });
-        const lowTrust = minTrust > 0 && (me?.trustScore ?? 0) < minTrust;
-        const spotChecked = spotPct > 0 && Math.random() * 100 < spotPct;
-        if (lowTrust || spotChecked) {
-          shouldAutoApprove = false;
-          submissionMetadata.heldForReview = lowTrust ? "low_trust" : "spot_check";
-        }
-      }
-    }
-
+    //
     // Proof that matches ANOTHER member's (same post link, screenshot or social
     // username) is flagged above — but a flag on an auto-approved claim is read
     // by nobody, because it was already paid. Hold it for a person instead.
-    // social-recheck.ts already treats `fraudFlags` as a reason never to pay
-    // automatically; this makes the first decision agree with the re-check.
-    if (
-      shouldAutoApprove &&
-      isSocial &&
-      Array.isArray(submissionMetadata.fraudFlags) &&
-      submissionMetadata.fraudFlags.length > 0
-    ) {
-      shouldAutoApprove = false;
-      submissionMetadata.heldForReview = "duplicate_proof";
+    //
+    // Both live in lib/auto-approve-gates, which social-recheck.ts runs too, so
+    // a claim the re-check approves later is held by the same rules.
+    if (shouldAutoApprove) {
+      const hold = await autoApproveHold({
+        userId: session.user.id,
+        isSocial,
+        fraudFlags: submissionMetadata.fraudFlags,
+      });
+      if (hold) {
+        shouldAutoApprove = false;
+        submissionMetadata.heldForReview = hold;
+      }
     }
 
     // Computed after all metadata (incl. heldForReview) is finalized.

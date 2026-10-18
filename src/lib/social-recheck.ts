@@ -15,7 +15,9 @@ import {
 } from "@/lib/link-verify";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { proofHostAllowed } from "@/lib/social-proof-url";
-import { verifyCodeFor, contentHasCode } from "@/lib/task-verify-code";
+import { verifyCodeFor, contentHasCode, codeVerdict } from "@/lib/task-verify-code";
+import { autoApproveHold } from "@/lib/auto-approve-gates";
+import { bumpTrust, TRUST_APPROVE } from "@/lib/trust";
 import { getPointsPerUsd } from "@/lib/economy";
 import { chargeTaskCompletion, claimTaskCompletionSlot, notifyTaskClosed } from "@/lib/task-credit";
 import { getPlanMultipliers } from "@/lib/plan-multipliers";
@@ -59,6 +61,8 @@ export interface RecheckSummary {
   approved: number;
   stillUnreadable: number;
   nowFailing: number;
+  /** Passed on a re-read, but held for a person by the auto-approve gates. */
+  held: number;
   errors: number;
 }
 
@@ -118,6 +122,7 @@ export async function recheckPendingSocialSubmissions(opts?: {
     approved: 0,
     stillUnreadable: 0,
     nowFailing: 0,
+    held: 0,
     errors: 0,
   };
 
@@ -211,9 +216,14 @@ export async function recheckPendingSocialSubmissions(opts?: {
     // The submit route's own reasons to send a claim to a person are final
     // here too: a re-read must never pay what submit deliberately held (low
     // trust / spot check), what matched someone else's proof, or a banned user.
+    // A proof held as not the member's own (the original post pasted as a
+    // repost, or a post from another account) is for a person as well.
     const subMeta = (sub.metadata ?? {}) as Record<string, unknown>;
     if (
       subMeta.heldForReview ||
+      subMeta.socialHold ||
+      statuses.includes("not_own") ||
+      statuses.includes("account_mismatch") ||
       (Array.isArray(subMeta.fraudFlags) && subMeta.fraudFlags.length > 0) ||
       sub.user?.status !== "ACTIVE"
     ) {
@@ -257,9 +267,9 @@ export async function recheckPendingSocialSubmissions(opts?: {
         } else if (!html) {
           status = "unverifiable";
         } else if (it.verify === "CODE") {
-          status = contentHasCode(html, verifyCodeFor(sub.taskId, i, sub.userId))
-            ? "verified"
-            : "code_missing";
+          // A login wall / empty shell stays "unverifiable" (asked again
+          // later), the same test the CONTENT check uses — see `codeVerdict`.
+          status = codeVerdict(html, verifyCodeFor(sub.taskId, i, sub.userId));
         } else {
           const page = toPageContent(html);
           const res = evaluateContentRules(page, parseContentRules(it.contentRules), {
@@ -292,6 +302,26 @@ export async function recheckPendingSocialSubmissions(opts?: {
         });
         if (anyStillUnreadable) summary.stillUnreadable++;
         else summary.nowFailing++;
+        continue;
+      }
+
+      // The same anti-fraud gates the submit route applies before ANY
+      // automatic approval (low trust / spot check / duplicate proof). Submit
+      // never ran them on this claim — it was not auto-approvable then — so
+      // they run now, once: a held claim is marked `heldForReview`, which this
+      // job skips from then on, and is left PENDING for a person, unpaid.
+      const hold = await autoApproveHold({
+        userId: sub.userId,
+        isSocial: true,
+        fraudFlags: meta.fraudFlags,
+      });
+      if (hold) {
+        meta.heldForReview = hold;
+        await prisma.taskSubmission.updateMany({
+          where: { id: sub.id, status: SubmissionStatus.PENDING },
+          data: { metadata: meta as never },
+        });
+        summary.held++;
         continue;
       }
 
@@ -422,6 +452,10 @@ export async function recheckPendingSocialSubmissions(opts?: {
       }
 
       await closeTaskIfFull(sub.taskId).catch(() => {});
+
+      // Reputation: a clean automatic approval nudges trust up — exactly as
+      // the submit route does for one it approves itself.
+      await bumpTrust(sub.userId, TRUST_APPROVE);
 
       // An eighth XP-awarding path, and one my own grep missed — the suite
       // found it. Same placement as everywhere else: after the transaction,
