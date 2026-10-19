@@ -176,20 +176,32 @@ export const {
       if (user) token.lat = Date.now();
 
       if (trigger === "update" && session) {
-        const s = session as { name?: string; image?: string };
-        if (s.name) token.name = s.name;
+        // Client `update({ name })` sends it flat; the server-side
+        // `updateSession({ user: { name } })` sends it under `user`.
+        const s = session as { name?: string; image?: string; user?: { name?: string } };
+        const newName = s.user?.name ?? s.name;
+        if (newName) {
+          token.name = newName;
+          // The database read below is up to ~30s stale; for a minute the name
+          // the member just saved wins over it.
+          token.nameAt = Date.now();
+        }
         if (s.image) token.picture = s.image;
       }
 
-      // Keep the role current. It was written into the token at sign-in and
-      // never again, and the token lives 30 days — so a user a super admin
-      // promoted to MANAGER kept a USER token: no "Admin Panel" link, and
-      // /admin sent them back to the feed until they logged out and in. The
-      // role is re-read from the database (cached at most ~30s), so a
-      // promotion or demotion takes effect within half a minute.
+      // Keep the role and the name current. Both were written into the token
+      // at sign-in and never again, and the token lives 30 days — so a user a
+      // super admin promoted to MANAGER kept a USER token, and a member who
+      // renamed themselves kept seeing the old name in the header, sidebar
+      // and composer until they logged out and in. Both are re-read from the
+      // database (cached at most ~30s) in the one query the role already made.
       if (!user && typeof token.id === "string") {
-        const fresh = await currentRole(token.id);
-        if (fresh) token.role = fresh;
+        const fresh = await currentIdentity(token.id);
+        if (fresh) {
+          token.role = fresh.role;
+          const justSaved = typeof token.nameAt === "number" && Date.now() - token.nameAt < 60_000;
+          if (!justSaved && fresh.name) token.name = fresh.name;
+        }
       }
 
       return token;
@@ -206,26 +218,33 @@ export const {
   },
 });
 
-const roleMemo = new Map<string, { role: string; at: number }>();
+type Identity = { role: string; name: string | null };
+const identityMemo = new Map<string, Identity & { at: number }>();
 /**
- * The user's role as the database has it now, at most ~30s stale.
+ * The user's role and name as the database has them now, at most ~30s stale.
  *
  * Two layers, 15s each, so the worst case stays the 30s it always was: the
  * per-instance memo, and Accelerate's edge cache (ttl 15, no swr) shared by
  * every instance. The memo alone missed on almost every request on Vercel,
  * where requests land on fresh instances — a ~280ms read on every page.
- * Permissions only; no money path reads this.
+ * Permissions and display only; no money path reads this. The avatar is not
+ * here: pages read it from the database themselves, and a long URL would
+ * bloat the session cookie.
  */
-async function currentRole(userId: string): Promise<string | null> {
-  const hit = roleMemo.get(userId);
-  if (hit && Date.now() - hit.at < 15_000) return hit.role;
+async function currentIdentity(userId: string): Promise<Identity | null> {
+  const hit = identityMemo.get(userId);
+  if (hit && Date.now() - hit.at < 15_000) return hit;
   const u = await prisma.user
-    .findUnique({ where: { id: userId }, select: { role: true }, cacheStrategy: { ttl: 15 } })
+    .findUnique({
+      where: { id: userId },
+      select: { role: true, name: true },
+      cacheStrategy: { ttl: 15 },
+    })
     .catch(() => null);
   if (!u) return null;
-  if (roleMemo.size > 5_000) roleMemo.clear();
-  roleMemo.set(userId, { role: u.role, at: Date.now() });
-  return u.role;
+  if (identityMemo.size > 5_000) identityMemo.clear();
+  identityMemo.set(userId, { role: u.role, name: u.name, at: Date.now() });
+  return u;
 }
 
 /**
