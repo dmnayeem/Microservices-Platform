@@ -14,6 +14,7 @@ import { useMobileNav } from "@/lib/stores/mobile-nav-store";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { useAppRefresh } from "@/hooks/use-app-refresh";
 import { Avatar } from "@/components/user/primitives/avatar";
+import { SeeMoreText } from "@/components/user/primitives/see-more-text";
 import { ThemeSwitch } from "@/components/dashboard/theme-switch";
 import { GlobalSearch } from "@/components/user/primitives/global-search";
 import { isPathHidden } from "@/lib/page-visibility";
@@ -483,9 +484,12 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
                                 <p className="t-card-title text-(--app-ink) line-clamp-2 break-words">
                                   {notif.title}
                                 </p>
-                                <p className="t-body text-(--app-ink-3) mt-0.5 line-clamp-3 break-words">
-                                  {notif.message}
-                                </p>
+                                <SeeMoreText
+                                  text={notif.message}
+                                  lines={3}
+                                  inLink
+                                  className="t-body text-(--app-ink-3) mt-0.5"
+                                />
                                 <p className="t-meta text-(--app-ink-3) mt-1">
                                   {formatTimeAgo(notif.createdAt)}
                                 </p>
