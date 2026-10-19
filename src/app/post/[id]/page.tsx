@@ -112,7 +112,7 @@ export default async function PublicPostPage({ params }: PageProps) {
       />
       {/* Header — the only navigation a stranger gets, and it points at the
           product rather than at the app shell they cannot enter. */}
-      <header className="sticky top-0 z-30 border-b border-(--app-line) bg-(--app-page)/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-(--app-line) bg-(--app-page)/85 backdrop-blur safe-t">
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4">
           <Link href="/" className="text-base font-extrabold text-white">
             Earn<span className="text-(--app-accent-ink)">GPT</span>

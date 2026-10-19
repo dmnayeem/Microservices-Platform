@@ -37,7 +37,19 @@ import {
   Layers,
   ImageIcon,
   ExternalLink,
+  Save,
+  Trash2,
+  Pencil,
+  FilePlus2,
 } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { confirmDialog, promptDialog } from "@/lib/confirm";
+import {
+  NOTIFICATION_TITLE_MAX,
+  NOTIFICATION_MESSAGE_MAX,
+  type NotificationTemplateContent,
+  type SavedNotificationTemplate,
+} from "@/lib/notification-templates";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { DateField } from "@/components/ui/date-field";
 import { EmailComposer } from "./EmailComposer";
@@ -257,6 +269,21 @@ export function SendNotificationForm() {
       .then((j) => j?.emailBudget && setBudget(j.emailBudget))
       .catch(() => {});
   }, []);
+  // Saved templates. `activeTemplate` is the one the composer was loaded from:
+  // editing the form never changes it — only "Update template" does.
+  const [savedTemplates, setSavedTemplates] = useState<SavedNotificationTemplate[]>([]);
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState<{ id: string; name: string } | null>(null);
+  const [templateBusy, setTemplateBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/notifications/templates", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j?.templates && setSavedTemplates(j.templates))
+      .catch(() => {})
+      .finally(() => setTemplatesLoaded(true));
+  }, []);
+
   const [estimating, setEstimating] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -347,8 +374,8 @@ export function SendNotificationForm() {
       setLoading(false);
       return;
     }
-    if (formData.title.length > 50) {
-      setError("Title must be 50 characters or less");
+    if (formData.title.length > NOTIFICATION_TITLE_MAX) {
+      setError(`Title must be ${NOTIFICATION_TITLE_MAX} characters or less`);
       setLoading(false);
       return;
     }
@@ -357,8 +384,8 @@ export function SendNotificationForm() {
       setLoading(false);
       return;
     }
-    if (formData.message.length > 200) {
-      setError("Message must be 200 characters or less");
+    if (formData.message.length > NOTIFICATION_MESSAGE_MAX) {
+      setError(`Message must be ${NOTIFICATION_MESSAGE_MAX} characters or less`);
       setLoading(false);
       return;
     }
@@ -385,6 +412,7 @@ export function SendNotificationForm() {
         sendEmail: formData.sendEmail,
         important: formData.important,
         style: formData.style,
+        ...(activeTemplate ? { templateId: activeTemplate.id } : {}),
         ...(formData.kicker.trim() ? { kicker: formData.kicker.trim() } : {}),
         ...(formData.sendEmail && formData.emailSubject.trim()
           ? { emailSubject: formData.emailSubject.trim() }
@@ -487,7 +515,12 @@ export function SendNotificationForm() {
   const messageRef = useRef<HTMLTextAreaElement>(null);
   const putIcon = (field: "title" | "message", emoji: string) => {
     const el = field === "title" ? titleRef.current : messageRef.current;
-    const { value, caret } = insertAtCaret(el, formData[field], emoji, field === "title" ? 80 : 500);
+    const { value, caret } = insertAtCaret(
+      el,
+      formData[field],
+      emoji,
+      field === "title" ? NOTIFICATION_TITLE_MAX : NOTIFICATION_MESSAGE_MAX
+    );
     setFormData({ ...formData, [field]: value });
     requestAnimationFrame(() => {
       el?.focus();
@@ -502,7 +535,144 @@ export function SendNotificationForm() {
       title: t.title,
       message: t.message,
     }));
+    setActiveTemplate(null);
     setView("form");
+  };
+
+  /** The composer fields a template keeps — everything except the audience. */
+  const templateContent = (): NotificationTemplateContent => ({
+    type: formData.type,
+    title: formData.title,
+    message: formData.message,
+    priority: formData.priority,
+    style: formData.style,
+    kicker: formData.kicker,
+    imageUrl: formData.imageUrl,
+    actionUrl: formData.actionUrl,
+    actionLabel: formData.actionLabel,
+    sendInApp: formData.sendInApp,
+    sendPush: formData.sendPush,
+    sendEmail: formData.sendEmail,
+    important: formData.important,
+    emailSubject: formData.emailSubject,
+    emailBody: formData.emailBody,
+    emailFormat: formData.emailFormat,
+    emailHtml: formData.emailHtml,
+    emailPreheader: formData.emailPreheader,
+  });
+
+  const loadSavedTemplate = (tpl: SavedNotificationTemplate) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...tpl.content,
+      priority: tpl.content.priority as (typeof PRIORITIES)[number],
+    }));
+    setActiveTemplate({ id: tpl.id, name: tpl.name });
+    setError("");
+    setSuccess("");
+    setView("form");
+  };
+
+  const saveAsTemplate = async () => {
+    const name = await promptDialog({
+      title: "Save as template",
+      description:
+        "The message, look, button and channels are saved. The audience is not — you choose it each time you send.",
+      placeholder: "e.g. Weekend bonus announcement",
+      defaultValue: activeTemplate ? `${activeTemplate.name} (copy)` : formData.title.slice(0, 80),
+      required: true,
+      confirmLabel: "Save template",
+    });
+    if (!name?.trim()) return;
+    setTemplateBusy(true);
+    try {
+      const res = await fetch("/api/admin/notifications/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), content: templateContent() }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setSavedTemplates((prev) => [j.template, ...prev]);
+      setActiveTemplate({ id: j.template.id, name: j.template.name });
+      toast.success(`Template "${j.template.name}" saved`);
+    } catch (err) {
+      toast.error("Could not save the template", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
+  const patchTemplate = async (id: string, body: Record<string, unknown>, done: string) => {
+    setTemplateBusy(true);
+    try {
+      const res = await fetch(`/api/admin/notifications/templates/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setSavedTemplates((prev) => [j.template, ...prev.filter((x) => x.id !== id)]);
+      if (activeTemplate?.id === id) setActiveTemplate({ id, name: j.template.name });
+      toast.success(done);
+    } catch (err) {
+      toast.error("Could not update the template", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
+  const updateActiveTemplate = async () => {
+    if (!activeTemplate) return;
+    const ok = await confirmDialog({
+      title: `Update "${activeTemplate.name}"?`,
+      description: "The saved template is replaced with what is in the composer now.",
+      confirmLabel: "Update template",
+    });
+    if (ok) await patchTemplate(activeTemplate.id, { content: templateContent() }, "Template updated");
+  };
+
+  const renameTemplate = async (tpl: SavedNotificationTemplate) => {
+    const name = await promptDialog({
+      title: "Rename template",
+      defaultValue: tpl.name,
+      required: true,
+      confirmLabel: "Rename",
+    });
+    if (!name?.trim() || name.trim() === tpl.name) return;
+    await patchTemplate(tpl.id, { name: name.trim() }, "Template renamed");
+  };
+
+  const deleteTemplate = async (tpl: SavedNotificationTemplate) => {
+    const ok = await confirmDialog({
+      title: `Delete "${tpl.name}"?`,
+      description: "Notifications already sent from it are not affected.",
+      tone: "danger",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
+    setTemplateBusy(true);
+    try {
+      const res = await fetch(`/api/admin/notifications/templates/${tpl.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `HTTP ${res.status}`);
+      }
+      setSavedTemplates((prev) => prev.filter((x) => x.id !== tpl.id));
+      if (activeTemplate?.id === tpl.id) setActiveTemplate(null);
+      toast.success("Template deleted");
+    } catch (err) {
+      toast.error("Could not delete the template", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setTemplateBusy(false);
+    }
   };
 
   return (
@@ -536,8 +706,89 @@ export function SendNotificationForm() {
 
       {view === "templates" && (
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">
-            Pre-built Templates
+          <h2 className="text-lg font-semibold text-white mb-1">My templates</h2>
+          <p className="text-sm text-slate-400 mb-4">
+            Notifications you saved. Use one to load it into the composer, change anything, then send.
+            The saved copy stays as it was unless you press Update template.
+          </p>
+          {!templatesLoaded ? (
+            <div className="flex items-center gap-2 text-sm text-slate-400 mb-6">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            </div>
+          ) : savedTemplates.length === 0 ? (
+            <p className="mb-6 rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-400">
+              No saved templates yet. Write a notification in Compose and press{" "}
+              <b className="text-slate-200">Save as template</b>.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+              {savedTemplates.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="flex flex-col p-4 rounded-lg border border-slate-700 bg-slate-950/50"
+                >
+                  <p className="text-xs uppercase tracking-wider text-slate-500 mb-1 truncate">
+                    {tpl.name}
+                  </p>
+                  <p className="text-white font-medium truncate">{tpl.content.title || "—"}</p>
+                  <p className="text-sm text-slate-400 mt-1 line-clamp-2">{tpl.content.message}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                      {tpl.content.type}
+                    </span>
+                    {[
+                      tpl.content.sendInApp ? "In-app" : null,
+                      tpl.content.sendPush ? "Push" : null,
+                      tpl.content.sendEmail ? "Email" : null,
+                    ]
+                      .filter((ch): ch is string => ch !== null)
+                      .map((ch) => (
+                        <span key={ch} className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                          {ch}
+                        </span>
+                      ))}
+                    <span className="ml-auto">
+                      {tpl.usageCount > 0
+                        ? `Sent ${tpl.usageCount}× · last ${new Date(tpl.lastUsedAt ?? tpl.updatedAt).toLocaleDateString()}`
+                        : "Never sent"}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => loadSavedTemplate(tpl)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      Use
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => renameTemplate(tpl)}
+                      disabled={templateBusy}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 text-sm hover:text-white disabled:opacity-50"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteTemplate(tpl)}
+                      disabled={templateBusy}
+                      aria-label={`Delete ${tpl.name}`}
+                      className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h2 className="text-lg font-semibold text-white mb-4 pt-4 border-t border-slate-800">
+            Starter templates
           </h2>
           <p className="text-sm text-slate-400 mb-4">
             Click any template to load it into the composer.
@@ -579,6 +830,33 @@ export function SendNotificationForm() {
             <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center gap-3">
               <CheckCircle className="w-5 h-5 text-emerald-400" />
               <p className="text-emerald-400">{success}</p>
+            </div>
+          )}
+
+          {activeTemplate && (
+            <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 flex flex-wrap items-center gap-2">
+              <Layers className="w-4 h-4 text-blue-300 shrink-0" />
+              <p className="text-sm text-blue-100 flex-1 min-w-48">
+                From template <b className="text-white">{activeTemplate.name}</b>. Changes here only affect
+                this send unless you update the template.
+              </p>
+              <button
+                type="button"
+                onClick={updateActiveTemplate}
+                disabled={templateBusy}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Update template
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTemplate(null)}
+                aria-label="Stop using this template"
+                className="p-1.5 rounded-lg text-blue-200 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -641,19 +919,19 @@ export function SendNotificationForm() {
                   Title <span className="text-red-400">*</span>
                   <NameTokenButton
                     onInsert={() =>
-                      setFormData({ ...formData, title: `${formData.title}${formData.title && !formData.title.endsWith(" ") ? " " : ""}{name}`.slice(0, 80) })
+                      setFormData({ ...formData, title: `${formData.title}${formData.title && !formData.title.endsWith(" ") ? " " : ""}{name}`.slice(0, NOTIFICATION_TITLE_MAX) })
                     }
                   />
                   <EmojiPicker onPick={(e) => putIcon("title", e)} />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
-                  {formData.title.length}/50
+                  {formData.title.length}/{NOTIFICATION_TITLE_MAX}
                 </span>
               </div>
               <input
                 ref={titleRef}
                 type="text"
-                maxLength={80}
+                maxLength={NOTIFICATION_TITLE_MAX}
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -669,25 +947,25 @@ export function SendNotificationForm() {
                   Message <span className="text-red-400">*</span>
                   <NameTokenButton
                     onInsert={() =>
-                      setFormData({ ...formData, message: `${formData.message}${formData.message && !/\s$/.test(formData.message) ? " " : ""}{name}`.slice(0, 500) })
+                      setFormData({ ...formData, message: `${formData.message}${formData.message && !/\s$/.test(formData.message) ? " " : ""}{name}`.slice(0, NOTIFICATION_MESSAGE_MAX) })
                     }
                   />
                   <EmojiPicker onPick={(e) => putIcon("message", e)} />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
-                  {formData.message.length}/200
+                  {formData.message.length}/{NOTIFICATION_MESSAGE_MAX}
                 </span>
               </div>
               <textarea
                 ref={messageRef}
-                maxLength={500}
+                maxLength={NOTIFICATION_MESSAGE_MAX}
                 value={formData.message}
                 onChange={(e) =>
                   setFormData({ ...formData, message: e.target.value })
                 }
                 placeholder={"Enter notification message…\nPress Enter for a new line, e.g.\n⚡ 100 minutes, 30 days — 90 Tk\n⚡ 30 minutes, 1 day — 20 Tk"}
-                rows={4}
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+                rows={6}
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-y min-h-24"
               />
             </div>
 
@@ -1177,7 +1455,7 @@ export function SendNotificationForm() {
 
                 {formData.sendEmail && (
                   <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-                    {/* An email is not a notification row. Reusing the 80/500
+                    {/* An email is not a notification row. Reusing the title/message
                         limits above makes a mail with nothing to say, which is
                         exactly what the email channel used to send. */}
                     <EmailComposer
@@ -1312,18 +1590,29 @@ export function SendNotificationForm() {
               Cancel
             </button>
 
-            <button
-              type="submit"
-              disabled={loading || !formData.title || !formData.message}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-              {formData.scheduledFor ? "Schedule" : "Send Now"}
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={saveAsTemplate}
+                disabled={templateBusy || (!formData.title.trim() && !formData.message.trim())}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-700 text-slate-200 hover:text-white hover:border-slate-500 transition-colors disabled:opacity-50"
+              >
+                {templateBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FilePlus2 className="w-4 h-4" />}
+                {activeTemplate ? "Save as new template" : "Save as template"}
+              </button>
+              <button
+                type="submit"
+                disabled={loading || !formData.title || !formData.message}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+                {formData.scheduledFor ? "Schedule" : "Send Now"}
+              </button>
+            </div>
           </div>
         </form>
       )}

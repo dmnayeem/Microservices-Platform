@@ -1,11 +1,20 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { NON_STAFF_WHERE } from "@/lib/staff";
 import type { WithdrawalTickerItem } from "@/components/user/primitives/withdrawal-ticker";
+
+/**
+ * What the ticker shows.
+ *  - REAL:      only withdrawals that were actually paid out
+ *  - GENERATED: only entries made up from the admin's generator settings
+ *  - BOTH:      real ones first, the remaining slots filled with generated ones
+ */
+export type TickerSource = "REAL" | "GENERATED" | "BOTH";
+export const TICKER_SOURCES: TickerSource[] = ["REAL", "GENERATED", "BOTH"];
 
 export interface TickerConfig {
   enabled: boolean;
-  show_real: boolean;
-  include_fake: boolean;
+  source: TickerSource;
   fake_username_pattern: string;
   fake_min_amount: number;
   fake_max_amount: number;
@@ -17,13 +26,11 @@ export interface TickerConfig {
   show_method: boolean;
   show_country: boolean;
   scroll_speed_ms: number;
-  display_type: "SCROLLING" | "STATIC" | "POPUP";
 }
 
-const DEFAULTS: TickerConfig = {
+export const TICKER_DEFAULTS: TickerConfig = {
   enabled: true,
-  show_real: true,
-  include_fake: true,
+  source: "BOTH",
   fake_username_pattern: "User###,Anon###,Crypto###",
   fake_min_amount: 5,
   fake_max_amount: 250,
@@ -35,41 +42,107 @@ const DEFAULTS: TickerConfig = {
   show_method: false,
   show_country: false,
   scroll_speed_ms: 30000,
-  display_type: "SCROLLING",
 };
 
-const KEY_PREFIX = "ticker_";
+export const TICKER_KEY_PREFIX = "ticker_";
 
-// Per-instance memo — the ticker renders on every feed load; staleness bounded
-// to 30s (mirrors system-settings/economy module caches).
+// Per-instance memo — the ticker renders on every feed load. No Accelerate
+// cacheStrategy on top of it: stacked, the two kept an admin's change off the
+// feed for up to 90s, so a save looked like it had done nothing.
 let _cfgCache: { value: TickerConfig; ts: number } | null = null;
 const CFG_TTL_MS = 30_000;
 
-async function loadConfig(): Promise<TickerConfig> {
+export function clearTickerConfigCache() {
+  _cfgCache = null;
+}
+
+function unwrap(v: unknown): unknown {
+  return v && typeof v === "object" && "v" in (v as object) ? (v as { v: unknown }).v : v;
+}
+
+export async function getTickerConfig(): Promise<TickerConfig> {
   if (_cfgCache && Date.now() - _cfgCache.ts < CFG_TTL_MS) return _cfgCache.value;
-  const merged: TickerConfig = { ...DEFAULTS };
+  const merged: TickerConfig = { ...TICKER_DEFAULTS };
   try {
-    const rows = await prisma.systemSetting.findMany({
-      where: { category: "ticker" },
-      cacheStrategy: { ttl: 30, swr: 60 },
-    });
+    const rows = await prisma.systemSetting.findMany({ where: { category: "ticker" } });
+    const raw: Record<string, unknown> = {};
     for (const r of rows) {
-      if (!r.key.startsWith(KEY_PREFIX)) continue;
-      const k = r.key.slice(KEY_PREFIX.length);
-      if (!(k in DEFAULTS)) continue;
-      const v = r.value;
-      const unwrapped =
-        v && typeof v === "object" && "v" in (v as object)
-          ? (v as { v: unknown }).v
-          : v;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (merged as any)[k] = unwrapped;
+      if (r.key.startsWith(TICKER_KEY_PREFIX)) raw[r.key.slice(TICKER_KEY_PREFIX.length)] = unwrap(r.value);
+    }
+    for (const k of Object.keys(TICKER_DEFAULTS) as (keyof TickerConfig)[]) {
+      if (k in raw && typeof raw[k] === typeof TICKER_DEFAULTS[k]) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (merged as any)[k] = raw[k];
+      }
+    }
+    if (!TICKER_SOURCES.includes(merged.source)) merged.source = TICKER_DEFAULTS.source;
+    // Saved before `source` existed: two separate checkboxes said the same thing.
+    if (!("source" in raw) && ("show_real" in raw || "include_fake" in raw)) {
+      const real = raw.show_real !== false;
+      const fake = raw.include_fake !== false;
+      merged.source = real && fake ? "BOTH" : fake ? "GENERATED" : "REAL";
     }
   } catch {
     // DB unreachable — return defaults
   }
   _cfgCache = { value: merged, ts: Date.now() };
   return merged;
+}
+
+function allowedCountries(cfg: TickerConfig): string[] | null {
+  const list = cfg.countries
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  return list.length === 0 || list.includes("WORLDWIDE") ? null : list;
+}
+
+// The Accelerate extension's types drop the `select` shape once `cacheStrategy`
+// is set, so the row is described here.
+interface TickerRow {
+  id: string;
+  amount: unknown;
+  method: string;
+  user: { name: string | null; username: string | null; country: string | null } | null;
+}
+
+/**
+ * Withdrawals that were actually paid, newest first. Staff accounts are left
+ * out — their balances were seeded, so a staff payout is not a real one — and
+ * the amount/country filters are applied in the query, not after it, so a
+ * filter can never empty a list that had matches further back.
+ */
+export async function getRealTickerItems(cfg: TickerConfig): Promise<WithdrawalTickerItem[]> {
+  const countries = allowedCountries(cfg);
+  try {
+    const rows = (await prisma.withdrawal.findMany({
+      where: {
+        status: "COMPLETED",
+        amount: { gte: cfg.min_amount_to_show },
+        user: { ...NON_STAFF_WHERE, ...(countries ? { country: { in: countries } } : {}) },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: cfg.max_items,
+      select: {
+        id: true,
+        amount: true,
+        method: true,
+        user: { select: { name: true, username: true, country: true } },
+      },
+      // Social-proof ticker — a bit of staleness is fine; shared by every viewer.
+      cacheStrategy: { ttl: 20, swr: 60 },
+    })) as unknown as TickerRow[];
+    return rows.map((w) => ({
+      id: w.id,
+      username: w.user?.username ?? w.user?.name ?? "Someone",
+      amount: Number(w.amount),
+      unit: "USD" as const,
+      method: w.method,
+      country: w.user?.country ?? undefined,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 function rand<T>(arr: T[]): T {
@@ -114,59 +187,20 @@ function generateFakeItems(cfg: TickerConfig, count: number): WithdrawalTickerIt
 
 /**
  * Builds the ticker payload for the user-facing feed.
- * Returns `null` when the ticker is disabled in admin config.
+ * Returns `null` when the ticker is switched off in admin.
  */
 export async function getTickerPayload(): Promise<{
   config: TickerConfig;
   items: WithdrawalTickerItem[];
 } | null> {
-  const cfg = await loadConfig();
+  const cfg = await getTickerConfig();
   if (!cfg.enabled) return null;
 
-  let realItems: WithdrawalTickerItem[] = [];
-  if (cfg.show_real) {
-    try {
-      // Social-proof ticker — a bit of staleness is fine; cache to spare the DB
-      // on every feed render.
-      const recent = await prisma.withdrawal.findMany({
-        where: {
-          status: { in: ["COMPLETED", "PROCESSING"] },
-          amount: { gte: cfg.min_amount_to_show },
-        },
-        orderBy: { createdAt: "desc" },
-        take: cfg.max_items,
-        cacheStrategy: { ttl: 30, swr: 60 },
-      });
-      const userIds = [...new Set(recent.map((w) => w.userId))];
-      const users = userIds.length
-        ? await prisma.user.findMany({
-            where: { id: { in: userIds } },
-            select: { id: true, name: true, country: true },
-            cacheStrategy: { ttl: 60, swr: 120 },
-          })
-        : [];
-      const usersById = new Map(users.map((u) => [u.id, u]));
-      realItems = recent.map((w) => {
-        const u = usersById.get(w.userId);
-        return {
-          id: w.id,
-          username: u?.name ?? "Anonymous",
-          amount: Number(w.amount),
-          unit: "USD" as const,
-          method: w.method,
-          country: u?.country ?? undefined,
-        };
-      });
-    } catch {
-      // ignore
-    }
-  }
+  const realItems = cfg.source === "GENERATED" ? [] : await getRealTickerItems(cfg);
 
-  // Mix in fake items if enabled — fill up to max_items
+  // GENERATED fills every slot; BOTH only the slots real payouts left empty.
   const remaining = Math.max(0, cfg.max_items - realItems.length);
-  const fakes = cfg.include_fake && remaining > 0
-    ? generateFakeItems(cfg, remaining)
-    : [];
+  const fakes = cfg.source !== "REAL" && remaining > 0 ? generateFakeItems(cfg, remaining) : [];
 
   // Interleave so the feed doesn't have a "all real then all fake" look
   const items: WithdrawalTickerItem[] = [];
@@ -181,18 +215,5 @@ export async function getTickerPayload(): Promise<{
     }
   }
 
-  // Filter by country (if not WORLDWIDE)
-  const allowedCountries = cfg.countries
-    .split(",")
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean);
-  const isWorldwide =
-    allowedCountries.length === 0 || allowedCountries.includes("WORLDWIDE");
-  const filtered = isWorldwide
-    ? items
-    : items.filter(
-        (it) => !it.country || allowedCountries.includes(it.country.toUpperCase())
-      );
-
-  return { config: cfg, items: filtered.slice(0, cfg.max_items) };
+  return { config: cfg, items: items.slice(0, cfg.max_items) };
 }

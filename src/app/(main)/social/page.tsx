@@ -306,6 +306,8 @@ export default async function SocialPage() {
               showAmount: tickerPayload.config.show_amount,
               showMethod: tickerPayload.config.show_method,
               showCountry: tickerPayload.config.show_country,
+              live: tickerPayload.config.source !== "GENERATED",
+              maxItems: tickerPayload.config.max_items,
               speedSec: Math.max(
                 5,
                 Math.round(tickerPayload.config.scroll_speed_ms / 1000)

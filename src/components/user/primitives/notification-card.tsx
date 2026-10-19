@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SeeMoreText } from "./see-more-text";
 import { mediaSrc } from "@/lib/media-url";
 import {
   notificationStyle,
@@ -164,9 +165,11 @@ export function NotificationCard({
       </div>
 
       <div className="sm:pl-13">
-        <p className="mt-2 text-sm leading-relaxed text-(--app-ink-3) whitespace-pre-line break-words">
-          {message}
-        </p>
+        <SeeMoreText
+          text={message}
+          lines={4}
+          className="mt-2 text-sm leading-relaxed text-(--app-ink-3)"
+        />
 
         {payload.imageUrl && (
           // Arbitrary admin-supplied artwork, so a plain <img> through the

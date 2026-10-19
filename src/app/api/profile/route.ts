@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { auth, updateSession } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import {
@@ -814,6 +814,13 @@ export async function PATCH(request: NextRequest) {
       where: { id: session.user.id },
       data: updateData,
     });
+
+    // The header, sidebar and composer show the name from the session, which
+    // was only ever set at sign-in — a rename did not show until the next
+    // login. Re-sign the session cookie now so it shows on the next render.
+    if (typeof updateData.name === "string") {
+      await updateSession({ user: { name: updateData.name } }).catch(() => {});
+    }
 
     // A trail, so a pattern of retargeting can be found after the fact. There
     // was none before, which is why past abuse cannot be counted.

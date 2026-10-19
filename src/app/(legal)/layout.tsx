@@ -20,7 +20,7 @@ export default async function LegalLayout({ children }: { children: ReactNode })
       className="min-h-screen bg-(--mk-bg) text-(--mk-muted)"
     >
       <MarketingThemeScript allowToggle={content.appearance.themeToggle !== false} />
-      <header className="border-b border-(--mk-border) bg-(--mk-nav) backdrop-blur-xl sticky top-0 z-10">
+      <header className="border-b border-(--mk-border) bg-(--mk-nav) backdrop-blur-xl sticky top-0 z-10 safe-t">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <Link href="/" className="inline-flex items-center gap-2">
             <BrandLockup>

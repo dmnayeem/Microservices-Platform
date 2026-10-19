@@ -30,7 +30,7 @@ export function Navbar({ themeToggle = true, ...props }: Props) {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 backdrop-blur-xl border-b border-(--mk-border) ${
+      className={`fixed top-0 left-0 right-0 z-50 safe-t transition-all duration-300 backdrop-blur-xl border-b border-(--mk-border) ${
         isScrolled ? "bg-(--mk-nav-scrolled) shadow-sm" : "bg-(--mk-nav)"
       }`}
     >

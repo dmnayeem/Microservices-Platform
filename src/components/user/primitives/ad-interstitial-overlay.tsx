@@ -148,7 +148,7 @@ export function AdInterstitialOverlay({
 
   return (
     <div className="fixed inset-0 z-10001 bg-black/95 flex flex-col items-center justify-center p-4">
-      <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-white/60">
+      <span className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] left-3 text-[10px] font-bold uppercase tracking-wider text-white/60">
         Sponsored
       </span>
       {allowClose && (
@@ -156,7 +156,7 @@ export function AdInterstitialOverlay({
           type="button"
           onClick={onDone}
           aria-label="Close ad"
-          className="absolute top-3 right-3 z-10 w-9 h-9 grid place-items-center on-media rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white"
+          className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] right-3 z-10 w-9 h-9 grid place-items-center on-media rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white"
         >
           <X className="w-5 h-5" />
         </button>

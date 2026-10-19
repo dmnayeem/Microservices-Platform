@@ -43,7 +43,7 @@ export function TutorShell({ user, children }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-40 p-2 rounded-lg bg-(--app-surface) border border-(--app-line) text-(--app-ink)"
+        className="lg:hidden fixed top-[calc(0.75rem+env(safe-area-inset-top))] left-3 z-40 p-2 rounded-lg bg-(--app-surface) border border-(--app-line) text-(--app-ink)"
       >
         <Menu className="w-5 h-5" />
       </button>
@@ -51,7 +51,7 @@ export function TutorShell({ user, children }: Props) {
       {/* Sidebar */}
       <aside
         className={
-          "fixed inset-y-0 left-0 w-64 bg-(--app-surface) border-r border-(--app-line) z-50 transform transition-transform " +
+          "fixed inset-y-0 left-0 w-64 bg-(--app-surface) border-r border-(--app-line) z-50 safe-t transform transition-transform " +
           (open ? "translate-x-0" : "-translate-x-full lg:translate-x-0")
         }
       >
@@ -149,7 +149,7 @@ export function TutorShell({ user, children }: Props) {
 
       {/* Main */}
       <main className="lg:ml-64 min-h-screen">
-        <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">{children}</div>
+        <div className="px-4 md:px-8 pb-6 pt-[calc(1.5rem+env(safe-area-inset-top))] max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   );

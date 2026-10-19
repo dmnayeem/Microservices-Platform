@@ -5574,6 +5574,26 @@ model BroadcastRecipient {
   @@index([userId])
 }
 
+/// A notification the admin wrote once and keeps for reuse. Loading one fills
+/// the composer; whatever is edited before sending does not change the saved
+/// copy unless the admin presses "Update template". `content` holds the
+/// composer fields (lib/notification-templates.ts) — never the audience, which
+/// is chosen fresh on every send.
+model NotificationTemplate {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  content     Json
+  /// Broadcasts sent from this template (bumped by /api/admin/notifications/send).
+  usageCount  Int       @default(0)
+  lastUsedAt  DateTime?
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([updatedAt])
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  Company finance & HR
 //
