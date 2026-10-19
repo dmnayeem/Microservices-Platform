@@ -4,48 +4,46 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "@/lib/toast";
+import type { TickerConfig, TickerSource } from "@/lib/ticker-server";
 
 interface Props {
-  initial: Record<string, unknown>;
+  initial: TickerConfig;
   canEdit: boolean;
 }
 
-const DEFAULTS = {
-  enabled: true,
-  display_type: "SCROLLING" as "SCROLLING" | "STATIC" | "POPUP",
-  show_real: true,
-  include_fake: true,
-  fake_username_pattern: "User###,Anon###,Crypto###",
-  fake_min_amount: 5,
-  fake_max_amount: 250,
-  fake_methods: "BKASH,NAGAD,PAYPAL,BINANCE",
-  fake_frequency_seconds: 8,
-  scroll_speed_ms: 30000,
-  max_items: 10,
-  min_amount_to_show: 5,
-  countries: "WORLDWIDE",
-  show_amount: true,
-  show_method: true,
-  show_country: false,
-};
+const SOURCES: { value: TickerSource; label: string; description: string }[] = [
+  {
+    value: "REAL",
+    label: "Real withdrawals",
+    description: "Only payouts that were actually completed. Staff accounts are left out.",
+  },
+  {
+    value: "GENERATED",
+    label: "Generated entries",
+    description: "Only made-up entries from the generator below. No real user is shown.",
+  },
+  {
+    value: "BOTH",
+    label: "Both",
+    description: "Real payouts first; generated entries fill the remaining slots.",
+  },
+];
 
 export function TickerSettingsForm({ initial, canEdit }: Props) {
   const router = useRouter();
-  const [v, setV] = useState({ ...DEFAULTS, ...initial });
+  const [v, setV] = useState<TickerConfig>(initial);
   const [busy, setBusy] = useState(false);
 
-  const set = <K extends keyof typeof DEFAULTS>(k: K, val: (typeof DEFAULTS)[K]) =>
+  const set = <K extends keyof TickerConfig>(k: K, val: TickerConfig[K]) =>
     setV((p) => ({ ...p, [k]: val }));
 
   const save = async () => {
     setBusy(true);
     try {
-      const settings: Record<string, unknown> = {};
-      for (const [k, val] of Object.entries(v)) settings[`ticker_${k}`] = val;
-      const res = await fetch("/api/admin/settings", {
+      const res = await fetch("/api/admin/ticker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category: "ticker", settings }),
+        body: JSON.stringify(v),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -62,125 +60,143 @@ export function TickerSettingsForm({ initial, canEdit }: Props) {
     }
   };
 
+  const usesGenerated = v.source !== "REAL";
+  const usesReal = v.source !== "GENERATED";
+
   return (
     <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 space-y-5">
       <Toggle
-        label="Enable Ticker on Home Feed"
-        checked={!!v.enabled}
+        label="Show the ticker on the social feed"
+        description="Off hides it for everyone."
+        checked={v.enabled}
         onChange={(b) => set("enabled", b)}
         disabled={!canEdit}
       />
 
-      <Field label="Display Type">
-        <select
-          value={v.display_type as string}
-          onChange={(e) =>
-            set("display_type", e.target.value as never)
-          }
-          disabled={!canEdit}
-          className={inp}
-        >
-          <option value="SCROLLING">Scrolling</option>
-          <option value="STATIC">Static</option>
-          <option value="POPUP">Popup</option>
-        </select>
-      </Field>
+      <fieldset className="space-y-2" disabled={!canEdit}>
+        <legend className="block text-xs font-medium text-slate-400 mb-1.5">
+          What to show
+        </legend>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {SOURCES.map((s) => (
+            <label
+              key={s.value}
+              className={`flex items-start gap-3 px-4 py-3 rounded-lg border cursor-pointer ${
+                v.source === s.value
+                  ? "border-blue-500 bg-blue-500/10"
+                  : "border-slate-700 bg-slate-950/50"
+              } ${!canEdit ? "opacity-60" : ""}`}
+            >
+              <input
+                type="radio"
+                name="ticker-source"
+                value={s.value}
+                checked={v.source === s.value}
+                onChange={() => set("source", s.value)}
+                className="mt-1 bg-slate-800 border-slate-600 text-blue-500"
+              />
+              <div>
+                <p className="text-sm text-white">{s.label}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{s.description}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
-      <Toggle
-        label="Show real withdrawals"
-        checked={!!v.show_real}
-        onChange={(b) => set("show_real", b)}
-        disabled={!canEdit}
-      />
-
-      <Toggle
-        label="Include fake/demo entries"
-        description="Mix in synthetic entries to keep the ticker active"
-        checked={!!v.include_fake}
-        onChange={(b) => set("include_fake", b)}
-        disabled={!canEdit}
-      />
-
-      {v.include_fake && (
+      {usesReal && (
         <div className="rounded-lg border border-slate-700 bg-slate-950/50 p-4 space-y-3">
           <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">
-            Fake entry generator
+            Real withdrawals
+          </p>
+          <Field label="Min amount to show ($)">
+            <input
+              type="number"
+              step={0.01}
+              min={0}
+              value={v.min_amount_to_show}
+              onChange={(e) => set("min_amount_to_show", parseFloat(e.target.value) || 0)}
+              disabled={!canEdit}
+              className={inp}
+            />
+          </Field>
+          <Field label="Countries (comma-separated ISO codes, or WORLDWIDE)">
+            <input
+              value={v.countries}
+              onChange={(e) => set("countries", e.target.value)}
+              disabled={!canEdit}
+              className={inp + " font-mono text-xs"}
+            />
+          </Field>
+        </div>
+      )}
+
+      {usesGenerated && (
+        <div className="rounded-lg border border-slate-700 bg-slate-950/50 p-4 space-y-3">
+          <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">
+            Generated entries
           </p>
           <Field label="Username patterns (comma-separated, ### = random digits)">
             <input
-              value={v.fake_username_pattern as string}
+              value={v.fake_username_pattern}
               onChange={(e) => set("fake_username_pattern", e.target.value)}
               disabled={!canEdit}
               className={inp + " font-mono text-xs"}
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Min Amount ($)">
+            <Field label="Min amount ($)">
               <input
                 type="number"
                 step={0.01}
-                value={Number(v.fake_min_amount ?? 5)}
-                onChange={(e) =>
-                  set("fake_min_amount", parseFloat(e.target.value) || 0)
-                }
+                min={0}
+                value={v.fake_min_amount}
+                onChange={(e) => set("fake_min_amount", parseFloat(e.target.value) || 0)}
                 disabled={!canEdit}
                 className={inp}
               />
             </Field>
-            <Field label="Max Amount ($)">
+            <Field label="Max amount ($)">
               <input
                 type="number"
                 step={0.01}
-                value={Number(v.fake_max_amount ?? 250)}
-                onChange={(e) =>
-                  set("fake_max_amount", parseFloat(e.target.value) || 0)
-                }
+                min={0}
+                value={v.fake_max_amount}
+                onChange={(e) => set("fake_max_amount", parseFloat(e.target.value) || 0)}
                 disabled={!canEdit}
                 className={inp}
               />
             </Field>
           </div>
-          <Field label="Methods to include (comma-separated)">
+          <Field label="Methods (comma-separated: BKASH, NAGAD, ROCKET, BINANCE, BITGET, PAYPAL)">
             <input
-              value={v.fake_methods as string}
+              value={v.fake_methods}
               onChange={(e) => set("fake_methods", e.target.value)}
               disabled={!canEdit}
               className={inp + " font-mono text-xs"}
-            />
-          </Field>
-          <Field label="Generate every N seconds">
-            <input
-              type="number"
-              min={1}
-              value={Number(v.fake_frequency_seconds ?? 8)}
-              onChange={(e) =>
-                set("fake_frequency_seconds", parseInt(e.target.value) || 8)
-              }
-              disabled={!canEdit}
-              className={inp}
             />
           </Field>
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Scroll Speed (ms)">
+        <Field label="Scroll speed (ms for one full pass)">
           <input
             type="number"
-            min={1000}
-            value={Number(v.scroll_speed_ms ?? 30000)}
-            onChange={(e) =>
-              set("scroll_speed_ms", parseInt(e.target.value) || 30000)
-            }
+            min={5000}
+            step={1000}
+            value={v.scroll_speed_ms}
+            onChange={(e) => set("scroll_speed_ms", parseInt(e.target.value) || 30000)}
             disabled={!canEdit}
             className={inp}
           />
         </Field>
-        <Field label="Max Entries Shown">
+        <Field label="Max entries shown">
           <input
             type="number"
             min={1}
-            value={Number(v.max_items ?? 10)}
+            max={50}
+            value={v.max_items}
             onChange={(e) => set("max_items", parseInt(e.target.value) || 10)}
             disabled={!canEdit}
             className={inp}
@@ -188,46 +204,25 @@ export function TickerSettingsForm({ initial, canEdit }: Props) {
         </Field>
       </div>
 
-      <Field label="Min Amount to Show ($)">
-        <input
-          type="number"
-          step={0.01}
-          value={Number(v.min_amount_to_show ?? 5)}
-          onChange={(e) =>
-            set("min_amount_to_show", parseFloat(e.target.value) || 0)
-          }
-          disabled={!canEdit}
-          className={inp}
-        />
-      </Field>
-
-      <Field label="Allowed Countries (comma-separated ISO codes or WORLDWIDE)">
-        <input
-          value={v.countries as string}
-          onChange={(e) => set("countries", e.target.value)}
-          disabled={!canEdit}
-          className={inp + " font-mono text-xs"}
-        />
-      </Field>
-
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Toggle
           label="Show amount"
-          checked={!!v.show_amount}
+          checked={v.show_amount}
           onChange={(b) => set("show_amount", b)}
           disabled={!canEdit}
           compact
         />
         <Toggle
           label="Show method"
-          checked={!!v.show_method}
+          checked={v.show_method}
           onChange={(b) => set("show_method", b)}
           disabled={!canEdit}
           compact
         />
         <Toggle
           label="Show country"
-          checked={!!v.show_country}
+          description={usesReal ? undefined : "Generated entries have no country"}
+          checked={v.show_country}
           onChange={(b) => set("show_country", b)}
           disabled={!canEdit}
           compact

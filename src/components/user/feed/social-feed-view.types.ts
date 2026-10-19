@@ -116,6 +116,9 @@ export interface TickerConfig {
   showMethod: boolean;
   showCountry: boolean;
   speedSec: number;
+  /** Poll for new real payouts — off when the admin shows generated entries only. */
+  live: boolean;
+  maxItems: number;
 }
 
 export interface Props {

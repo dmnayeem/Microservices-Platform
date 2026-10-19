@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma, safeRead } from "@/lib/prisma";
+import { getTickerConfig, getRealTickerItems } from "@/lib/ticker-server";
 
 /**
- * Recent completed withdrawals for the marquee ticker.
+ * Recent paid withdrawals for the marquee ticker's 30s poll.
  *
  * Replaces the SSE stream, which held a serverless invocation open for five
  * minutes **per viewer** and ran an uncached query every 8 seconds inside each
@@ -12,43 +12,16 @@ import { prisma, safeRead } from "@/lib/prisma";
  *
  * One shared, cached query instead: whatever the concurrency, the database sees
  * roughly one read per TTL.
+ *
+ * Same rules as the first render (`getTickerPayload`): off → nothing, generated
+ * only → nothing real, and the admin's amount/country filters apply. It used to
+ * run its own query that ignored all of them, so a ticker set to "generated
+ * only" still filled up with real payouts after 30 seconds.
  */
-interface TickerRow {
-  id: string;
-  amount: unknown;
-  method: string;
-  updatedAt: Date;
-  user: { name: string | null; username: string | null; country: string | null } | null;
-}
-
 export async function GET() {
-  const rows = (await safeRead(
-    prisma.withdrawal.findMany({
-      where: { status: "COMPLETED" },
-      orderBy: { updatedAt: "desc" },
-      take: 30,
-      select: {
-        id: true,
-        amount: true,
-        method: true,
-        updatedAt: true,
-        user: { select: { name: true, username: true, country: true } },
-      },
-      // Shared across every viewer — this is the whole point.
-      cacheStrategy: { ttl: 20, swr: 60 },
-    }),
-    [],
-    "ticker:recent"
-  )) as unknown as TickerRow[];
-
-  return NextResponse.json({
-    items: rows.map((w) => ({
-      id: w.id,
-      name: w.user?.name ?? w.user?.username ?? "Someone",
-      amount: Number(w.amount),
-      method: w.method,
-      country: w.user?.country ?? null,
-      at: w.updatedAt,
-    })),
-  });
+  const cfg = await getTickerConfig();
+  if (!cfg.enabled || cfg.source === "GENERATED") {
+    return NextResponse.json({ items: [] });
+  }
+  return NextResponse.json({ items: await getRealTickerItems(cfg) });
 }

@@ -13,6 +13,20 @@ export interface WithdrawalTickerItem {
   country?: string | null;
 }
 
+// Payout methods are stored as enum codes; show them the way the brands write them.
+const METHOD_LABELS: Record<string, string> = {
+  BKASH: "bKash",
+  NAGAD: "Nagad",
+  ROCKET: "Rocket",
+  BINANCE: "Binance",
+  BITGET: "Bitget",
+  PAYPAL: "PayPal",
+};
+
+function methodLabel(m: string): string {
+  return METHOD_LABELS[m.toUpperCase()] ?? m;
+}
+
 interface WithdrawalTickerProps {
   items: WithdrawalTickerItem[];
   className?: string;
@@ -102,7 +116,8 @@ export function WithdrawalTicker({
               className="text-xs text-(--app-ink) inline-flex items-center gap-1"
             >
               <span className="text-emerald-400 font-semibold">
-                @{it.username}
+                {/* A handle gets an "@"; a display name ("Md Rahim") does not. */}
+                {/\s/.test(it.username) ? it.username : `@${it.username}`}
               </span>
               withdrew
               {showAmount && (
@@ -113,7 +128,7 @@ export function WithdrawalTicker({
                 </span>
               )}
               {showMethod && it.method && (
-                <span className="text-(--app-ink-3)">via {it.method}</span>
+                <span className="text-(--app-ink-3)">via {methodLabel(it.method)}</span>
               )}
               {showCountry && it.country && (
                 <span className="text-(--app-ink-3)">· {it.country}</span>
