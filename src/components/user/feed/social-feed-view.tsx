@@ -717,6 +717,8 @@ function FeedTab({
           showMethod={tickerConfig?.showMethod}
           showCountry={tickerConfig?.showCountry}
           speedSec={tickerConfig?.speedSec}
+          liveStream={tickerConfig?.live ?? false}
+          maxItems={tickerConfig?.maxItems}
         />
       )}
 
@@ -737,9 +739,9 @@ function FeedTab({
             // once (no modulo wrap) so nothing repeats while scrolling; empty
             // slots (pool not yet grown) simply show no ad.
             const n = Math.max(1, feedAdInterval);
-            const slot = Math.floor(i / n);
-            const ad =
-              (i + 1) % n === 0 && slot < feedAds.length ? feedAds[slot] : null;
+            const nativeAfter = (idx: number) =>
+              idx >= 0 && (idx + 1) % n === 0 && Math.floor(idx / n) < feedAds.length;
+            const ad = nativeAfter(i) ? feedAds[Math.floor(i / n)] : null;
             // The under-post banner honours its interval.
             //
             // `underPostInterval` was read from settings, clamped, threaded
@@ -749,8 +751,20 @@ function FeedTab({
             // boolean alone, so the banner rendered under EVERY post: twenty
             // concurrent serve calls on a twenty-post page, and an admin setting
             // that did nothing.
+            //
+            // It is also kept off the posts next to a native ad. Both used to
+            // count from post 1 at the same interval (3 and 3), so post 3 got a
+            // banner AND a native ad straight after it — two ads stacked, which
+            // reads badly and which networks treat as ad clutter. The banner is
+            // shifted half an interval (posts 2, 5, 8 against native 3, 6, 9),
+            // and skipped outright on a post a native ad follows. The banner
+            // sits at the bottom of its post card, so a native ad BEFORE the
+            // post is already separated from it by the post itself.
             const un = Math.max(1, underPostInterval);
-            const showUnderPost = underPostBanner && (i + 1) % un === 0;
+            const showUnderPost =
+              underPostBanner &&
+              (i + 1 + Math.floor(un / 2)) % un === 0 &&
+              !nativeAfter(i);
             return (
               <Fragment key={post._k ?? post.id}>
                 {post._k && roundStarts.has(post._k) && (

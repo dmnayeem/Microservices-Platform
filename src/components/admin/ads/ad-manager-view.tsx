@@ -1144,7 +1144,7 @@ export function AdManagerView({
                         effect — the banner rendered under every post regardless. */}
                     <label className="block text-xs text-slate-400 mb-1">Under-post banner — every N posts</label>
                     <input type="number" min={1} max={20} value={underPostInterval} disabled={!canManage} onChange={(e) => setUnderPostInterval(Math.max(1, Number(e.target.value) || 3))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50" />
-                    <p className="text-[11px] text-slate-500 mt-1">1 = under every post. On a 20-post page that is 20 ad requests at once.</p>
+                    <p className="text-[11px] text-slate-500 mt-1">1 = under every post. On a 20-post page that is 20 ad requests at once. Never placed on a post a native ad follows, so two ads never sit together.</p>
                   </div>
                 )}
                 <p className="text-[11px] text-slate-500">
