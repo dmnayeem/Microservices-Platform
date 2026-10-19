@@ -389,7 +389,7 @@ export function GamePlayer({
 
   return (
     <div className="fixed inset-0 z-10000 bg-black flex flex-col">
-      <div className="flex items-center gap-3 px-3 h-12 bg-(--app-page) border-b border-(--app-line) shrink-0">
+      <div className="flex items-center gap-3 px-3 h-[calc(3rem+env(safe-area-inset-top))] safe-t bg-(--app-page) border-b border-(--app-line) shrink-0">
         <p className="text-sm font-bold text-white truncate min-w-0 flex-1">{game.title}</p>
 
         {reward?.enabled && (

@@ -538,13 +538,13 @@ export function AdminSidebar({
       <div
         aria-hidden={!isMobileOpen}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 transform transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 safe-t transform transition-transform duration-300 lg:hidden",
           isMobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         )}
       >
         <button
           onClick={() => setIsMobileOpen(false)}
-          className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 z-10"
+          className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 z-10"
         >
           <X className="w-5 h-5" />
         </button>

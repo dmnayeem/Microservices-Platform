@@ -14,7 +14,7 @@ import { BrandLockup, BrandMark } from "@/components/providers/brand";
 export function GuestShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-(--app-page) text-(--app-ink) flex flex-col">
-      <header className="sticky top-0 z-30 border-b border-(--app-line) bg-(--app-page)/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-(--app-line) bg-(--app-page)/90 backdrop-blur safe-t">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
           <Link href="/" aria-label="RevType home" className="shrink-0 inline-flex items-center">
             <BrandLockup area="app">

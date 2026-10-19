@@ -292,7 +292,7 @@ export function QuizPlayer({ quizId, onClose, minScore }: QuizPlayerProps) {
 
       {state === "active" && cur && (
         <>
-          <div className="sticky top-0 z-10 bg-(--app-surface) border-b border-(--app-line) px-4 py-3">
+          <div className="sticky top-0 z-10 bg-(--app-surface) border-b border-(--app-line) px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
             <div className="max-w-3xl mx-auto flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-(--app-ink-3) truncate">

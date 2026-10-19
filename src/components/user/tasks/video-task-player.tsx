@@ -596,7 +596,7 @@ export function VideoTaskPlayer({
   return createPortal(
     <div className="fixed inset-0 z-100 bg-black flex flex-col">
       {/* Top bar */}
-      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-3 bg-linear-to-b from-black/80 to-transparent">
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] bg-linear-to-b from-black/80 to-transparent">
         <div className="flex-1 min-w-0">
           <p className="text-xs text-white/60 uppercase tracking-wider font-bold">
             Video Task

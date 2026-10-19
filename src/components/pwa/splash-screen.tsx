@@ -174,7 +174,7 @@ export function SplashView({ cfg, onClose }: { cfg: SplashViewConfig; onClose: (
     <div className="fixed inset-0 z-100 bg-[#0a0a0f] flex flex-col" role="dialog" aria-modal="true" aria-label="Welcome">
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-(--app-surface)/70 text-(--app-ink-2) text-xs font-semibold hover:text-(--app-ink)"
+        className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 z-10 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-(--app-surface)/70 text-(--app-ink-2) text-xs font-semibold hover:text-(--app-ink)"
       >
         Skip <X className="w-3.5 h-3.5" />
       </button>

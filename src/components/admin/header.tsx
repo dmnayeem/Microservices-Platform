@@ -193,7 +193,7 @@ export function AdminHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 glass-strong rounded-none border-0 border-b border-slate-800/60">
+    <header className="sticky top-0 z-30 glass-strong rounded-none border-0 border-b border-slate-800/60 safe-t">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
         {/* Left: Mobile Menu + Logo (mobile) | Page Title (desktop) */}
         <div className="flex items-center gap-3 min-w-0">
