@@ -37,11 +37,22 @@ export interface SavedNotificationTemplate {
   updatedAt: string;
 }
 
+/**
+ * A notification's title and message limits — the ONE definition the composer,
+ * the send route and templates all read. They used to be three: the form
+ * stopped at 50/200 while the server took 80/500, so a template could hold text
+ * the form then refused to send. 60 keeps a title to two lines in the bell
+ * menu and readable in a phone's push banner; the full message shows on the
+ * Notifications page (the bell menu cuts it at three lines).
+ */
+export const NOTIFICATION_TITLE_MAX = 60;
+export const NOTIFICATION_MESSAGE_MAX = 500;
+
 /** Max length per text field — the send route's own limits where it has one. */
 const TEXT_LIMITS: Record<string, number> = {
   type: 30,
-  title: 80,
-  message: 500,
+  title: NOTIFICATION_TITLE_MAX,
+  message: NOTIFICATION_MESSAGE_MAX,
   priority: 10,
   style: 40,
   kicker: 60,

@@ -12,6 +12,7 @@ import {
   targetFromRequest,
 } from "@/lib/broadcast";
 import { isNotificationStyle } from "@/lib/notification-styles";
+import { NOTIFICATION_TITLE_MAX, NOTIFICATION_MESSAGE_MAX } from "@/lib/notification-templates";
 import { prepareBroadcastEmail } from "@/lib/broadcast-email";
 import type { NotificationType } from "@/generated/prisma/client";
 
@@ -128,11 +129,17 @@ export async function POST(request: NextRequest) {
     if (!title?.trim() || !message?.trim() || !target) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
-    if (title.length > 80) {
-      return NextResponse.json({ error: "Title must be 80 characters or less" }, { status: 400 });
+    if (title.length > NOTIFICATION_TITLE_MAX) {
+      return NextResponse.json(
+        { error: `Title must be ${NOTIFICATION_TITLE_MAX} characters or less` },
+        { status: 400 }
+      );
     }
-    if (message.length > 500) {
-      return NextResponse.json({ error: "Message must be 500 characters or less" }, { status: 400 });
+    if (message.length > NOTIFICATION_MESSAGE_MAX) {
+      return NextResponse.json(
+        { error: `Message must be ${NOTIFICATION_MESSAGE_MAX} characters or less` },
+        { status: 400 }
+      );
     }
     if (!VALID_TYPES.includes(type)) {
       return NextResponse.json({ error: "Invalid notification type" }, { status: 400 });

@@ -44,9 +44,11 @@ import {
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog, promptDialog } from "@/lib/confirm";
-import type {
-  NotificationTemplateContent,
-  SavedNotificationTemplate,
+import {
+  NOTIFICATION_TITLE_MAX,
+  NOTIFICATION_MESSAGE_MAX,
+  type NotificationTemplateContent,
+  type SavedNotificationTemplate,
 } from "@/lib/notification-templates";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { DateField } from "@/components/ui/date-field";
@@ -372,8 +374,8 @@ export function SendNotificationForm() {
       setLoading(false);
       return;
     }
-    if (formData.title.length > 50) {
-      setError("Title must be 50 characters or less");
+    if (formData.title.length > NOTIFICATION_TITLE_MAX) {
+      setError(`Title must be ${NOTIFICATION_TITLE_MAX} characters or less`);
       setLoading(false);
       return;
     }
@@ -382,8 +384,8 @@ export function SendNotificationForm() {
       setLoading(false);
       return;
     }
-    if (formData.message.length > 200) {
-      setError("Message must be 200 characters or less");
+    if (formData.message.length > NOTIFICATION_MESSAGE_MAX) {
+      setError(`Message must be ${NOTIFICATION_MESSAGE_MAX} characters or less`);
       setLoading(false);
       return;
     }
@@ -513,7 +515,12 @@ export function SendNotificationForm() {
   const messageRef = useRef<HTMLTextAreaElement>(null);
   const putIcon = (field: "title" | "message", emoji: string) => {
     const el = field === "title" ? titleRef.current : messageRef.current;
-    const { value, caret } = insertAtCaret(el, formData[field], emoji, field === "title" ? 80 : 500);
+    const { value, caret } = insertAtCaret(
+      el,
+      formData[field],
+      emoji,
+      field === "title" ? NOTIFICATION_TITLE_MAX : NOTIFICATION_MESSAGE_MAX
+    );
     setFormData({ ...formData, [field]: value });
     requestAnimationFrame(() => {
       el?.focus();
@@ -912,19 +919,19 @@ export function SendNotificationForm() {
                   Title <span className="text-red-400">*</span>
                   <NameTokenButton
                     onInsert={() =>
-                      setFormData({ ...formData, title: `${formData.title}${formData.title && !formData.title.endsWith(" ") ? " " : ""}{name}`.slice(0, 80) })
+                      setFormData({ ...formData, title: `${formData.title}${formData.title && !formData.title.endsWith(" ") ? " " : ""}{name}`.slice(0, NOTIFICATION_TITLE_MAX) })
                     }
                   />
                   <EmojiPicker onPick={(e) => putIcon("title", e)} />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
-                  {formData.title.length}/50
+                  {formData.title.length}/{NOTIFICATION_TITLE_MAX}
                 </span>
               </div>
               <input
                 ref={titleRef}
                 type="text"
-                maxLength={80}
+                maxLength={NOTIFICATION_TITLE_MAX}
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -940,25 +947,25 @@ export function SendNotificationForm() {
                   Message <span className="text-red-400">*</span>
                   <NameTokenButton
                     onInsert={() =>
-                      setFormData({ ...formData, message: `${formData.message}${formData.message && !/\s$/.test(formData.message) ? " " : ""}{name}`.slice(0, 500) })
+                      setFormData({ ...formData, message: `${formData.message}${formData.message && !/\s$/.test(formData.message) ? " " : ""}{name}`.slice(0, NOTIFICATION_MESSAGE_MAX) })
                     }
                   />
                   <EmojiPicker onPick={(e) => putIcon("message", e)} />
                 </label>
                 <span className="text-xs text-slate-500 tabular-nums">
-                  {formData.message.length}/200
+                  {formData.message.length}/{NOTIFICATION_MESSAGE_MAX}
                 </span>
               </div>
               <textarea
                 ref={messageRef}
-                maxLength={500}
+                maxLength={NOTIFICATION_MESSAGE_MAX}
                 value={formData.message}
                 onChange={(e) =>
                   setFormData({ ...formData, message: e.target.value })
                 }
                 placeholder={"Enter notification message…\nPress Enter for a new line, e.g.\n⚡ 100 minutes, 30 days — 90 Tk\n⚡ 30 minutes, 1 day — 20 Tk"}
-                rows={4}
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+                rows={6}
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-y min-h-24"
               />
             </div>
 
@@ -1448,7 +1455,7 @@ export function SendNotificationForm() {
 
                 {formData.sendEmail && (
                   <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-                    {/* An email is not a notification row. Reusing the 80/500
+                    {/* An email is not a notification row. Reusing the title/message
                         limits above makes a mail with nothing to say, which is
                         exactly what the email channel used to send. */}
                     <EmailComposer
