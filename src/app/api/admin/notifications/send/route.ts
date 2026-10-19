@@ -73,6 +73,8 @@ interface SendNotificationBody {
   sendEmail?: boolean;
   /** Service notice rather than marketing — reaches opted-out users, ignores the daily cap. */
   important?: boolean;
+  /** The saved template this was composed from, if any — only bumps its usage count. */
+  templateId?: string;
 
   url?: string;
 }
@@ -206,6 +208,17 @@ export async function POST(request: NextRequest) {
     });
 
     prepared.reportLinks(broadcast.id);
+
+    // Sent from a saved template → count it. Best-effort: a deleted template
+    // (or a bad id) must never fail a send that already went out.
+    if (typeof body.templateId === "string" && body.templateId) {
+      await prisma.notificationTemplate
+        .updateMany({
+          where: { id: body.templateId },
+          data: { usageCount: { increment: 1 }, lastUsedAt: new Date() },
+        })
+        .catch(() => {});
+    }
 
     await writeAudit({
       actorId: session.user.id,
