@@ -1,5 +1,5 @@
 import "server-only";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { getSetting, saveSetting } from "@/lib/system-settings";
 
@@ -191,6 +191,53 @@ export function verifyPlayerKey(key: string | null | undefined): { userId: strin
   try {
     const p = JSON.parse(unb64(body).toString("utf8")) as { typ?: string; u?: string; o?: string };
     return p.typ === "game-player" && p.u && p.o ? { userId: p.u, origin: p.o } : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── One-time login token ("RevType secure sign-in") ─────────────────────────
+//
+// A game website may let a player SIGN IN with RevType (GamesYap, 2026-10-24).
+// The permanent playerKey must not be the login credential, so the SDK asks for
+// a short-lived, single-use login token (/api/games/ext/login-token) and the
+// game's server trades it once for the player at /api/games/s2s/login, signed
+// with that website's server key. Bound to the site it was issued for.
+
+/** How long a login token can be traded (seconds). */
+export const GAME_LOGIN_TTL_SECONDS = 5 * 60;
+
+interface LoginPayload {
+  typ: "game-login";
+  u: string;
+  o: string;
+  /** Random id: the token is claimed once by this id. */
+  j: string;
+  iat: number;
+  exp: number;
+}
+
+const signLogin = (body: string) => b64(createHmac("sha256", secret()).update(`game-login.${body}`).digest());
+
+export function signGameLoginToken(userId: string, origin: string): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: LoginPayload = { typ: "game-login", u: userId, o: origin, j: randomBytes(16).toString("hex"), iat: now, exp: now + GAME_LOGIN_TTL_SECONDS };
+  const body = b64(JSON.stringify(payload));
+  return `rtl_${body}.${signLogin(body)}`;
+}
+
+export function verifyGameLoginToken(token: string | null | undefined): LoginPayload | null {
+  if (!token || !token.startsWith("rtl_") || token.length > 2048) return null;
+  const [body, sig] = token.slice(4).split(".");
+  if (!body || !sig) return null;
+  const want = Buffer.from(signLogin(body));
+  const got = Buffer.from(sig);
+  if (want.length !== got.length || !timingSafeEqual(want, got)) return null;
+  try {
+    const p = JSON.parse(unb64(body).toString("utf8")) as LoginPayload;
+    if (p.typ !== "game-login" || !p.u || !p.o || !/^[0-9a-f]{32}$/.test(p.j)) return null;
+    if (p.exp < Math.floor(Date.now() / 1000)) return null;
+    return p;
   } catch {
     return null;
   }
