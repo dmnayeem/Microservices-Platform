@@ -134,10 +134,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
   if (!globals.enabled || globals.serverMaxPerCredit <= 0) {
     return json({ ok: false, error: "Game earnings are switched off on RevType." }, 403);
   }
-  if (points > globals.serverMaxPerCredit) {
-    return json({ ok: false, error: `points is above the limit of ${globals.serverMaxPerCredit} per credit.` }, 400);
-  }
+  // Above the per-credit limit: credit up to the limit and say `capped`, the
+  // same answer as the daily cap. It used to be a 400, and a game server that
+  // lets a player move a whole balance at once (GamesYap) then failed every
+  // large transfer outright; with `capped` it refunds the rest itself.
+  const requested = points;
+  const allowed = Math.min(points, globals.serverMaxPerCredit);
   const game = await prisma.game.findUnique({ where: { id: body.gameId }, select: { id: true, title: true } });
+  // The status codes and error texts here are a contract: game servers tell
+  // "Unknown gameId." from "Unknown player (playerKey)." by the TEXT of a 404
+  // (Snake Ludu does; GamesYap does since 2026-10-25). Keep both as they are.
   if (!game) return json({ ok: false, error: "Unknown gameId." }, 404);
 
   const userId = player.userId;
@@ -149,19 +155,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     const lock = await tx.$queryRaw<Array<{ status: string }>>`SELECT status FROM "User" WHERE id = ${userId} FOR UPDATE`;
     const status = lock[0]?.status;
     if (!status) return { code: 404 as const, body: { ok: false, error: "Unknown player (playerKey)." } };
-    // Same reference again (a retry): already paid, nothing more.
-    const dup = await tx.transaction.findFirst({ where: { userId, reference: ledgerRef }, select: { points: true } });
-    if (dup) return { code: 200 as const, body: { ok: true, duplicate: true, credited: 0 } };
+    // Same reference again (a retry): already paid, nothing more. It reports
+    // what the FIRST call credited — it used to say 0 — so a server whose
+    // first answer was lost can tell a full credit from a capped one and
+    // refund the difference.
+    const dup = await tx.transaction.findFirst({
+      where: { userId, reference: ledgerRef },
+      select: { points: true, metadata: true },
+    });
+    if (dup) {
+      const was = Math.abs(dup.points ?? 0);
+      const asked = Number((dup.metadata as { requested?: unknown } | null)?.requested);
+      return {
+        code: 200 as const,
+        body: { ok: true, duplicate: true, credited: was, capped: Number.isFinite(asked) && was < asked },
+      };
+    }
+    // 403 + "can't earn" — game servers match this text to refund the player
+    // instead of treating it as a settings problem. Keep the wording.
     if (status === "BANNED" || status === "SUSPENDED") {
       return { code: 403 as const, body: { ok: false, error: "This RevType account can't earn right now." } };
     }
 
-    let credit = points;
+    let credit = allowed;
     if (globals.serverDailyCap > 0) {
       const today = await tx.gameEarnLog
         .aggregate({ where: { userId, kind: "SERVER", createdAt: { gte: startOfDayUtc } }, _sum: { points: true } })
         .then((a) => a._sum.points ?? 0);
-      credit = Math.max(0, Math.min(points, globals.serverDailyCap - today));
+      credit = Math.max(0, Math.min(allowed, globals.serverDailyCap - today));
     }
     if (credit <= 0) {
       return { code: 200 as const, body: { ok: true, credited: 0, capped: true } };
@@ -173,12 +194,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
       type: TransactionType.BONUS,
       description: `Game earnings: ${game.title}`,
       reference: ledgerRef,
-      metadata: { gameId: game.id, site: origin, reference, kind: "SERVER", requested: points },
+      metadata: { gameId: game.id, site: origin, reference, kind: "SERVER", requested },
       pointsPerUsd,
     });
     await tx.gameEarnLog.create({ data: { userId, gameId: game.id, points: credit, kind: "SERVER" } });
     await tx.game.update({ where: { id: game.id }, data: { pointsAwardedTotal: { increment: credit } } });
-    return { code: 200 as const, body: { ok: true, credited: credit, capped: credit < points } };
+    return { code: 200 as const, body: { ok: true, credited: credit, capped: credit < requested } };
   });
 
   // The member hears about it (bell + push, and a popup next time they are on

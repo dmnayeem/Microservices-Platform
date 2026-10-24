@@ -53,7 +53,7 @@ const FIELDS: { key: NumKey; label: string; hint: string; unit: string }[] = [
   {
     key: "serverMaxPerCredit",
     label: "Max points per credit (game servers)",
-    hint: "Most points your game server can add in one credit. Protects you if the server key leaks or the game has a bug. 0 = game-server income off.",
+    hint: "Most points your game server can add in one credit. A larger credit is paid up to this limit and marked capped (the game server returns the rest to the player). Protects you if the server key leaks or the game has a bug. 0 = game-server income off.",
     unit: "points",
   },
   {
