@@ -33,10 +33,25 @@ export default async function ConnectGamesPage({
     redirect(`/login?callbackUrl=${encodeURIComponent(here)}`);
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { name: true, username: true, email: true },
-  });
+  const [user, priorConnect] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, username: true, email: true },
+    }),
+    // Already allowed this website before? (Recorded by /api/games/connect.)
+    // Then don't ask again — this page used to come back on every Back press
+    // after connecting inside the installed app, asking for "Allow" each time.
+    allowed && origin
+      ? prisma.auditLog.findFirst({
+          where: {
+            action: "GAME_SITE_CONNECTED",
+            targetUserId: session.user.id,
+            summary: `Connected the game website ${origin}`,
+          },
+          select: { id: true },
+        })
+      : null,
+  ]);
 
   return (
     <main className="min-h-dvh grid place-items-center bg-slate-950 px-4 py-10">
@@ -45,6 +60,7 @@ export default async function ConnectGamesPage({
         returnUrl={returnUrl}
         name={user?.name || user?.username || "RevType member"}
         email={user?.email ?? ""}
+        alreadyAllowed={!!priorConnect}
       />
     </main>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Gamepad2, Loader2, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 /**
@@ -15,31 +15,23 @@ export function ConnectGamesClient({
   returnUrl,
   name,
   email,
+  alreadyAllowed = false,
 }: {
   origin: string | null;
   returnUrl: string | null;
   name: string;
   email: string;
+  /** The member allowed this website before: hand the token over without asking again. */
+  alreadyAllowed?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const autoStarted = useRef(false);
+  const [auto, setAuto] = useState(alreadyAllowed && !!origin);
 
-  if (!origin) {
-    return (
-      <Card>
-        <h1 className="text-lg font-bold text-white">This website can&apos;t connect</h1>
-        <p className="text-sm text-slate-400">
-          The game website that sent you here is not approved by RevType. Close this window and
-          go back to the game.
-        </p>
-      </Card>
-    );
-  }
-
-  const host = new URL(origin).host;
-
-  const allow = async () => {
+  const allow = useCallback(async () => {
+    if (!origin) return;
     setBusy(true);
     setError(null);
     try {
@@ -58,15 +50,67 @@ export function ConnectGamesClient({
       } else if (returnUrl) {
         const u = new URL(returnUrl);
         u.hash = `revtype_token=${encodeURIComponent(d.token)}`;
-        window.location.href = u.toString();
+        // replace, not href: with the app installed this page opens INSIDE the
+        // app (no opener) and goes on to the game — and with `href` it stayed in
+        // the history, so Back from the game landed on "Allow" again.
+        window.location.replace(u.toString());
       } else {
         setDone(true);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not connect. Please try again.");
+      setAuto(false);
       setBusy(false);
     }
+  }, [origin, returnUrl]);
+
+  // Already allowed: straight back to the game.
+  useEffect(() => {
+    if (!auto || autoStarted.current) return;
+    autoStarted.current = true;
+    const t = setTimeout(() => void allow(), 0);
+    return () => clearTimeout(t);
+  }, [auto, allow]);
+
+  // Cancel / leave without connecting: close the popup, or — opened inside
+  // the app, where there is no popup to close — go back to the game.
+  const leave = () => {
+    if (window.opener && !window.opener.closed) {
+      window.close();
+      return;
+    }
+    if (returnUrl) {
+      window.location.replace(returnUrl);
+      return;
+    }
+    window.close();
   };
+
+  if (!origin) {
+    return (
+      <Card>
+        <h1 className="text-lg font-bold text-white">This website can&apos;t connect</h1>
+        <p className="text-sm text-slate-400">
+          The game website that sent you here is not approved by RevType. Close this window and
+          go back to the game.
+        </p>
+      </Card>
+    );
+  }
+
+  const host = new URL(origin).host;
+
+  if (auto && !error) {
+    return (
+      <Card>
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+        <h1 className="text-lg font-bold text-white">Returning to the game…</h1>
+        <p className="text-sm text-slate-400">
+          {host} is already connected to your RevType account.
+        </p>
+      </Card>
+    );
+  }
 
   if (done) {
     return (
@@ -113,7 +157,7 @@ export function ConnectGamesClient({
       <div className="flex w-full gap-2">
         <button
           type="button"
-          onClick={() => window.close()}
+          onClick={leave}
           className="flex-1 rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-slate-800"
         >
           Cancel
