@@ -14,6 +14,10 @@ import {
   AbuseSettingsForm,
 } from "@/components/admin/abuse/abuse-center";
 import type { Prisma } from "@/generated/prisma/client";
+import { can } from "@/lib/permissions";
+import { resolveSubjects } from "@/lib/signal-subjects";
+import { AttachAccount } from "@/components/admin/abuse/attach-account";
+import { MemberActions } from "@/components/admin/fraud/member-actions";
 
 /**
  * Abuse Center — "abuse → detect fast → suspend → remove → preserve logs →
@@ -126,11 +130,42 @@ export default async function AbuseCenterPage({ searchParams }: { searchParams: 
     where: { status: "OPEN" },
     _count: { _all: true },
   })) as unknown as Array<{ severity: string; _count: { _all: number } }>;
-  const userIds = [...new Set(cases.map((c) => c.userId).filter((x): x is string => !!x))];
-  const users = userIds.length
-    ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true, name: true, status: true } })
+  // Who each case is about. A case opened by a sign-up check has no userId —
+  // the account did not exist yet — so the email and device are read from its
+  // first signal (lib/signal-subjects.ts), the same way the Fraud Monitor does.
+  const noAccount = cases.filter((c) => !c.userId).map((c) => c.id);
+  const firstSignals = noAccount.length
+    ? await prisma.abuseEvidence.findMany({
+        where: { caseId: { in: noAccount }, kind: "SIGNAL" },
+        orderBy: { createdAt: "asc" },
+        select: { caseId: true, data: true },
+      })
     : [];
-  const userMap = new Map(users.map((u) => [u.id, u]));
+  const signalOf = new Map<string, { email?: string; deviceId?: string; ip?: string }>();
+  for (const s of firstSignals) {
+    if (signalOf.has(s.caseId)) continue;
+    const ev = ((s.data ?? {}) as { evidence?: { details?: { email?: string; deviceId?: string }; ipAddress?: string } })
+      .evidence;
+    signalOf.set(s.caseId, { email: ev?.details?.email, deviceId: ev?.details?.deviceId, ip: ev?.ipAddress ?? undefined });
+  }
+  const caseSubject = (c: (typeof cases)[number]) => ({
+    userId: c.userId,
+    email: signalOf.get(c.id)?.email,
+    deviceId: signalOf.get(c.id)?.deviceId,
+  });
+  const subjects = await resolveSubjects(cases.map(caseSubject));
+  const [canWarn, canBan, warnGroups] = await Promise.all([
+    can(access.userId, "fraud.manage"),
+    can(access.userId, "users.ban"),
+    prisma.userWarning.groupBy({
+      by: ["userId"],
+      where: { userId: { in: subjects.everyone().map((u) => u.id) } },
+      _count: { _all: true },
+    }),
+  ]);
+  const warnCount = new Map(
+    (warnGroups as unknown as Array<{ userId: string; _count: { _all: number } }>).map((g) => [g.userId, g._count._all])
+  );
   const openBySev = Object.fromEntries(counts.map((c) => [c.severity, c._count._all]));
 
   const sel = "rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-white";
@@ -213,7 +248,12 @@ export default async function AbuseCenterPage({ searchParams }: { searchParams: 
               </tr>
             )}
             {cases.map((c) => {
-              const u = c.userId ? userMap.get(c.userId) : null;
+              const p = subjects.resolve(caseSubject(c));
+              const u = p.account;
+              // Not attached yet: the account the email became, else whoever
+              // already holds the device the sign-up came from.
+              const candidates = c.userId ? [] : u ? [u] : p.onDevice;
+              const ip = signalOf.get(c.id)?.ip;
               const qs = new URLSearchParams({ ...(sp as Record<string, string>), case: c.id }).toString();
               return (
                 <tr key={c.id} className="border-b border-slate-800/60 hover:bg-slate-800/40">
@@ -234,14 +274,58 @@ export default async function AbuseCenterPage({ searchParams }: { searchParams: 
                     </p>
                   </td>
                   <td className="px-3 py-2 text-xs">
-                    {u ? (
-                      <Link href={`/admin/users/${u.id}`} className="text-slate-200 hover:underline">
-                        {u.name ?? u.email}
-                        <span className="block text-slate-500">{u.status.toLowerCase()}</span>
-                      </Link>
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
+                    <div className="space-y-1.5">
+                      {u ? (
+                        <Link href={`/admin/users/${u.id}`} className="text-slate-200 hover:underline">
+                          {u.name ?? u.email}
+                          <span className="block text-slate-500">
+                            {u.status.toLowerCase()}
+                            {!c.userId && " · found by sign-up email"}
+                          </span>
+                        </Link>
+                      ) : p.email ? (
+                        <div>
+                          <p className="text-slate-300">{p.email}</p>
+                          <p className="text-slate-500">No account — sign-up blocked</p>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">—</span>
+                      )}
+                      {p.onDevice.length > 0 && (
+                        <p className="text-slate-500">
+                          Already on this device:{" "}
+                          {p.onDevice.map((d, i) => (
+                            <span key={d.id}>
+                              {i > 0 && ", "}
+                              <Link href={`/admin/users/${d.id}`} className="text-blue-300 hover:underline">
+                                {d.name ?? d.email}
+                              </Link>
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                      {ip && !c.userId && <p className="font-mono text-slate-500">IP {ip}</p>}
+                      {/* Act on whoever it is about: attach (unlocks the case's
+                          own account actions), or warn / suspend / ban here. */}
+                      {(c.userId && u ? [u] : candidates).map((t) => (
+                        <div key={t.id} className="space-y-1">
+                          {candidates.length > 1 && <p className="text-[11px] text-slate-500">{t.name ?? t.email}</p>}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {!c.userId && access.manage && (
+                              <AttachAccount caseId={c.id} userId={t.id} name={t.name ?? t.email} />
+                            )}
+                            <MemberActions
+                              userId={t.id}
+                              name={t.name ?? t.email}
+                              status={t.status}
+                              warnCount={warnCount.get(t.id) ?? 0}
+                              canManage={canWarn}
+                              canBan={canBan}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-slate-300">{c.signalCount}</td>
                   <td className="px-3 py-2 text-xs text-slate-400">{format(c.lastSeenAt, "MMM d, HH:mm")}</td>
