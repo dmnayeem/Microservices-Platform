@@ -25,6 +25,12 @@
  *       (POST https://revtype.com/api/games/s2s/credit, signed with your
  *       server key). setScore/addScore are not used in this mode.
  *
+ * Sign-in with RevType on your website (your server makes the account):
+ *   RevType.getLoginToken().then(function (t) { ... })
+ *     → send t to your server; it trades it ONCE for the player at
+ *       POST https://revtype.com/api/games/s2s/login { token } (signed like
+ *       credit). Never use the permanent playerKey as a login.
+ *
  * Optional:
  *   RevType.init({ gameId, badge: false })        // hide the built-in button
  *   RevType.init({ gameId, position: "top-left" }) // bottom-right (default) / bottom-left / top-right / top-left
@@ -432,6 +438,22 @@
     /** Server mode: the player's key for your game server ("" until connected). */
     getPlayerKey: function () {
       return state.playerKey;
+    },
+    /**
+     * Sign-in with RevType: a fresh one-time login token (Promise → string,
+     * "" when not connected or on error). Valid 5 minutes, usable once — your
+     * game SERVER trades it at POST /api/games/s2s/login.
+     */
+    getLoginToken: function () {
+      if (mode !== "site" || !token) return Promise.resolve("");
+      return api("POST", "login-token", {}).then(
+        function (r) {
+          return (r.ok && r.data && r.data.loginToken) || "";
+        },
+        function () {
+          return "";
+        }
+      );
     },
     /** Re-read the player's RevType balance (e.g. right after your server credited). */
     refresh: function () {

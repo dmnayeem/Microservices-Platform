@@ -5,8 +5,18 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
 import { getGamesGlobalConfig } from "@/lib/game-settings";
 import { TransactionType } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { notifyGameServerCredit } from "@/lib/game-notify";
-import { absoluteAvatar, isAllowedGameOrigin, normalizeOrigin, siteId, verifyPlayerKey, verifySiteSignature } from "@/lib/game-connect";
+import {
+  absoluteAvatar,
+  isAllowedGameOrigin,
+  normalizeOrigin,
+  playerKeyFor,
+  siteId,
+  verifyGameLoginToken,
+  verifyPlayerKey,
+  verifySiteSignature,
+} from "@/lib/game-connect";
 
 /**
  * /api/games/s2s/:action — the owner's GAME SERVER talks to RevType
@@ -24,12 +34,46 @@ import { absoluteAvatar, isAllowedGameOrigin, normalizeOrigin, siteId, verifyPla
  *     day (Games → Settings).
  *   POST player  { playerKey }
  *     The player's RevType name and Earn Points balance.
+ *   POST login   { token }
+ *     Sign-in with RevType: trades a one-time login token for the player's
+ *     key and name, once (see tradeLoginToken).
  */
 
 const REF_RE = /^[A-Za-z0-9._:-]{1,100}$/;
 
 function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status });
+}
+
+/**
+ * POST login { token } — trades a one-time login token (SDK:
+ * RevType.getLoginToken()) for the player, once. The token must have been
+ * issued for this same website and not be expired; its id is claimed in
+ * RateLimitHit (unique bucket), so a second trade is refused (409). Fails
+ * closed: if the claim can't be written, nobody is signed in.
+ */
+async function tradeLoginToken(origin: string, token: string | undefined) {
+  const p = verifyGameLoginToken(token);
+  if (!p || p.o !== origin) return json({ ok: false, error: "Unknown or expired login token." }, 400);
+  try {
+    await prisma.rateLimitHit.create({
+      data: { bucket: `game-login:${p.j}`, window: BigInt(0), count: 1, expiresAt: new Date((p.exp + 60) * 1000) },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return json({ ok: false, error: "This login token was already used." }, 409);
+    }
+    return json({ ok: false, error: "Try again in a moment." }, 503);
+  }
+  const u = await prisma.user.findUnique({ where: { id: p.u }, select: { name: true, username: true, avatar: true, status: true } });
+  if (!u) return json({ ok: false, error: "Unknown player." }, 404);
+  return json({
+    ok: true,
+    playerKey: playerKeyFor(p.u, origin),
+    name: u.name || u.username || "RevType member",
+    avatar: absoluteAvatar(u.avatar),
+    active: u.status !== "BANNED" && u.status !== "SUSPENDED",
+  });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ action: string }> }) {
@@ -43,12 +87,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
   if (!(await verifySiteSignature(origin, raw, req.headers.get("x-revtype-signature")))) {
     return json({ ok: false, error: "Bad signature (X-RevType-Signature)." }, 401);
   }
-  let body: { playerKey?: string; gameId?: string; points?: number; reference?: string };
+  let body: { playerKey?: string; gameId?: string; points?: number; reference?: string; token?: string };
   try {
     body = JSON.parse(raw);
   } catch {
     return json({ ok: false, error: "Body must be JSON." }, 400);
   }
+
+  if (action === "login") return tradeLoginToken(origin, body.token);
 
   const player = verifyPlayerKey(body.playerKey);
   if (!player || player.origin !== origin) {

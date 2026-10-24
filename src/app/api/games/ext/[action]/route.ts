@@ -6,12 +6,14 @@ import { requireActiveUser } from "@/lib/require-active";
 import { getPointsPerUsd } from "@/lib/economy";
 import { startSession, heartbeat, reportScore, BEAT_INTERVAL_SECONDS } from "@/lib/game-session";
 import {
+  GAME_LOGIN_TTL_SECONDS,
   absoluteAvatar,
   gameCors,
   gamePreflight,
   isAllowedGameOrigin,
   normalizeOrigin,
   playerKeyFor,
+  signGameLoginToken,
   verifyGameConnectToken,
 } from "@/lib/game-connect";
 
@@ -23,6 +25,7 @@ import {
  *   POST session    { gameId }                    → open a play session
  *   POST heartbeat  { gameId, sessionId, scoreTotal?, final? } → play time + score
  *   POST score      { gameId, sessionId, total }  → running score (SDK v2.0 only)
+ *   POST login-token                              → one-time sign-in token (5 min, single use)
  *
  * Cookie-less (public in middleware): every call carries the connect token as
  * `Authorization: Bearer …`, must come from an allowed game website, and the
@@ -86,8 +89,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ acti
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
-  const a = await authorize(req, action === "session");
+  const a = await authorize(req, action === "session" || action === "login-token");
   if ("error" in a) return a.error;
+
+  // Sign-in with RevType on the game website: a one-time token the game's
+  // SERVER trades at /api/games/s2s/login (see game-connect.ts).
+  if (action === "login-token") {
+    if (!rateLimit(`game-login-token:${a.userId}`, 10, 60_000).ok) {
+      return gameCors(a.origin, { error: "Too many requests" }, { status: 429 });
+    }
+    return gameCors(a.origin, { loginToken: signGameLoginToken(a.userId, a.origin), expiresIn: GAME_LOGIN_TTL_SECONDS });
+  }
+
   const body = (await req.json().catch(() => ({}))) as {
     gameId?: string;
     sessionId?: string;
