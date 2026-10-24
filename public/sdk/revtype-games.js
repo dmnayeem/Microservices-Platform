@@ -108,6 +108,7 @@
 
   // ── Mode 1: inside RevType's game player (iframe) ────────────────────────
   var parentOrigin = null;
+  var tokenWaiters = []; // getLoginToken() calls waiting for the player's answer
   var playerTimer = null;
   function postParent(msg) {
     msg.source = "revtype-sdk";
@@ -151,6 +152,13 @@
         if (pending > 0) schedulePlayer();
       } else if (d.type === "earned") {
         call(earnFns, { awarded: Number(d.awarded) || 0, sessionPoints: Number(d.sessionPoints) || 0 });
+      } else if (d.type === "login-token") {
+        // Only from the RevType page that welcomed us: a token handed over by
+        // any other parent could sign the player into someone else's account.
+        if (!parentOrigin || e.origin !== parentOrigin) return;
+        var waiting = tokenWaiters;
+        tokenWaiters = [];
+        for (var w = 0; w < waiting.length; w++) waiting[w](typeof d.token === "string" ? d.token : "");
       }
       return;
     }
@@ -440,11 +448,27 @@
       return state.playerKey;
     },
     /**
-     * Sign-in with RevType: a fresh one-time login token (Promise → string,
+     * Sign-in with RevType (on your website or inside RevType's Games page): a fresh one-time login token (Promise → string,
      * "" when not connected or on error). Valid 5 minutes, usable once — your
      * game SERVER trades it at POST /api/games/s2s/login.
      */
     getLoginToken: function () {
+      // Inside RevType's Games page the player (already signed in) fetches the token.
+      if (mode === "player") {
+        return new Promise(function (resolve) {
+          var settled = false;
+          var finish = function (t) {
+            if (settled) return;
+            settled = true;
+            resolve(t || "");
+          };
+          tokenWaiters.push(finish);
+          postParent({ type: "login-token" });
+          setTimeout(function () {
+            finish("");
+          }, 8000);
+        });
+      }
       if (mode !== "site" || !token) return Promise.resolve("");
       return api("POST", "login-token", {}).then(
         function (r) {
