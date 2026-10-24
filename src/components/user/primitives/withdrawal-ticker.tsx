@@ -54,6 +54,7 @@ export function WithdrawalTicker({
 }: WithdrawalTickerProps) {
   const [items, setItems] = useState(initialItems);
   const seenIds = useRef(new Set(initialItems.map((i) => i.id)));
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Polls a shared, cached endpoint instead of holding an SSE connection open.
   // The old stream kept a serverless function alive for 5 minutes per viewer and
@@ -65,8 +66,10 @@ export function WithdrawalTicker({
     let cancelled = false;
 
     const pull = async () => {
-      // Don't poll a tab nobody is looking at.
+      // Don't poll a tab nobody is looking at — nor a copy of the ticker that
+      // is display:none at this width (the feed renders one per breakpoint).
       if (document.visibilityState === "hidden") return;
+      if (!rootRef.current || rootRef.current.offsetParent === null) return;
       try {
         const res = await fetch(streamUrl, { cache: "no-store" });
         if (!res.ok || cancelled) return;
@@ -97,6 +100,7 @@ export function WithdrawalTicker({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
         "relative flex items-center gap-2 overflow-hidden rounded-xl bg-emerald-500/10 border border-emerald-500/20 py-1.5 px-3",
         className
@@ -115,11 +119,15 @@ export function WithdrawalTicker({
               key={`${it.id}-${i}`}
               className="text-xs text-(--app-ink) inline-flex items-center gap-1"
             >
+              {/* "Withdrawal paid:" leads, in place of "withdrew" after the
+                  name — the owner read that verb as a misspelling of
+                  "withdraw". The noun is unambiguous, and the line still reads
+                  whole when amount and method are switched off. */}
+              <span className="text-(--app-ink-3)">Withdrawal paid:</span>
               <span className="text-emerald-400 font-semibold">
                 {/* A handle gets an "@"; a display name ("Md Rahim") does not. */}
                 {/\s/.test(it.username) ? it.username : `@${it.username}`}
               </span>
-              withdrew
               {showAmount && (
                 <span className="text-emerald-400 font-bold">
                   {it.unit === "pts"
