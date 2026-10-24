@@ -1428,6 +1428,35 @@ model FraudEvent {
   @@index([createdAt])
 }
 
+/// A warning an admin sent a member from the Fraud Monitor. It pops up the
+/// moment the member opens the platform and cannot be dismissed for good
+/// without a reply: closing it only hides it until `nextShowAt` (lib/user-
+/// warnings.ts). The reply is shown back to admins on the Fraud Monitor.
+model UserWarning {
+  id           String    @id @default(cuid())
+  userId       String
+  /// The fraud event it was sent about, if any.
+  fraudEventId String?
+  /// What the member is doing.
+  issue        String    @db.Text
+  /// What happens if it continues.
+  consequence  String    @db.Text
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  reply        String?   @db.Text
+  repliedAt    DateTime?
+  /// Times it was put on the member's screen.
+  shownCount   Int       @default(0)
+  lastShownAt  DateTime?
+  /// Times it was closed without a reply.
+  dismissCount Int       @default(0)
+  /// Not shown again before this (pushed back each time it is closed unanswered).
+  nextShowAt   DateTime  @default(now())
+
+  @@index([userId, repliedAt])
+  @@index([createdAt])
+}
+
 model ProxyServer {
   id              String    @id @default(cuid())
   name            String

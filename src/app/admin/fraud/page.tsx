@@ -11,7 +11,10 @@ import {
   Scale,
   Download,
   Smartphone,
+  MessageSquareWarning,
 } from "lucide-react";
+import { MemberActions } from "@/components/admin/fraud/member-actions";
+import { REASK_MINUTES } from "@/lib/user-warnings";
 import { describeUserAgent } from "@/lib/user-agent";
 import { getRiskConfig, FRAUD_SIGNALS, type FraudSignal } from "@/lib/fraud-risk";
 import { AppealDecision, ResetRisk, ResolveEvents } from "@/components/admin/fraud/fraud-actions";
@@ -215,17 +218,96 @@ export default async function FraudMonitorPage({
     user: { id: string; name: string | null; email: string };
   }>;
 
-  // Resolve user info for each event
-  const userIds = Array.from(
-    new Set(events.map((e) => e.userId).filter((v): v is string => !!v))
+  // Who each event is about. Sign-up checks run BEFORE the account exists, so
+  // those events carry no userId — only the email tried and the device. The
+  // column used to show "—" for all of them. Now: the account by userId, else
+  // the account that email became (a flagged sign-up still goes through),
+  // and in every case the accounts already on that device — when a sign-up
+  // was blocked, those are the people to warn.
+  type EvUser = { id: string; name: string | null; email: string; status: string };
+  const evDetails = (e: (typeof events)[number]) =>
+    (e.details ?? {}) as { email?: string; deviceId?: string; label?: string; riskAfter?: number };
+  const userIds = new Set(events.map((e) => e.userId).filter((v): v is string => !!v));
+  const emails = new Set(
+    events.filter((e) => !e.userId).map((e) => evDetails(e).email?.toLowerCase()).filter((v): v is string => !!v)
   );
-  const users = userIds.length
-    ? await prisma.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true },
-      })
+  const deviceIds = new Set(events.map((e) => evDetails(e).deviceId).filter((v): v is string => !!v));
+  const userSelect = { id: true, name: true, email: true, status: true } as const;
+  const [byId, byEmail, onDevices] = await Promise.all([
+    userIds.size ? prisma.user.findMany({ where: { id: { in: [...userIds] } }, select: userSelect }) : [],
+    emails.size ? prisma.user.findMany({ where: { email: { in: [...emails] } }, select: userSelect }) : [],
+    deviceIds.size
+      ? prisma.userDevice.findMany({
+          where: { deviceId: { in: [...deviceIds] } },
+          select: { deviceId: true, user: { select: userSelect } },
+        })
+      : [],
+  ]);
+  const userMap = new Map<string, EvUser>((byId as EvUser[]).map((u) => [u.id, u]));
+  const emailMap = new Map<string, EvUser>((byEmail as EvUser[]).map((u) => [u.email.toLowerCase(), u]));
+  const deviceMap = new Map<string, EvUser[]>();
+  for (const r of onDevices as unknown as Array<{ deviceId: string; user: EvUser }>) {
+    const list = deviceMap.get(r.deviceId) ?? [];
+    if (!list.some((u) => u.id === r.user.id)) list.push(r.user);
+    deviceMap.set(r.deviceId, list);
+  }
+  const eventPeople = (e: (typeof events)[number]) => {
+    const d = evDetails(e);
+    const account =
+      (e.userId ? userMap.get(e.userId) : undefined) ??
+      (d.email ? emailMap.get(d.email.toLowerCase()) : undefined) ??
+      null;
+    const onDevice = (d.deviceId ? deviceMap.get(d.deviceId) ?? [] : []).filter((u) => u.id !== account?.id);
+    return { account, onDevice, email: d.email ?? null };
+  };
+
+  // Warnings: how many each member has had, and the latest ones with replies.
+  const peopleIds = new Set<string>([
+    ...userMap.keys(),
+    ...[...emailMap.values()].map((u) => u.id),
+    ...[...deviceMap.values()].flat().map((u) => u.id),
+  ]);
+  const [warnCounts, recentWarnings, canBan] = await Promise.all([
+    peopleIds.size
+      ? prisma.userWarning.groupBy({ by: ["userId"], where: { userId: { in: [...peopleIds] } }, _count: { _all: true } })
+      : [],
+    prisma.userWarning.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        userId: true,
+        issue: true,
+        consequence: true,
+        createdAt: true,
+        reply: true,
+        repliedAt: true,
+        shownCount: true,
+        dismissCount: true,
+      },
+    }),
+    can(session.user.id, "users.ban"),
+  ]);
+  const warnCount = new Map(
+    (warnCounts as unknown as Array<{ userId: string; _count: { _all: number } }>).map((g) => [g.userId, g._count._all])
+  );
+  // One card per warned member, newest warning first.
+  const warnedIds = [...new Set(recentWarnings.map((w) => w.userId))];
+  const warnedUsers = warnedIds.length
+    ? await prisma.user.findMany({ where: { id: { in: warnedIds } }, select: userSelect })
     : [];
-  const userMap = new Map(users.map((u) => [u.id, u]));
+  const warnedTotals = warnedIds.length
+    ? ((await prisma.userWarning.groupBy({
+        by: ["userId"],
+        where: { userId: { in: warnedIds } },
+        _count: { _all: true },
+      })) as unknown as Array<{ userId: string; _count: { _all: number } }>)
+    : [];
+  for (const g of warnedTotals) warnCount.set(g.userId, g._count._all);
+  const warnedMap = new Map((warnedUsers as EvUser[]).map((u) => [u.id, u]));
+  const warnedGroups = warnedIds
+    .map((id) => ({ user: warnedMap.get(id), warnings: recentWarnings.filter((w) => w.userId === id) }))
+    .filter((g): g is { user: EvUser; warnings: typeof recentWarnings } => !!g.user);
 
   return (
     <div className="space-y-6">
@@ -300,6 +382,73 @@ export default async function FraudMonitorPage({
           </div>
         </div>
       )}
+
+      {/* Warnings sent from here, with the members' replies */}
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
+        <h2 className="text-sm font-semibold text-white mb-1 inline-flex items-center gap-2">
+          <MessageSquareWarning className="w-4 h-4 text-amber-400" />
+          Warnings sent ({recentWarnings.length})
+        </h2>
+        <p className="mb-3 text-xs text-slate-500">
+          A warning pops up the next time the member opens the platform and comes back every {REASK_MINUTES} minutes
+          until they reply. Their reply shows here.
+        </p>
+        {warnedGroups.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No warnings yet. Use <b className="text-slate-300">Warn</b> on an open event below.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {warnedGroups.map(({ user: u, warnings }) => (
+              <div key={u.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/admin/users/${u.id}`} className="text-sm font-semibold text-blue-400 hover:underline">
+                      {u.name ?? u.email}
+                    </Link>
+                    <span className="ml-2 text-xs text-slate-500">
+                      Warned {warnCount.get(u.id) ?? warnings.length}×
+                    </span>
+                  </div>
+                  <MemberActions
+                    userId={u.id}
+                    name={u.name ?? u.email}
+                    status={u.status}
+                    warnCount={warnCount.get(u.id) ?? warnings.length}
+                    canManage={canManage}
+                    canBan={canBan}
+                  />
+                </div>
+                <ul className="mt-2 space-y-2">
+                  {warnings.slice(0, 3).map((w) => (
+                    <li key={w.id} className="rounded-md border border-slate-800 p-2.5 text-sm">
+                      <p className="text-xs text-slate-500">{format(w.createdAt, "MMM d, HH:mm")}</p>
+                      <p className="mt-0.5 text-slate-200 wrap-break-word">{w.issue}</p>
+                      {w.repliedAt ? (
+                        <div className="mt-2 rounded-md border-l-2 border-emerald-500/60 bg-emerald-500/5 px-2.5 py-1.5">
+                          <p className="text-[11px] font-semibold text-emerald-300">
+                            Replied {format(w.repliedAt, "MMM d, HH:mm")}
+                          </p>
+                          <p className="whitespace-pre-wrap wrap-break-word text-slate-200">{w.reply}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-1.5 text-xs text-amber-300">
+                          No reply yet
+                          {w.shownCount > 0 ? ` · shown ${w.shownCount}×` : " · not seen yet"}
+                          {w.dismissCount > 0 && ` · closed without replying ${w.dismissCount}×`}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                  {warnings.length > 3 && (
+                    <li className="text-xs text-slate-500">+ {warnings.length - 3} earlier warning(s)</li>
+                  )}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Devices shared by several accounts */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
@@ -451,16 +600,35 @@ export default async function FraudMonitorPage({
               key: "user",
               header: "User",
               cell: (e) => {
-                const u = e.userId ? userMap.get(e.userId) : null;
-                return u ? (
-                  <Link
-                    href={`/admin/users/${u.id}`}
-                    className="text-blue-400 hover:underline text-sm"
-                  >
-                    {u.name ?? u.email}
-                  </Link>
-                ) : (
-                  <span className="text-slate-500">—</span>
+                const p = eventPeople(e);
+                return (
+                  <div className="min-w-0 space-y-1">
+                    {p.account ? (
+                      <Link href={`/admin/users/${p.account.id}`} className="text-blue-400 hover:underline text-sm">
+                        {p.account.name ?? p.account.email}
+                      </Link>
+                    ) : p.email ? (
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-slate-300">{p.email}</p>
+                        <p className="text-xs text-slate-500">No account — sign-up blocked or not finished</p>
+                      </div>
+                    ) : (
+                      <span className="text-slate-500">—</span>
+                    )}
+                    {p.onDevice.length > 0 && (
+                      <p className="text-xs text-slate-500">
+                        Already on this device:{" "}
+                        {p.onDevice.map((u, i) => (
+                          <span key={u.id}>
+                            {i > 0 && ", "}
+                            <Link href={`/admin/users/${u.id}`} className="text-blue-400 hover:underline">
+                              {u.name ?? u.email}
+                            </Link>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
                 );
               },
             },
@@ -498,7 +666,32 @@ export default async function FraudMonitorPage({
             {
               key: "actions",
               header: "Actions",
-              cell: (e) => <ResolveEvents eventIds={[e.id]} canManage={canManage} />,
+              cell: (e) => {
+                // The event's own account; for a blocked sign-up, whoever
+                // already holds that device.
+                const p = eventPeople(e);
+                const targets = p.account ? [p.account] : p.onDevice;
+                return (
+                  <div className="space-y-2">
+                    {targets.map((u) => (
+                      <div key={u.id} className="space-y-1">
+                        {targets.length > 1 && <p className="text-[11px] text-slate-500">{u.name ?? u.email}</p>}
+                        <MemberActions
+                          userId={u.id}
+                          name={u.name ?? u.email}
+                          status={u.status}
+                          eventType={e.eventType}
+                          fraudEventId={e.id}
+                          warnCount={warnCount.get(u.id) ?? 0}
+                          canManage={canManage}
+                          canBan={canBan}
+                        />
+                      </div>
+                    ))}
+                    <ResolveEvents eventIds={[e.id]} canManage={canManage} />
+                  </div>
+                );
+              },
             },
           ]}
         />

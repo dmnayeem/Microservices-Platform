@@ -5,6 +5,8 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { sendNotificationEmail } from "@/lib/email";
+import { canAdministerStaffAccount, type UserRole } from "@/lib/rbac";
+import { WARNING_TEXT_MAX } from "@/lib/user-warnings";
 
 export const runtime = "nodejs";
 
@@ -34,6 +36,23 @@ const schema = z.discriminatedUnion("action", [
     status: z.enum(["DISMISSED", "ACTED"]),
     note: z.string().trim().max(500).optional(),
   }),
+  // Warn a member: a pop-up on their next visit that stays until answered
+  // (lib/user-warnings.ts). Their reply shows on the Fraud Monitor.
+  z.object({
+    action: z.literal("warn"),
+    userId: z.string().min(1),
+    issue: z.string().trim().min(5).max(WARNING_TEXT_MAX),
+    consequence: z.string().trim().min(5).max(WARNING_TEXT_MAX),
+    fraudEventId: z.string().min(1).optional(),
+  }),
+  // Suspend from the Fraud Monitor. Same shape as the automatic suspension:
+  // the member sees the reason and can appeal. (Ban goes through
+  // /api/admin/users/[id]/ban, which needs users.ban.)
+  z.object({
+    action: z.literal("suspend"),
+    userId: z.string().min(1),
+    reason: z.string().trim().min(3).max(500),
+  }),
 ]);
 
 export async function POST(request: NextRequest) {
@@ -48,6 +67,68 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
   const b = parsed.data;
+
+  if (b.action === "warn" || b.action === "suspend") {
+    const target = await prisma.user.findUnique({
+      where: { id: b.userId },
+      select: { id: true, role: true, status: true, name: true, email: true },
+    });
+    if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    // The same hierarchy as editing or banning the account: staff are only
+    // warned or suspended by someone allowed to administer them.
+    const check = canAdministerStaffAccount(session.user.role as UserRole, target.role as UserRole);
+    if (!check.ok) return NextResponse.json({ error: check.reason }, { status: 403 });
+    const who = target.name || target.email;
+
+    if (b.action === "warn") {
+      const w = await prisma.userWarning.create({
+        data: {
+          userId: target.id,
+          issue: b.issue,
+          consequence: b.consequence,
+          fraudEventId: b.fraudEventId ?? null,
+          createdById: actorId,
+          // Due now by THIS server's clock — the one /api/warnings compares
+          // with. The column default is stamped by the database, a few seconds
+          // ahead, which kept a fresh warning hidden on the very next page load.
+          nextShowAt: new Date(Date.now() - 5_000),
+        },
+        select: { id: true },
+      });
+      const total = await prisma.userWarning.count({ where: { userId: target.id } });
+      await writeAudit({
+        actorId,
+        action: "FRAUD_WARNING_SENT",
+        entity: "UserWarning",
+        entityId: w.id,
+        targetUserId: target.id,
+        summary: `Sent warning #${total} to ${who}: ${b.issue.slice(0, 120)}`,
+        meta: { issue: b.issue, consequence: b.consequence, fraudEventId: b.fraudEventId ?? null },
+      });
+      return NextResponse.json({ ok: true, id: w.id, total });
+    }
+
+    // suspend — CAS on a usable account. Not ACTIVE alone: a sign-up that
+    // has not verified its email yet (PENDING_VERIFICATION) is just as live,
+    // and that is exactly what most multi-account sign-ups are.
+    const res = await prisma.user.updateMany({
+      where: { id: target.id, status: { in: ["ACTIVE", "PENDING_VERIFICATION"] } },
+      data: { status: "SUSPENDED", suspendedReason: b.reason, suspendedAt: new Date() },
+    });
+    if (res.count === 0) {
+      return NextResponse.json({ error: `This account is not active (${target.status.toLowerCase()})` }, { status: 409 });
+    }
+    await writeAudit({
+      actorId,
+      action: "USER_SUSPENDED_FROM_FRAUD_MONITOR",
+      entity: "User",
+      entityId: target.id,
+      targetUserId: target.id,
+      summary: `Suspended ${who} — ${b.reason}`,
+      meta: { reason: b.reason },
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   if (b.action === "resolve_events") {
     const res = await prisma.fraudEvent.updateMany({
