@@ -254,6 +254,19 @@ export function SocialFeedView({
           </button>
         </div>
 
+        {/* Phone and tablet: banner + withdrawal ticker first, above the
+            balance (owner's order). Desktop keeps them under the composer —
+            FeedTab renders that copy; each is display:none at the other width,
+            and the hidden ticker does not poll. */}
+        {activeTab === "feed" && (
+          <FeedPromoStrip
+            banners={initialBanners}
+            ticker={initialTicker}
+            tickerConfig={tickerConfig}
+            className="xl:hidden"
+          />
+        )}
+
         {/* Earn strip — balance + Quick Earn. Shown until the rail appears at xl. */}
         <MobileEarnBlock quickEarn={quickEarn} className="xl:hidden" />
 
@@ -346,6 +359,37 @@ export function SocialFeedView({
 // ─────────────────────────────────────────────────────────────────────────────
 // Feed tab
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Banner slider + withdrawal ticker — placed per breakpoint by the caller. */
+function FeedPromoStrip({
+  banners,
+  ticker,
+  tickerConfig,
+  className,
+}: {
+  banners: BannerSlide[];
+  ticker: WithdrawalTickerItem[];
+  tickerConfig?: TickerConfig;
+  className?: string;
+}) {
+  if (banners.length === 0 && ticker.length === 0) return null;
+  return (
+    <div className={cn("space-y-4", className)}>
+      {banners.length > 0 && <BannerSlider slides={banners} />}
+      {ticker.length > 0 && (
+        <WithdrawalTicker
+          items={ticker}
+          showAmount={tickerConfig?.showAmount}
+          showMethod={tickerConfig?.showMethod}
+          showCountry={tickerConfig?.showCountry}
+          speedSec={tickerConfig?.speedSec}
+          liveStream={tickerConfig?.live ?? false}
+          maxItems={tickerConfig?.maxItems}
+        />
+      )}
+    </div>
+  );
+}
 
 function FeedTab({
   user,
@@ -706,21 +750,15 @@ function FeedTab({
       />
 
       {/* Banner and ticker are both ambient — nothing here is a decision the
-          viewer has to make — so they sit between the composer and the posts
-          instead of in front of them. */}
-      {initialBanners.length > 0 && <BannerSlider slides={initialBanners} />}
-
-      {initialTicker.length > 0 && (
-        <WithdrawalTicker
-          items={initialTicker}
-          showAmount={tickerConfig?.showAmount}
-          showMethod={tickerConfig?.showMethod}
-          showCountry={tickerConfig?.showCountry}
-          speedSec={tickerConfig?.speedSec}
-          liveStream={tickerConfig?.live ?? false}
-          maxItems={tickerConfig?.maxItems}
-        />
-      )}
+          viewer has to make — so on desktop they sit between the composer and
+          the posts. Below xl they render above the balance strip instead (see
+          the column), so this copy is desktop-only. */}
+      <FeedPromoStrip
+        banners={initialBanners}
+        ticker={initialTicker}
+        tickerConfig={tickerConfig}
+        className="hidden xl:block"
+      />
 
       {loading && <ListSkeleton rows={3} />}
 
