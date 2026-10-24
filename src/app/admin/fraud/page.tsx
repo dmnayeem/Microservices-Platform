@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { MemberActions } from "@/components/admin/fraud/member-actions";
 import { REASK_MINUTES } from "@/lib/user-warnings";
+import { resolveSubjects, type SubjectPerson } from "@/lib/signal-subjects";
 import { describeUserAgent } from "@/lib/user-agent";
 import { getRiskConfig, FRAUD_SIGNALS, type FraudSignal } from "@/lib/fraud-risk";
 import { AppealDecision, ResetRisk, ResolveEvents } from "@/components/admin/fraud/fraud-actions";
@@ -218,55 +219,22 @@ export default async function FraudMonitorPage({
     user: { id: string; name: string | null; email: string };
   }>;
 
-  // Who each event is about. Sign-up checks run BEFORE the account exists, so
-  // those events carry no userId — only the email tried and the device. The
-  // column used to show "—" for all of them. Now: the account by userId, else
-  // the account that email became (a flagged sign-up still goes through),
-  // and in every case the accounts already on that device — when a sign-up
-  // was blocked, those are the people to warn.
-  type EvUser = { id: string; name: string | null; email: string; status: string };
+  // Who each event is about (lib/signal-subjects.ts) — sign-up events carry
+  // no userId, only the email tried and the device.
+  type EvUser = SubjectPerson;
   const evDetails = (e: (typeof events)[number]) =>
     (e.details ?? {}) as { email?: string; deviceId?: string; label?: string; riskAfter?: number };
-  const userIds = new Set(events.map((e) => e.userId).filter((v): v is string => !!v));
-  const emails = new Set(
-    events.filter((e) => !e.userId).map((e) => evDetails(e).email?.toLowerCase()).filter((v): v is string => !!v)
-  );
-  const deviceIds = new Set(events.map((e) => evDetails(e).deviceId).filter((v): v is string => !!v));
+  const evSubject = (e: (typeof events)[number]) => ({
+    userId: e.userId,
+    email: evDetails(e).email,
+    deviceId: evDetails(e).deviceId,
+  });
+  const subjects = await resolveSubjects(events.map(evSubject));
+  const eventPeople = (e: (typeof events)[number]) => subjects.resolve(evSubject(e));
   const userSelect = { id: true, name: true, email: true, status: true } as const;
-  const [byId, byEmail, onDevices] = await Promise.all([
-    userIds.size ? prisma.user.findMany({ where: { id: { in: [...userIds] } }, select: userSelect }) : [],
-    emails.size ? prisma.user.findMany({ where: { email: { in: [...emails] } }, select: userSelect }) : [],
-    deviceIds.size
-      ? prisma.userDevice.findMany({
-          where: { deviceId: { in: [...deviceIds] } },
-          select: { deviceId: true, user: { select: userSelect } },
-        })
-      : [],
-  ]);
-  const userMap = new Map<string, EvUser>((byId as EvUser[]).map((u) => [u.id, u]));
-  const emailMap = new Map<string, EvUser>((byEmail as EvUser[]).map((u) => [u.email.toLowerCase(), u]));
-  const deviceMap = new Map<string, EvUser[]>();
-  for (const r of onDevices as unknown as Array<{ deviceId: string; user: EvUser }>) {
-    const list = deviceMap.get(r.deviceId) ?? [];
-    if (!list.some((u) => u.id === r.user.id)) list.push(r.user);
-    deviceMap.set(r.deviceId, list);
-  }
-  const eventPeople = (e: (typeof events)[number]) => {
-    const d = evDetails(e);
-    const account =
-      (e.userId ? userMap.get(e.userId) : undefined) ??
-      (d.email ? emailMap.get(d.email.toLowerCase()) : undefined) ??
-      null;
-    const onDevice = (d.deviceId ? deviceMap.get(d.deviceId) ?? [] : []).filter((u) => u.id !== account?.id);
-    return { account, onDevice, email: d.email ?? null };
-  };
 
   // Warnings: how many each member has had, and the latest ones with replies.
-  const peopleIds = new Set<string>([
-    ...userMap.keys(),
-    ...[...emailMap.values()].map((u) => u.id),
-    ...[...deviceMap.values()].flat().map((u) => u.id),
-  ]);
+  const peopleIds = new Set<string>(subjects.everyone().map((u) => u.id));
   const [warnCounts, recentWarnings, canBan] = await Promise.all([
     peopleIds.size
       ? prisma.userWarning.groupBy({ by: ["userId"], where: { userId: { in: [...peopleIds] } }, _count: { _all: true } })
