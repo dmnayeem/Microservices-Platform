@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   X,
   Send,
+  PenSquare,
   Loader2,
   Megaphone,
   ListChecks,
@@ -391,11 +392,18 @@ export function CreatePostComposer({
       },
     ];
     return (
-      /* The composer is a neutral card with one accent thing in it — the Post
-         button. It used to be a tinted indigo panel with a ringed avatar, an
-         indigo-hover input and a gradient button, so four elements were
-         competing inside a control whose only job is "tap here to write". */
-      <div className="app-card">
+      /* Marked out from the posts around it. As a neutral card it looked like
+         one more post, and people scrolled past without realising they could
+         write here (owner, 2026-10-25). So: an accent edge, a faint brand tint
+         (a flat colour — gradients stay reserved for the Post button), a
+         "Create a post" label, and the Post button on every width — it was
+         hidden on phones, which is where most people read the feed. */
+      <div className="app-card border-(--app-accent-edge)/60 bg-[color-mix(in_srgb,var(--app-nav-wash)_45%,var(--app-surface))] ring-1 ring-(--app-accent-edge)/15">
+        <p className="mb-3 flex items-center gap-2 text-sm font-extrabold text-(--app-accent-ink)">
+          <PenSquare className="h-4 w-4 shrink-0" />
+          Create a post
+          <span className="truncate text-xs font-medium text-(--app-ink-3)">· share with the community</span>
+        </p>
         {/* Top row — tap anywhere to open the composer */}
         <button
           onClick={() => setExpanded(true)}
@@ -407,18 +415,18 @@ export function CreatePostComposer({
             size={44}
             className="shrink-0"
           />
-          <span className="app-tap-row flex-1 min-w-0 flex items-center text-left rounded-full bg-(--app-surface-2) border border-(--app-line) group-hover:border-(--app-line-strong) px-4 text-sm text-(--app-ink-3) transition-colors truncate">
+          <span className="app-tap-row flex-1 min-w-0 flex items-center text-left rounded-full bg-(--app-surface) border border-(--app-accent-edge)/40 group-hover:border-(--app-accent-edge) px-4 text-sm text-(--app-ink-2) transition-colors truncate">
             What&apos;s on your mind, {firstName}?
           </span>
-          <span className="app-accent app-tap-row hidden sm:inline-flex items-center gap-1.5 px-4 rounded-full text-sm font-extrabold shrink-0">
+          <span className="app-accent app-tap-row inline-flex items-center gap-1.5 px-3 min-[400px]:px-4 rounded-full text-sm font-extrabold shrink-0">
             <Send className="w-4 h-4" />
-            Post
+            <span className="hidden min-[400px]:inline">Post</span>
           </span>
         </button>
 
         {/* Quick actions. The icons carried a hue each (`a.tone`), which put
             three more colours directly under the feed's balance card. */}
-        <div className="mt-3 pt-3 border-t border-(--app-line) grid grid-cols-3 gap-1">
+        <div className="mt-3 pt-3 border-t border-(--app-accent-edge)/20 grid grid-cols-3 gap-1">
           {quickActions.map((a) => (
             <button
               key={a.label}
