@@ -143,16 +143,24 @@ function LoginForm() {
       const session = await getSession();
       const userRole = session?.user?.role;
 
-      // Redirect based on role - all admin roles go to admin dashboard
+      // Admin roles go to the admin dashboard — unless they were sent here
+      // from somewhere specific (e.g. Connect RevType from a game website),
+      // which used to be dropped for staff accounts.
+      //
+      // `replace`, not `push`: the login page must not stay in the history.
+      // Back from where the member lands came here, and a signed-in visit to
+      // /login only bounces to /social — so Back after connecting a game in
+      // the installed app ended up on the feed instead of in the game.
       if (
         userRole &&
         ADMIN_ROLE_STRINGS.includes(
           userRole as typeof ADMIN_ROLE_STRINGS[number]
-        )
+        ) &&
+        !searchParams.get("callbackUrl")
       ) {
-        router.push("/admin");
+        router.replace("/admin");
       } else {
-        router.push(callbackUrl);
+        router.replace(callbackUrl);
       }
       router.refresh();
     } catch {

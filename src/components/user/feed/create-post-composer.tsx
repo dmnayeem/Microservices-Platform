@@ -398,42 +398,46 @@ export function CreatePostComposer({
          (a flat colour — gradients stay reserved for the Post button), a
          "Create a post" label, and the Post button on every width — it was
          hidden on phones, which is where most people read the feed. */
-      <div className="app-card border-(--app-accent-edge)/60 bg-[color-mix(in_srgb,var(--app-nav-wash)_45%,var(--app-surface))] ring-1 ring-(--app-accent-edge)/15">
-        <p className="mb-3 flex items-center gap-2 text-sm font-extrabold text-(--app-accent-ink)">
-          <PenSquare className="h-4 w-4 shrink-0" />
-          Create a post
-          <span className="truncate text-xs font-medium text-(--app-ink-3)">· share with the community</span>
-        </p>
-        {/* Top row — tap anywhere to open the composer */}
+      <div className="app-card border-(--app-accent-edge)/35 bg-[color-mix(in_srgb,var(--app-nav-wash)_30%,var(--app-surface))]">
+        {/* Heading — says what this card is for */}
+        <div className="mb-3 flex items-center gap-3">
+          <span className="app-accent-soft grid h-9 w-9 shrink-0 place-items-center rounded-xl">
+            <PenSquare className="h-4.5 w-4.5" />
+          </span>
+          <p className="min-w-0 text-base font-extrabold leading-tight text-(--app-ink)">Create a post</p>
+        </div>
+
+        {/* The writing area. Shaped like the box you type into — tall, softly
+            rounded rather than a pill — with its Post button inside, so it
+            reads as "write here" at a glance. Tap anywhere to open. */}
         <button
           onClick={() => setExpanded(true)}
-          className="app-press w-full flex items-center gap-3 group"
+          className="app-press group flex w-full items-start gap-3 text-left"
         >
           <Avatar
             src={user.avatar}
             name={user.name}
-            size={44}
-            className="shrink-0"
+            size={40}
+            className="mt-0.5 shrink-0"
           />
-          <span className="app-tap-row flex-1 min-w-0 flex items-center text-left rounded-full bg-(--app-surface) border border-(--app-accent-edge)/40 group-hover:border-(--app-accent-edge) px-4 text-sm text-(--app-ink-2) transition-colors truncate">
-            What&apos;s on your mind, {firstName}?
-          </span>
-          <span className="app-accent app-tap-row inline-flex items-center gap-1.5 px-3 min-[400px]:px-4 rounded-full text-sm font-extrabold shrink-0">
-            <Send className="w-4 h-4" />
-            <span className="hidden min-[400px]:inline">Post</span>
+          <span className="flex min-h-24 min-w-0 flex-1 flex-col justify-between rounded-xl border border-(--app-line-strong) bg-(--app-page) px-3.5 py-3 transition-colors group-hover:border-(--app-accent-edge)/70">
+            <span className="text-sm text-(--app-ink-3)">What&apos;s on your mind, {firstName}?</span>
+            <span className="app-accent mt-3 inline-flex items-center gap-1.5 self-end rounded-lg px-3.5 py-1.5 text-sm font-bold">
+              <Send className="h-4 w-4" />
+              Post
+            </span>
           </span>
         </button>
 
-        {/* Quick actions. The icons carried a hue each (`a.tone`), which put
-            three more colours directly under the feed's balance card. */}
-        <div className="mt-3 pt-3 border-t border-(--app-accent-edge)/20 grid grid-cols-3 gap-1">
+        {/* Quick actions — one accent for the icons, never a hue each. */}
+        <div className="mt-3 grid grid-cols-3 gap-2">
           {quickActions.map((a) => (
             <button
               key={a.label}
               onClick={a.onClick}
-              className="app-tap-row app-press inline-flex items-center justify-center gap-1.5 rounded-(--app-r-chip) text-sm font-bold text-(--app-ink-2) hover:bg-(--app-surface-2) hover:text-(--app-ink)"
+              className="app-press inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-(--app-line) bg-(--app-surface) px-2 text-sm font-semibold text-(--app-ink-2) transition-colors hover:border-(--app-accent-edge)/50 hover:text-(--app-ink)"
             >
-              <a.icon className="w-4 h-4 text-(--app-ink-3)" />
+              <a.icon className="h-4 w-4 shrink-0 text-(--app-accent-ink)" />
               {a.label}
             </button>
           ))}
