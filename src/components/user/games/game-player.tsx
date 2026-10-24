@@ -307,7 +307,16 @@ export function GamePlayer({
       const d = e.data as { source?: string; type?: string; n?: unknown } | null;
       if (!d || d.source !== "revtype-sdk") return;
       if (d.type === "hello") welcome();
-      else if (d.type === "add") {
+      else if (d.type === "login-token") {
+        // "Sign in with RevType" inside this player: a fresh one-time token for
+        // the game's own website (it cannot open the connect popup from here).
+        const reply = (token: string) =>
+          frameRef.current?.contentWindow?.postMessage({ source: "revtype-player", type: "login-token", token }, gameOrigin);
+        fetch(`/api/games/${game.id}/login-token`, { method: "POST" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j: { loginToken?: string } | null) => reply(j?.loginToken ?? ""))
+          .catch(() => reply(""));
+      } else if (d.type === "add") {
         // The SDK sends gains; this page keeps the session's running total
         // (what the server expects), so a round reset or reload loses nothing.
         const n = Math.floor(Number(d.n));
@@ -316,7 +325,7 @@ export function GamePlayer({
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [started, gameOrigin, welcome]);
+  }, [started, gameOrigin, welcome, game.id]);
 
 
   // ── Load watchdog ────────────────────────────────────────────────────────
