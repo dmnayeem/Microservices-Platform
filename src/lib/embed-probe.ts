@@ -1,5 +1,6 @@
 import "server-only";
 import { SafeFetchError, safeFetch } from "@/lib/safe-fetch";
+import { ancestorsAllow } from "@/lib/frame-ancestors";
 
 /**
  * Can this URL actually be shown inside an iframe?
@@ -26,6 +27,23 @@ export interface EmbedProbeResult {
 }
 
 const TIMEOUT_MS = 8_000;
+
+/** The origins our pages are served from — what a frame-ancestors list must name. */
+function ourOrigins(): string[] {
+  const base = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://revtype.com").trim();
+  let host = "revtype.com";
+  let protocol = "https:";
+  try {
+    const u = new URL(base);
+    host = u.host;
+    protocol = u.protocol;
+  } catch {
+    /* keep the default */
+  }
+  const bare = host.replace(/^www\./, "");
+  return [...new Set([`${protocol}//${bare}`, `${protocol}//www.${bare}`])];
+}
+
 
 export async function probeEmbed(url: string): Promise<EmbedProbeResult> {
   const checkedAt = new Date().toISOString();
@@ -104,19 +122,23 @@ export async function probeEmbed(url: string): Promise<EmbedProbeResult> {
     }
 
     if (csp) {
-      const match = /frame-ancestors([^;]*)/i.exec(csp);
-      if (match) {
+      // Several CSP headers arrive joined by ", " and the browser enforces
+      // every one of them — so each policy's frame-ancestors must let us in.
+      const ours = ourOrigins();
+      for (const policy of csp.split(",")) {
+        const match = /frame-ancestors([^;]*)/i.exec(policy);
+        if (!match) continue;
         const value = match[1].trim();
-        // 'none' blocks everyone. A specific allow-list won't include us either,
-        // unless it is a wildcard.
-        const permissive = value.includes("*") || value.includes("https:");
-        if (value.includes("'none'") || !permissive) {
+        const pageOrigin = new URL(res.url || parsed.href).origin;
+        if (!ours.some((o) => ancestorsAllow(value, o, pageOrigin))) {
           return {
             ok: false,
             xfo,
             csp,
             status: res.status,
-            reason: `Blocked: the site's Content-Security-Policy sets "frame-ancestors ${value}", which doesn't allow this site.`,
+            reason:
+              `Blocked: the site only allows being embedded on "${value}" (its frame-ancestors). ` +
+              `Add ${ours[0]} to that list on the game's server, then test again.`,
             checkedAt,
           };
         }
