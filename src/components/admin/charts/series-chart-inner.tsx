@@ -238,32 +238,50 @@ export function DonutChartInner({
       </div>
     );
   }
+  // The ring is sized relative to its box and the legend is a plain list UNDER
+  // it. Before, a fixed 100px radius filled the whole 200px box and Recharts
+  // drew its legend inside the same box — on top of the ring — so a one-slice
+  // donut hid its only label and a ten-source one covered the chart with two
+  // legend rows. A white slice border and a 2° gap also drew a seam through a
+  // single 100% slice.
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <PieChart>
-        <Pie
-          data={live}
-          dataKey="value"
-          nameKey="name"
-          innerRadius={60}
-          outerRadius={100}
-          paddingAngle={2}
-        >
-          {live.map((d) => (
-            <Cell key={d.name} fill={d.color} />
-          ))}
-        </Pie>
-        <Tooltip
-          contentStyle={TOOLTIP_STYLE}
-          formatter={(v: unknown, name: unknown) =>
-            [
-              money ? usd(Number(v ?? 0)) : Number(v ?? 0).toLocaleString(),
-              String(name ?? ""),
-            ] as [string, string]
-          }
-        />
-        <Legend wrapperStyle={{ fontSize: 11, color: "rgb(148 163 184)" }} />
-      </PieChart>
-    </ResponsiveContainer>
+    <div>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={live}
+              dataKey="value"
+              nameKey="name"
+              innerRadius="62%"
+              outerRadius="92%"
+              paddingAngle={live.length > 1 ? 2 : 0}
+              stroke="none"
+            >
+              {live.map((d) => (
+                <Cell key={d.name} fill={d.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE}
+              formatter={(v: unknown, name: unknown) =>
+                [
+                  money ? usd(Number(v ?? 0)) : Number(v ?? 0).toLocaleString(),
+                  String(name ?? ""),
+                ] as [string, string]
+              }
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-[11px] text-slate-400">
+        {live.map((d) => (
+          <li key={d.name} className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: d.color }} />
+            {d.name}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

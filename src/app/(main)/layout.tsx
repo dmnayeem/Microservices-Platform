@@ -18,6 +18,7 @@ import { getHiddenPaths } from "@/lib/page-visibility-server";
 import { isPathHidden } from "@/lib/page-visibility";
 import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
+import { WarningHost } from "@/components/user/primitives/warning-host";
 import { CelebrationHost } from "@/components/user/primitives/celebration-host";
 import { SplashScreen } from "@/components/pwa/splash-screen";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
@@ -242,6 +243,8 @@ export default async function MainLayout({
       {/* Lottery wins, leaderboard prizes, big achievements, payments — shown
           once as a popup the next time the user opens the app. */}
       <CelebrationHost />
+      {/* Fraud Monitor warnings: shown on entry, answered or re-shown. */}
+      <WarningHost />
       {/* Once, right after a sign-in / registration — members' app only,
           never the landing page or admin. */}
       <SplashScreen />
