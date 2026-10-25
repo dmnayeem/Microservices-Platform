@@ -229,7 +229,7 @@ export function ProfileView() {
       load();
       // The header and sidebar are server-rendered from the session; a new
       // name only reaches them on a re-render.
-      if ("name" in body) router.refresh();
+      if ("name" in body || "firstName" in body || "lastName" in body) router.refresh();
       return true;
     } catch (err) {
       toast.error("Save failed", {

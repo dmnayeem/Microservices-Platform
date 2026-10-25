@@ -748,10 +748,26 @@ export async function PATCH(request: NextRequest) {
         gender: true,
         dateOfBirth: true,
         targetingChangedAt: true,
+        name: true,
+        firstName: true,
+        lastName: true,
       },
     });
     if (!current) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // The display name follows First + Last name. The profile form edits
+    // those two, but every screen (header, sidebar, posts, comments) shows
+    // `name` — which nothing ever updated, so a rename "never took" no matter
+    // how long the member waited. Built here, BEFORE the KYC identity check
+    // below, so the new name is what gets checked against the verified ID
+    // (it used to compare the old `name` and ignore the first/last change).
+    if (body.name === undefined && (updateData.firstName !== undefined || updateData.lastName !== undefined)) {
+      const first = (updateData.firstName !== undefined ? updateData.firstName : current.firstName) as string | null;
+      const last = (updateData.lastName !== undefined ? updateData.lastName : current.lastName) as string | null;
+      const full = [first, last].filter(Boolean).join(" ").replace(/\s+/g, " ").trim().slice(0, 50).trim();
+      if (full.length >= 2 && full !== current.name) updateData.name = full;
     }
 
     const targetingChanges = changedTargetingFields(current, updateData);
