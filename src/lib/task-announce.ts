@@ -32,6 +32,10 @@ type AnnounceTask = {
   thumbnailUrl?: string | null;
   status: string;
   hidden: boolean;
+  /** The super admin's private task (lib/task-privacy.ts). */
+  superAdminOnly?: boolean;
+  /** Selected members only — then the announcement goes to them alone. */
+  allowedUserIds?: string[];
   startsAt: Date | null;
   expiresAt: Date | null;
   minLevel: number;
@@ -87,6 +91,11 @@ export async function announceTask(
   try {
     if (!channels) return null;
     if (task.status !== "ACTIVE" || task.hidden) return null;
+    // A private task is announced only to its selected members, by name; with
+    // none selected it isn't announced at all — the audience broadcast would
+    // reach staff accounts with the title.
+    const selected = task.allowedUserIds ?? [];
+    if (task.superAdminOnly && selected.length === 0) return null;
     if (task.expiresAt && task.expiresAt.getTime() <= Date.now()) return null;
 
     const claimed = await prisma.task.updateMany({
@@ -102,19 +111,23 @@ export async function announceTask(
 
     // Addressed to each member by name, with the task's picture under it —
     // the rich notification shape (lib/personalize + push `image`).
+    // A private task's broadcast row is listed on /admin/broadcasts, so it
+    // carries no title, description or picture — the member opens the task.
+    const priv = !!task.superAdminOnly;
     const b = await createBroadcast({
       createdById: actorId,
-      title: `🔔 {name}, a new task for you: ${task.title}`.slice(0, 120),
-      message: blurb ? `⚡ ${reward}
+      title: (priv ? `🔔 {name}, you have a new task` : `🔔 {name}, a new task for you: ${task.title}`).slice(0, 120),
+      message: priv ? `⚡ ${reward}. Open it in your task list.` : blurb ? `⚡ ${reward}
 ${blurb}` : `⚡ ${reward}. Open it now.`,
-      imageUrl: task.thumbnailUrl ?? null,
+      imageUrl: priv ? null : task.thumbnailUrl ?? null,
       type: "TASK",
-      emailSubject: `New task: ${task.title}`.slice(0, 150),
+      emailSubject: (priv ? "You have a new task" : `New task: ${task.title}`).slice(0, 150),
       actionUrl: `/tasks/${task.id}`,
       actionLabel: "Open task",
       channels,
-      targetKind: hasCriteria ? "SEGMENT" : "ALL",
-      criteria: hasCriteria ? criteria : null,
+      ...(selected.length
+        ? { targetKind: "SPECIFIC" as const, userIds: selected, criteria: null }
+        : { targetKind: hasCriteria ? ("SEGMENT" as const) : ("ALL" as const), criteria: hasCriteria ? criteria : null }),
       scheduledFor: task.startsAt,
     });
 

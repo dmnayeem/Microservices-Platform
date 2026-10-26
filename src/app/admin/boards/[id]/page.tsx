@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -17,11 +19,13 @@ export default async function BoardDetailPage({
 
   const { id } = await params;
   const board = await prisma.taskBoard.findUnique({ where: { id } });
+  // The super admin's private tasks are listed and offered to them only.
+  const scope = adminTaskScope(session?.user?.id ? await freshRole(session.user.id) : null);
   if (!board) notFound();
 
   const [assigned, available, totalCompletions] = await Promise.all([
     prisma.task.findMany({
-      where: { boardId: id, ...LISTED_TASK_WHERE },
+      where: { boardId: id, ...LISTED_TASK_WHERE, ...scope },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -34,7 +38,7 @@ export default async function BoardDetailPage({
       },
     }),
     prisma.task.findMany({
-      where: { boardId: null, status: "ACTIVE" },
+      where: { boardId: null, status: "ACTIVE", ...scope },
       orderBy: { createdAt: "desc" },
       take: 100,
       select: {

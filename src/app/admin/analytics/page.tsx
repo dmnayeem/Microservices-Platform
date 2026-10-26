@@ -1,4 +1,6 @@
 import { usd, pts } from "@/lib/utils";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { getPointsPerUsd } from "@/lib/economy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -285,7 +287,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   const taskIds = topTaskPagesRaw.map((t) => t.key);
   const taskRows = taskIds.length
     ? await prisma.task.findMany({
-        where: { id: { in: taskIds } },
+        // A private task's page shows its traffic but not its name.
+        where: { id: { in: taskIds }, ...adminTaskScope(session?.user?.id ? await freshRole(session.user.id) : null) },
         select: { id: true, title: true, type: true },
       })
     : [];

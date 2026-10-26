@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -30,7 +32,7 @@ export default async function EditTaskPage({ params }: PageProps) {
   const { id } = await params;
 
   const task = await prisma.task.findUnique({
-    where: { id },
+    where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
   });
 
   if (!task) {
@@ -43,6 +45,13 @@ export default async function EditTaskPage({ params }: PageProps) {
   // does not take the field and never reads it. Dropped rather than converted,
   // so the prop stays exactly the shape the form declares.
   const { cashReward: _cashReward, ...taskForForm } = task;
+  // The Private task section (super admin only) and the names of the members
+  // already chosen for it.
+  const isSuperAdmin = (await freshRole(session.user.id)) === "SUPER_ADMIN";
+  const allowedUsers =
+    isSuperAdmin && task.allowedUserIds.length
+      ? await prisma.user.findMany({ where: { id: { in: task.allowedUserIds } }, select: { id: true, name: true, email: true } })
+      : [];
 
   return (
     <div className="space-y-6">
@@ -62,6 +71,8 @@ export default async function EditTaskPage({ params }: PageProps) {
 
       {/* Form */}
       <TaskForm
+        isSuperAdmin={isSuperAdmin}
+        initialAllowedUsers={allowedUsers}
         task={{
           ...taskForForm,
           socialConfig: task.socialConfig as SocialConfig | null,

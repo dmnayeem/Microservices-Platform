@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -45,7 +47,7 @@ export async function GET(
 
   const { id } = await params;
   const task = await prisma.task.findUnique({
-    where: { id },
+    where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
     select: {
       id: true,
       title: true,

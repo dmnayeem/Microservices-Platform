@@ -2450,6 +2450,13 @@ model Task {
   // Super-admin hard hide — excludes the task from all user-facing lists
   // regardless of level/access/type gating. Admin-only visibility control.
   hidden              Boolean          @default(false)
+  /// Super admin's private task: in the admin panel only SUPER_ADMIN sees it
+  /// (lists, submissions, review, analytics, exports), and on the member side
+  /// staff accounts don't get it unless selected below. src/lib/task-privacy.ts.
+  superAdminOnly      Boolean          @default(false)
+  /// Only these members may see and do the task. Empty = everyone the other
+  /// rules (audience, level, plan, device) allow.
+  allowedUserIds      String[]         @default([])
   // Sequential-unlock ordering — lower shows/unlocks first (feature #7).
   order               Int              @default(0)
   countries           String[]         @default([])
@@ -6723,8 +6730,18 @@ model WorkTask {
   priority         String           @default("NORMAL")
   /// DRAFT | ASSIGNED | IN_PROGRESS | BLOCKED | IN_REVIEW | CHANGES_REQUESTED | COMPLETED | CANCELLED | ARCHIVED
   status           String           @default("ASSIGNED")
-  /// PARTICIPANTS (creator + members only) | TEAM (+ team members) | ALL_STAFF
+  /// PARTICIPANTS (creator + members only) | TEAM (+ team members) |
+  /// DEPARTMENT (+ every team in visibleDepartmentId) | ROLES (+ staff whose
+  /// role is in visibleRoles) | ALL_STAFF
   visibility       String           @default("PARTICIPANTS")
+  /// WorkOption (DEPARTMENT) — for visibility DEPARTMENT.
+  visibleDepartmentId String?
+  /// Staff roles — for visibility ROLES.
+  visibleRoles     String[]         @default([])
+  /// NONE | DAILY | WEEKLY | MONTHLY — a completed occurrence creates the next.
+  recurrence       String           @default("NONE")
+  /// The occurrence this one was created from (recurring tasks).
+  recurrenceParentId String?
   /// SHARED (one target for everyone) | INDIVIDUAL (a target per assignee)
   targetMode       String           @default("SHARED")
   /// false = an assignee's report counts as soon as it is submitted.
@@ -6753,6 +6770,7 @@ model WorkTask {
   @@index([projectId])
   @@index([milestoneId])
   @@index([dueAt])
+  @@index([recurrenceParentId])
 }
 
 model WorkTaskMember {

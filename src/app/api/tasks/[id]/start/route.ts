@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { memberCanSeeTask } from "@/lib/task-privacy";
 import { matchesDeviceTarget } from "@/lib/device-target";
 import { currentDevice } from "@/lib/device-current";
 import { taskDeviceGate } from "@/lib/task-device-gate";
@@ -98,6 +99,10 @@ export async function POST(
     // never read `hidden`, so "hidden" was a list filter and nothing more: a
     // task pulled from circulation was still startable and payable by id.
     if (task.hidden) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    // A super admin's private task: selected members only (lib/task-privacy.ts).
+    if (!memberCanSeeTask(task, { id: session.user.id, role: session.user.role })) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 

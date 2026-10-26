@@ -1,4 +1,6 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { taskNameForLog } from "@/lib/task-privacy";
+import { memberCanSeeTask } from "@/lib/task-privacy";
 import { normalizeVisitConfig, normVisitCode, visitHasViewerSteps } from "@/lib/visit-tasks";
 import { redeemVisitPass, visitCodeFor, visitEvidence } from "@/lib/visit-tasks-server";
 import { taskTypePage } from "@/lib/page-visibility";
@@ -189,7 +191,10 @@ export async function POST(
       where: { id },
     });
 
-    if (!task) {
+    // Hidden or private (and not yours): absent. This route never read
+    // `hidden`, so a task pulled after someone started it still took the
+    // submission and paid it.
+    if (!task || task.hidden || !memberCanSeeTask(task, { id: session.user.id, role: session.user.role })) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
     // Super-admin page visibility: the page that runs this task type is
@@ -1955,7 +1960,7 @@ export async function POST(
                 status: TransactionStatus.COMPLETED,
                 points: effectivePoints,
                 amount: effectivePoints / pointsPerUsd,
-                description: `Completed task: ${task.title}`,
+                description: `Completed task: ${taskNameForLog(task)}`,
                 reference: `task_${task.id}_${submission.id}`,
                 metadata: {
                   taskId: task.id,

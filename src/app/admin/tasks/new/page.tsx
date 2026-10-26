@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { freshRole } from "@/lib/task-privacy-server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getEffectivePermissions } from "@/lib/permissions";
@@ -60,6 +61,7 @@ export default async function CreateTaskPage({
 
       {/* Form */}
       <TaskForm
+        isSuperAdmin={(await freshRole(session.user.id)) === "SUPER_ADMIN"}
         allowedTypes={allowedTypes as unknown as string[]}
         defaultBoardId={board?.id}
       />

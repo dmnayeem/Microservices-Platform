@@ -1,4 +1,6 @@
 import { usd, pts } from "@/lib/utils";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminSubmissionScope } from "@/lib/task-privacy";
 import { CountryFlag } from "@/components/admin/ui/country-flag";
 import { describeUserAgent } from "@/lib/user-agent";
 import { describeDevice, type DeviceType } from "@/lib/device-info";
@@ -73,6 +75,8 @@ interface PageProps {
 
 export default async function UserDetailPage({ params, searchParams }: PageProps) {
   const session = await auth();
+  // Who is looking: the super admin's private tasks are shown to them only.
+  const viewerRole = session?.user?.id ? await freshRole(session.user.id) : null;
 
   if (!session?.user) {
     redirect("/login");
@@ -117,6 +121,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
             take: 10,
           },
           taskSubmissions: {
+            // The super admin's private tasks are theirs to see.
+            where: adminSubmissionScope(viewerRole),
             orderBy: { createdAt: "desc" },
             take: 10,
             include: {
@@ -334,7 +340,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   };
 
   // Unified per-user activity timeline (only on the Activity tab).
-  const activityEvents = tab === "activity" ? await getUserActivity(id) : [];
+  const activityEvents = tab === "activity" ? await getUserActivity(id, viewerRole) : [];
 
   const [postsRaw, followersRaw, followingRaw] = await Promise.all([
     tab === "posts"

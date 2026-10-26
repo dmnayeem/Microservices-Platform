@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope, taskNameForLog } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -37,8 +39,10 @@ export async function DELETE() {
   let deleted = 0;
   let removed = 0;
   try {
+    // Only tasks this admin may see: the super admin's private ones stay theirs.
+    const scope = adminTaskScope(await freshRole(session.user.id));
     const tasks = await prisma.task.findMany({
-      where: { status: "ARCHIVED" },
+      where: { status: "ARCHIVED", ...scope },
       orderBy: { createdAt: "asc" },
       take: MAX_PER_REQUEST,
       select: {
@@ -51,6 +55,7 @@ export async function DELETE() {
         completedCount: true,
         createdById: true,
         createdAt: true,
+        superAdminOnly: true,
       },
     });
 
@@ -119,7 +124,7 @@ export async function DELETE() {
             action: "TASK_DELETED",
             entity: "Task",
             entityId: t.id,
-            summary: `Deleted "${t.title}" (${t.type}, ${t.pointsReward} pts) — no submissions, removed permanently (bulk)`,
+            summary: `Deleted "${taskNameForLog(t)}" (${t.type}, ${t.pointsReward} pts) — no submissions, removed permanently (bulk)`,
             meta: { ...taskSnapshot(t), submissions: 0, reversible: false, bulk: true },
           });
         } else if (removedIds.has(t.id)) {
@@ -128,7 +133,7 @@ export async function DELETE() {
             action: "TASK_REMOVED",
             entity: "Task",
             entityId: t.id,
-            summary: `Deleted archived "${t.title}" — ${n} submission${n === 1 ? "" : "s"} kept for the payment records (bulk)`,
+            summary: `Deleted archived "${taskNameForLog(t)}" — ${n} submission${n === 1 ? "" : "s"} kept for the payment records (bulk)`,
             meta: { ...taskSnapshot(t), submissions: n, reversible: false, bulk: true },
           });
         }
@@ -139,7 +144,7 @@ export async function DELETE() {
     const remaining =
       tasks.length < MAX_PER_REQUEST
         ? 0
-        : await prisma.task.count({ where: { status: "ARCHIVED" } });
+        : await prisma.task.count({ where: { status: "ARCHIVED", ...scope } });
 
     if (deleted + removed > 0) {
       await writeAudit({
