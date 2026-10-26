@@ -45,7 +45,7 @@ export function canTransition(from: string, to: string): boolean {
   return (TASK_TRANSITIONS[from as TaskStatus] ?? []).includes(to as TaskStatus);
 }
 
-export const TASK_VISIBILITY = ["PARTICIPANTS", "TEAM", "ALL_STAFF"] as const;
+export const TASK_VISIBILITY = ["PARTICIPANTS", "TEAM", "DEPARTMENT", "ROLES", "ALL_STAFF"] as const;
 export type TaskVisibility = (typeof TASK_VISIBILITY)[number];
 
 export const MEMBER_ROLES = ["ASSIGNEE", "COLLABORATOR", "REVIEWER", "OBSERVER"] as const;
@@ -81,8 +81,34 @@ export const STATUS_LABEL: Record<string, string> = {
 export const VISIBILITY_LABEL: Record<TaskVisibility, string> = {
   PARTICIPANTS: "Only the people on this task",
   TEAM: "The task's team",
+  DEPARTMENT: "A whole department",
+  ROLES: "Staff with chosen roles",
   ALL_STAFF: "All staff with Team Work",
 };
+
+/** Repeating tasks: completing one occurrence creates the next. */
+export const RECURRENCES = ["NONE", "DAILY", "WEEKLY", "MONTHLY"] as const;
+export type Recurrence = (typeof RECURRENCES)[number];
+export const RECURRENCE_LABEL: Record<Recurrence, string> = {
+  NONE: "Does not repeat",
+  DAILY: "Every day",
+  WEEKLY: "Every week",
+  MONTHLY: "Every month",
+};
+/** The next date of a repeating task (calendar months for MONTHLY). */
+export function nextOccurrence(from: Date, r: Recurrence): Date {
+  const d = new Date(from);
+  if (r === "DAILY") d.setUTCDate(d.getUTCDate() + 1);
+  else if (r === "WEEKLY") d.setUTCDate(d.getUTCDate() + 7);
+  else if (r === "MONTHLY") {
+    // Same day next month, clamped to its last day — Jan 31 → Feb 28, not Mar 3.
+    const day = d.getUTCDate();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    d.setUTCDate(Math.min(day, new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()));
+  }
+  return d;
+}
 
 export const ROLE_LABEL: Record<MemberRole, string> = {
   ASSIGNEE: "Assignee",

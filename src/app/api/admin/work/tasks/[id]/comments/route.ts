@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { dbRateLimit } from "@/lib/rate-limit-db";
-import { loadTaskFor } from "@/lib/work/access";
+import { loadTaskFor, loadWorkActor } from "@/lib/work/access";
 import { bad, logWorkActivity, notFound, notifyWork, workGuard } from "@/lib/work/server";
 import { taskCode } from "@/lib/work/model";
 
@@ -13,6 +13,8 @@ const schema = z.object({
   /** NOTE = private management note: the task's managers only. */
   kind: z.enum(["COMMENT", "NOTE"]).default("COMMENT"),
   parentId: z.string().min(1).max(64).optional(),
+  /** People @mentioned — each must be able to see the task (and, for a note, its private notes). */
+  mentionIds: z.array(z.string().min(1).max(64)).max(10).default([]),
 });
 
 /** POST /api/admin/work/tasks/:id/comments — a message on the task, or a private note. */
@@ -37,6 +39,23 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     data: { taskId: id, authorId: a.userId, kind: b.kind, body: b.body, parentId: b.parentId ?? null },
   });
   const { task } = found;
+
+  // Mentions: only people who can open this task (a note: only its managers),
+  // so a mention never tells anyone about a task they cannot see.
+  const mentioned: string[] = [];
+  for (const uid of [...new Set(b.mentionIds)].filter((u) => u !== a.userId)) {
+    const actor = await loadWorkActor(uid);
+    const f = actor ? await loadTaskFor(actor, id) : null;
+    if (f && (b.kind === "COMMENT" || f.caps.privateNotes)) mentioned.push(uid);
+  }
+  if (mentioned.length) {
+    await notifyWork(mentioned, {
+      title: `${taskCode(task.number)}: you were mentioned`,
+      message: b.body.slice(0, 200),
+      taskId: id,
+    });
+  }
+
   await logWorkActivity({
     taskId: id,
     projectId: task.projectId,
@@ -50,7 +69,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   // Who hears about it: a note only the managers; a comment everyone on the task.
   const managers = [task.createdById, task.managerId].filter((u): u is string => !!u);
   const members = b.kind === "NOTE" ? [] : (await prisma.workTaskMember.findMany({ where: { taskId: id }, select: { userId: true } })).map((m) => m.userId);
-  await notifyWork([...managers, ...members].filter((u) => u !== a.userId), {
+  await notifyWork([...managers, ...members].filter((u) => u !== a.userId && !mentioned.includes(u)), {
     title: `${taskCode(task.number)}: new ${b.kind === "NOTE" ? "private note" : "message"}`,
     message: b.kind === "NOTE" ? task.title : b.body.slice(0, 200),
     taskId: id,

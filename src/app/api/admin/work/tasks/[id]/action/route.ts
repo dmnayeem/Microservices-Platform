@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createNextOccurrence } from "@/lib/work/recurrence";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
@@ -120,7 +121,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     await logWorkActivity({ taskId: id, projectId: task.projectId, actorId: a.userId, type: "COMPLETED", summary: `Approved as completed${reason ? ` — ${reason}` : ""}` });
     await notifyWork(await doersOf(), { title: `${code} completed`, message: "Final completion approved.", taskId: id });
     await writeAudit({ actorId: a.userId, action: "WORK_TASK_COMPLETED", entity: "WorkTask", entityId: id, summary: `Completed ${code}` });
-    return NextResponse.json({ ok: true });
+    // A repeating task opens its next occurrence.
+    const nextId = task.recurrence !== "NONE" ? await createNextOccurrence(id, a.userId) : null;
+    return NextResponse.json({ ok: true, nextId });
   }
 
   if (!caps.manage) return bad("Only the task's managers can do that.", 403);

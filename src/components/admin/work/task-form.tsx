@@ -6,7 +6,7 @@ import { Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import { RichTextEditor } from "@/components/admin/offers/rich-text-editor";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { MEMBER_ROLES, ROLE_LABEL, VISIBILITY_LABEL, TASK_VISIBILITY, WORK_PRIORITIES, type MemberRole } from "@/lib/work/model";
+import { MEMBER_ROLES, RECURRENCES, RECURRENCE_LABEL, ROLE_LABEL, VISIBILITY_LABEL, TASK_VISIBILITY, WORK_PRIORITIES, type MemberRole } from "@/lib/work/model";
 import { btnGhost, btnPrimary, card, input, label, workFetch } from "./ui";
 
 interface Meta {
@@ -16,6 +16,8 @@ interface Meta {
   teams: Array<{ id: string; name: string; lead: boolean }>;
   projects: Array<{ id: string; code: string; title: string; milestones: Array<{ id: string; title: string }> }>;
   people: Array<{ id: string; name: string; role: string; teamIds: string[] }>;
+  tasks: Array<{ id: string; code: string; title: string }>;
+  staffRoles: string[];
 }
 
 type TargetRow = { key: string; label: string; platformId: string; unitLabel: string; quantity: string; assigneeId: string };
@@ -44,7 +46,11 @@ export function TaskForm({ defaultProjectId }: { defaultProjectId?: string }) {
     estimatedHours: "",
     startAt: "",
     dueAt: "",
+    visibleDepartmentId: "",
+    recurrence: "NONE",
+    dependsOnId: "",
   });
+  const [visibleRoles, setVisibleRoles] = useState<string[]>([]);
   const [members, setMembers] = useState<Array<{ userId: string; role: MemberRole }>>([]);
   const [targets, setTargets] = useState<TargetRow[]>([newTarget()]);
   const [find, setFind] = useState("");
@@ -77,6 +83,9 @@ export function TaskForm({ defaultProjectId }: { defaultProjectId?: string }) {
     if (f.title.trim().length < 3) return "Give the task a title.";
     if (!assignees.length) return "Assign it to at least one person.";
     if (f.startAt && f.dueAt && f.dueAt < f.startAt) return "The due date is before the start date.";
+    if (f.visibility === "DEPARTMENT" && !f.visibleDepartmentId) return "Choose the department that can see it.";
+    if (f.visibility === "ROLES" && !visibleRoles.length) return "Choose at least one role that can see it.";
+    if (f.recurrence !== "NONE" && !f.dueAt) return "A repeating task needs a due date.";
     for (const t of targets) {
       if (!t.label.trim() && !t.quantity) continue;
       if (!t.label.trim()) return "Every target needs a name (e.g. Facebook posts).";
@@ -103,6 +112,9 @@ export function TaskForm({ defaultProjectId }: { defaultProjectId?: string }) {
         teamId: f.teamId || null,
         managerId: f.managerId || null,
         acceptance: f.acceptance || null,
+        visibleDepartmentId: f.visibility === "DEPARTMENT" ? f.visibleDepartmentId || null : null,
+        visibleRoles: f.visibility === "ROLES" ? visibleRoles : [],
+        dependsOnId: f.dependsOnId || null,
         estimatedHours: f.estimatedHours ? Number(f.estimatedHours) : null,
         startAt: f.startAt ? new Date(f.startAt).toISOString() : null,
         dueAt: f.dueAt ? new Date(f.dueAt).toISOString() : null,
@@ -251,11 +263,23 @@ export function TaskForm({ defaultProjectId }: { defaultProjectId?: string }) {
         <div><label className={label}>Start</label><input type="datetime-local" value={f.startAt} onChange={(e) => set("startAt", e.target.value)} className={input} /></div>
         <div><label className={label}>Due</label><input type="datetime-local" value={f.dueAt} onChange={(e) => set("dueAt", e.target.value)} className={input} /></div>
         <div><label className={label}>Estimated hours</label><input inputMode="decimal" value={f.estimatedHours} onChange={(e) => set("estimatedHours", e.target.value.replace(/[^\d.]/g, ""))} className={input} /></div>
+        <div className="sm:col-span-2"><label className={label}>Repeats</label>
+          <select value={f.recurrence} onChange={(e) => set("recurrence", e.target.value)} className={input}>
+            {RECURRENCES.map((r) => <option key={r} value={r}>{RECURRENCE_LABEL[r]}</option>)}
+          </select>
+          {f.recurrence !== "NONE" && <p className="mt-1 text-[11px] text-slate-500">When this one is approved as completed, the next one is created and assigned to the same people, due one period later.</p>}
+        </div>
+        <div className="sm:col-span-2"><label className={label}>Depends on (must be completed first)</label>
+          <select value={f.dependsOnId} onChange={(e) => set("dependsOnId", e.target.value)} className={input}>
+            <option value="">— Nothing —</option>
+            {meta.tasks.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.title}</option>)}
+          </select>
+        </div>
       </section>
 
       <section className={`${card} space-y-3`}>
         <h2 className="text-sm font-semibold text-white">6 · Who can see it</h2>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {TASK_VISIBILITY.map((v) => (
             <label key={v} className={cn("cursor-pointer rounded-lg border p-3 text-sm", f.visibility === v ? "border-blue-500 bg-blue-500/10" : "border-slate-700")}>
               <input type="radio" className="mr-2" checked={f.visibility === v} onChange={() => set("visibility", v)} />
@@ -263,6 +287,24 @@ export function TaskForm({ defaultProjectId }: { defaultProjectId?: string }) {
             </label>
           ))}
         </div>
+        {f.visibility === "DEPARTMENT" && (
+          <div className="sm:w-1/2"><label className={label}>Department</label>
+            <select value={f.visibleDepartmentId} onChange={(e) => set("visibleDepartmentId", e.target.value)} className={input}>
+              <option value="">— Choose —</option>
+              {meta.options.DEPARTMENT.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            {!meta.options.DEPARTMENT.length && <p className="mt-1 text-[11px] text-amber-300">No departments yet — add them in Work Settings and put teams in them.</p>}
+          </div>
+        )}
+        {f.visibility === "ROLES" && (
+          <div className="flex flex-wrap gap-1.5">
+            {meta.staffRoles.map((r) => (
+              <button key={r} type="button" onClick={() => setVisibleRoles((xs) => (xs.includes(r) ? xs.filter((x) => x !== r) : [...xs, r]))} className={cn("rounded-full px-2.5 py-1 text-xs", visibleRoles.includes(r) ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700")}>
+                {r.replace(/_/g, " ").toLowerCase()}
+              </button>
+            ))}
+          </div>
+        )}
         <p className="text-xs text-slate-400">
           &quot;Only the people on this task&quot; is private: other admins — managers included — don&apos;t see it in lists, searches, counts or
           notifications. You and the super admin always can. Add observers in People to share it with specific people.

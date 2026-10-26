@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { FolderKanban, Loader2, Plus, RefreshCw, Search } from "lucide-react";
+import { Bookmark, CalendarDays, ChevronLeft, ChevronRight, Columns3, Download, FolderKanban, List as ListIcon, Loader2, Plus, RefreshCw, Search, X } from "lucide-react";
 import { useUrlTab } from "@/components/admin/ui/use-url-tab";
 import { cn } from "@/lib/utils";
 import { OVERALL_METHOD_NOTE, PROJECT_STATUSES, STATUS_LABEL, TASK_STATUSES, WORK_PRIORITIES } from "@/lib/work/model";
@@ -219,6 +219,35 @@ const SCOPES = [
   { id: "all", label: "All I can see" },
 ];
 
+type View = "list" | "board" | "calendar";
+const VIEWS: Array<{ id: View; label: string; Icon: typeof ListIcon }> = [
+  { id: "list", label: "List", Icon: ListIcon },
+  { id: "board", label: "Board", Icon: Columns3 },
+  { id: "calendar", label: "Calendar", Icon: CalendarDays },
+];
+/** Board and calendar load up to this many tasks at once (the API's ceiling). */
+const WIDE_PAGE = 200;
+const VIEW_KEY = "work.taskView";
+const SAVED_KEY = "work.savedViews";
+interface SavedView { name: string; scope: string; status: string; priority: string; overdue: boolean; q: string }
+
+// Per-browser conveniences only — a blocked or empty storage just means defaults.
+function readPref<T>(key: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? (JSON.parse(v) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function writePref(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 /** The task list — filters, search, pages. Cards on a phone, a table on desktop. */
 export function TaskList({ fixedScope, projectId }: { fixedScope?: string; projectId?: string }) {
   const [scope, setScope] = useState(fixedScope ?? "mine");
@@ -229,20 +258,72 @@ export function TaskList({ fixedScope, projectId }: { fixedScope?: string; proje
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ tasks: TaskRow[]; total: number; pageSize: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [viewPref, setViewPref] = useState<View>("list");
+  const [month, setMonth] = useState(() => monthStart(new Date()));
+  const [saved, setSaved] = useState<SavedView[]>([]);
+  const [naming, setNaming] = useState<string | null>(null);
+  // The review queue is always a list; elsewhere the viewer's last choice.
+  const view: View = fixedScope === "review" ? "list" : viewPref;
 
-  const load = useCallback(() => {
-    const sp = new URLSearchParams({ scope, page: String(page) });
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only preferences, read once after mount
+    setViewPref(readPref<View>(VIEW_KEY, "list"));
+    setSaved(readPref<SavedView[]>(SAVED_KEY, []));
+  }, []);
+
+  /** The filters as query params — shared by the list, board, calendar and CSV. */
+  const filterParams = useCallback(() => {
+    const sp = new URLSearchParams({ scope });
     if (status) sp.set("status", status);
     if (priority) sp.set("priority", priority);
     if (overdue) sp.set("overdue", "1");
     if (q.trim()) sp.set("q", q.trim());
     if (projectId) sp.set("projectId", projectId);
+    if (view === "calendar") {
+      sp.set("dueFrom", month.toISOString());
+      sp.set("dueTo", addMonths(month, 1).toISOString());
+    }
+    return sp;
+  }, [scope, status, priority, overdue, q, projectId, view, month]);
+
+  const load = useCallback(() => {
+    const sp = filterParams();
+    if (view === "list") sp.set("page", String(page));
+    else sp.set("pageSize", String(WIDE_PAGE));
     setBusy(true);
     workFetch<{ tasks: TaskRow[]; total: number; pageSize: number }>(`/api/admin/work/tasks?${sp}`)
       .then(setData)
       .catch((e) => toast.error("Couldn't load tasks", { description: e.message }))
       .finally(() => setBusy(false));
-  }, [scope, status, priority, overdue, q, page, projectId]);
+  }, [filterParams, view, page]);
+
+  const chooseView = (v: View) => {
+    setViewPref(v);
+    writePref(VIEW_KEY, v);
+    setPage(1);
+  };
+  const saveView = () => {
+    const name = (naming ?? "").trim().slice(0, 40);
+    if (!name) return;
+    const next = [...saved.filter((s) => s.name !== name), { name, scope, status, priority, overdue, q }].slice(-12);
+    setSaved(next);
+    writePref(SAVED_KEY, next);
+    setNaming(null);
+    toast.success("View saved", { description: "It is kept in this browser." });
+  };
+  const applyView = (s: SavedView) => {
+    if (!fixedScope) setScope(s.scope);
+    setStatus(s.status);
+    setPriority(s.priority);
+    setOverdue(s.overdue);
+    setQ(s.q);
+    setPage(1);
+  };
+  const removeView = (name: string) => {
+    const next = saved.filter((s) => s.name !== name);
+    setSaved(next);
+    writePref(SAVED_KEY, next);
+  };
 
   useEffect(() => {
     const t = setTimeout(load, q ? 300 : 0);
@@ -297,10 +378,51 @@ export function TaskList({ fixedScope, projectId }: { fixedScope?: string; proje
         <button onClick={clear} className={btnGhost}>Clear</button>
       </div>
 
+      {fixedScope !== "review" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border border-slate-700 p-0.5" role="tablist" aria-label="View">
+            {VIEWS.map(({ id, label: l, Icon }) => (
+              <button key={id} role="tab" aria-selected={view === id} onClick={() => chooseView(id)} className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold", view === id ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800")}>
+                <Icon className="h-3.5 w-3.5" /> {l}
+              </button>
+            ))}
+          </div>
+          <a href={`/api/admin/work/tasks?${(() => { const sp = filterParams(); sp.set("format", "csv"); return sp; })()}`} download className={cn(btnGhost, "flex items-center gap-1.5")}>
+            <Download className="h-3.5 w-3.5" /> CSV
+          </a>
+          {naming === null ? (
+            <button onClick={() => setNaming("")} className={cn(btnGhost, "flex items-center gap-1.5")}><Bookmark className="h-3.5 w-3.5" /> Save view</button>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <input autoFocus value={naming} maxLength={40} onChange={(e) => setNaming(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveView(); if (e.key === "Escape") setNaming(null); }} placeholder="Name this view" className={cn(input, "w-40 py-1.5")} />
+              <button onClick={saveView} disabled={!naming.trim()} className={btnPrimary}>Save</button>
+              <button onClick={() => setNaming(null)} className={btnGhost} aria-label="Cancel"><X className="h-3.5 w-3.5" /></button>
+            </div>
+          )}
+        </div>
+      )}
+      {fixedScope !== "review" && saved.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {saved.map((s) => (
+            <span key={s.name} className="flex items-center rounded-full bg-slate-800 text-xs text-slate-200">
+              <button onClick={() => applyView(s)} className="max-w-[12rem] truncate py-1 pl-3 pr-1 hover:text-white">{s.name}</button>
+              <button onClick={() => removeView(s.name)} className="rounded-full p-1 pr-2 text-slate-500 hover:text-red-300" aria-label={`Remove ${s.name}`}><X className="h-3 w-3" /></button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {!data ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-slate-500" /></div>
+      ) : view === "calendar" ? (
+        <TaskCalendar tasks={data.tasks} month={month} onMonth={setMonth} busy={busy} capped={data.total > data.tasks.length} />
       ) : data.tasks.length === 0 ? (
         <Note>{fixedScope === "review" ? "No reports are waiting for your review." : "No tasks match."}</Note>
+      ) : view === "board" ? (
+        <>
+          <TaskBoard tasks={data.tasks} busy={busy} />
+          {data.total > data.tasks.length && <p className="text-[11px] text-amber-300">Showing the first {data.tasks.length} of {data.total} — narrow the filters to see the rest.</p>}
+        </>
       ) : (
         <>
           {/* Phone: cards */}
@@ -383,6 +505,137 @@ export function TaskList({ fixedScope, projectId }: { fixedScope?: string; proje
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function monthStart(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function addMonths(d: Date, n: number) {
+  return new Date(d.getFullYear(), d.getMonth() + n, 1);
+}
+
+/** Columns always shown on the board; any other status appears only when a task has it. */
+const BOARD_BASE = ["ASSIGNED", "IN_PROGRESS", "BLOCKED", "IN_REVIEW", "CHANGES_REQUESTED", "COMPLETED"];
+
+/**
+ * Board: one column per status. Read-only on purpose — a status changes only
+ * through the task's own actions (accept, submit, approve…), which carry the
+ * rules and the audit trail, so there is no drag-to-move here.
+ */
+function TaskBoard({ tasks, busy }: { tasks: TaskRow[]; busy: boolean }) {
+  const cols = TASK_STATUSES.filter((s) => BOARD_BASE.includes(s) || tasks.some((t) => t.status === s));
+  return (
+    <div className={cn("flex max-w-full snap-x gap-3 overflow-x-auto pb-2", busy && "opacity-60")}>
+      {cols.map((s) => {
+        const items = tasks.filter((t) => t.status === s);
+        return (
+          <section key={s} className="w-[80vw] max-w-[18rem] shrink-0 snap-start rounded-xl border border-slate-800 bg-slate-900/50 p-2 sm:w-64">
+            <header className="mb-2 flex items-center justify-between px-1">
+              <StatusBadge status={s} />
+              <span className="text-xs tabular-nums text-slate-400">{items.length}</span>
+            </header>
+            <ul className="space-y-2">
+              {items.map((t) => (
+                <li key={t.id}>
+                  <Link href={`/admin/work/tasks/${t.id}`} className="block rounded-lg border border-slate-800 bg-slate-900 p-2.5 hover:border-slate-600 active:bg-slate-800">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono text-[10px] text-slate-500">{t.code}</span>
+                      <PriorityBadge priority={t.priority} />
+                      {t.overdue && <OverdueBadge />}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm font-medium text-white">{t.title}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <ProgressBar percent={t.progress?.overall ?? 0} />
+                      <span className="text-[11px] tabular-nums text-slate-400">{t.progress?.overall ?? 0}%</span>
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-slate-500">
+                      {fmtDate(t.dueAt)} · {t.assignees.map((x) => x.name).join(", ") || "Unassigned"}
+                    </p>
+                    {t.pendingReports > 0 && <p className="mt-0.5 text-[11px] text-violet-300">{t.pendingReports} to review</p>}
+                  </Link>
+                </li>
+              ))}
+              {!items.length && <li className="px-1 py-4 text-center text-xs text-slate-600">Nothing here</li>}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Calendar: tasks on their due date. A month grid on wider screens, a day-by-day agenda on a phone. */
+function TaskCalendar({ tasks, month, onMonth, busy, capped }: { tasks: TaskRow[]; month: Date; onMonth: (d: Date) => void; busy: boolean; capped: boolean }) {
+  const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const byDay = new Map<number, TaskRow[]>();
+  for (const t of tasks) {
+    if (!t.dueAt) continue;
+    const d = new Date(t.dueAt);
+    if (d.getFullYear() !== month.getFullYear() || d.getMonth() !== month.getMonth()) continue;
+    byDay.set(d.getDate(), [...(byDay.get(d.getDate()) ?? []), t]);
+  }
+  const cells: Array<number | null> = [...Array<null>(month.getDay()).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
+  while (cells.length % 7) cells.push(null);
+  const now = new Date();
+  const isToday = (d: number) => now.getFullYear() === month.getFullYear() && now.getMonth() === month.getMonth() && now.getDate() === d;
+  const chip = (t: TaskRow) => (
+    <Link key={t.id} href={`/admin/work/tasks/${t.id}`} title={`${t.code} · ${t.title}`} className={cn("block truncate rounded px-1.5 py-0.5 text-[11px]", t.overdue ? "bg-red-500/15 text-red-200" : t.status === "COMPLETED" ? "bg-emerald-500/10 text-emerald-200" : "bg-blue-500/10 text-blue-100", "hover:brightness-125")}>
+      {t.title}
+    </Link>
+  );
+  const withTasks = cells.filter((d): d is number => d !== null && byDay.has(d));
+
+  return (
+    <div className={cn("space-y-2", busy && "opacity-60")}>
+      <div className="flex items-center gap-2">
+        <button onClick={() => onMonth(addMonths(month, -1))} className={btnGhost} aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></button>
+        <h3 className="min-w-[9rem] text-center text-sm font-semibold text-white">{month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</h3>
+        <button onClick={() => onMonth(addMonths(month, 1))} className={btnGhost} aria-label="Next month"><ChevronRight className="h-4 w-4" /></button>
+        <button onClick={() => onMonth(monthStart(new Date()))} className={btnGhost}>Today</button>
+      </div>
+      {capped && <p className="text-[11px] text-amber-300">Too many tasks this month to show them all — narrow the filters.</p>}
+
+      {/* Phone: agenda */}
+      <div className="sm:hidden">
+        {withTasks.length === 0 ? (
+          <Note>No tasks are due this month.</Note>
+        ) : (
+          <ul className="space-y-2">
+            {withTasks.map((d) => (
+              <li key={d} className={cn(card, "p-3")}>
+                <p className={cn("mb-1.5 text-xs font-semibold", isToday(d) ? "text-blue-300" : "text-slate-400")}>
+                  {new Date(month.getFullYear(), month.getMonth(), d).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
+                  {isToday(d) && " · Today"}
+                </p>
+                <div className="space-y-1">{byDay.get(d)!.map(chip)}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Wider: month grid */}
+      <div className="hidden overflow-hidden rounded-xl border border-slate-800 sm:block">
+        <div className="grid grid-cols-7 bg-slate-900 text-center text-[11px] font-semibold text-slate-400">
+          {WEEKDAYS.map((w) => <div key={w} className="py-1.5">{w}</div>)}
+        </div>
+        <div className="grid grid-cols-7">
+          {cells.map((d, i) => (
+            <div key={i} className={cn("min-h-24 min-w-0 border-t border-slate-800 p-1", i % 7 !== 0 && "border-l", d === null && "bg-slate-950/40")}>
+              {d !== null && (
+                <>
+                  <span className={cn("mb-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums", isToday(d) ? "bg-blue-600 font-semibold text-white" : "text-slate-500")}>{d}</span>
+                  <div className="max-h-28 space-y-0.5 overflow-y-auto">{(byDay.get(d) ?? []).map(chip)}</div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

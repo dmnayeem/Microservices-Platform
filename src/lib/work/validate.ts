@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { MEMBER_ROLES, TASK_VISIBILITY, WORK_PRIORITIES } from "@/lib/work/model";
+import { MEMBER_ROLES, RECURRENCES, TASK_VISIBILITY, WORK_PRIORITIES } from "@/lib/work/model";
+import { STAFF_ROLES } from "@/lib/staff";
 
 /** Request shapes for Team Work APIs (kept out of route files: a route may only export handlers). */
 
@@ -22,6 +23,9 @@ export const taskInputSchema = z.object({
   managerId: z.string().min(1).max(64).nullish(),
   priority: z.enum(WORK_PRIORITIES).default("NORMAL"),
   visibility: z.enum(TASK_VISIBILITY).default("PARTICIPANTS"),
+  visibleDepartmentId: z.string().min(1).max(64).nullish(),
+  visibleRoles: z.array(z.string().max(40)).max(20).default([]),
+  recurrence: z.enum(RECURRENCES).default("NONE"),
   targetMode: z.enum(["SHARED", "INDIVIDUAL"]).default("SHARED"),
   reviewRequired: z.boolean().default(true),
   evidenceRequired: z.boolean().default(false),
@@ -58,3 +62,13 @@ export function targetMemberProblem(
   return null;
 }
 
+
+/** Department / role visibility needs its target; roles must be staff roles. */
+export function visibilityProblem(v: string, departmentId: string | null | undefined, roles: string[]): string | null {
+  if (v === "DEPARTMENT" && !departmentId) return "Choose the department that can see this task.";
+  if (v === "ROLES") {
+    if (!roles.length) return "Choose at least one role that can see this task.";
+    if (roles.some((r) => !(STAFF_ROLES as readonly string[]).includes(r))) return "Only staff roles can be chosen.";
+  }
+  return null;
+}

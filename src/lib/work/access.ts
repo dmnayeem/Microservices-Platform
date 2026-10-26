@@ -37,6 +37,8 @@ export interface WorkActor {
   oversee: boolean;
   teamIds: string[];
   leadTeamIds: string[];
+  /** Departments of the teams this person is in (visibility DEPARTMENT). */
+  departmentIds: string[];
 }
 
 /** null = not staff, inactive, or no work.view — Team Work does not exist for them. */
@@ -46,7 +48,7 @@ export async function loadWorkActor(userId: string): Promise<WorkActor | null> {
     getEffectivePermissions(userId).catch(() => new Set<Permission>()),
     prisma.workTeamMember.findMany({
       where: { userId, team: { isActive: true } },
-      select: { teamId: true, isLead: true },
+      select: { teamId: true, isLead: true, team: { select: { departmentId: true } } },
     }),
   ]);
   if (!user || user.status === "BANNED" || user.status === "SUSPENDED") return null;
@@ -61,6 +63,13 @@ export async function loadWorkActor(userId: string): Promise<WorkActor | null> {
     oversee: isSuper || perms.has("work.oversee"),
     teamIds: teams.map((t) => t.teamId),
     leadTeamIds: teams.filter((t) => t.isLead).map((t) => t.teamId),
+    departmentIds: [
+      ...new Set(
+        (teams as unknown as Array<{ team: { departmentId: string | null } }>)
+          .map((t) => t.team.departmentId)
+          .filter((x): x is string => !!x)
+      ),
+    ],
   };
 }
 
@@ -76,6 +85,8 @@ export function visibleTaskWhere(a: WorkActor): Prisma.WorkTaskWhereInput {
           { members: { some: { userId: a.userId } } },
           { visibility: "ALL_STAFF" },
           ...(a.teamIds.length ? [{ visibility: "TEAM", teamId: { in: a.teamIds } }] : []),
+          ...(a.departmentIds.length ? [{ visibility: "DEPARTMENT", visibleDepartmentId: { in: a.departmentIds } }] : []),
+          { visibility: "ROLES", visibleRoles: { has: a.role } },
           // A Team Lead sees the work of the team they lead.
           ...(a.leadTeamIds.length ? [{ teamId: { in: a.leadTeamIds } }] : []),
         ],
@@ -96,7 +107,15 @@ export interface TaskCaps {
   memberRole: MemberRole | null;
 }
 
-type TaskShape = { createdById: string; managerId: string | null; teamId: string | null; visibility: string; status: string };
+type TaskShape = {
+  createdById: string;
+  managerId: string | null;
+  teamId: string | null;
+  visibility: string;
+  status: string;
+  visibleDepartmentId?: string | null;
+  visibleRoles?: string[] | null;
+};
 
 export function taskCaps(a: WorkActor, t: TaskShape, memberRole: MemberRole | null): TaskCaps {
   const leadOfTeam = !!t.teamId && a.leadTeamIds.includes(t.teamId) && a.perms.has("work.create");
@@ -108,6 +127,8 @@ export function taskCaps(a: WorkActor, t: TaskShape, memberRole: MemberRole | nu
       memberRole !== null ||
       t.visibility === "ALL_STAFF" ||
       (t.visibility === "TEAM" && !!t.teamId && a.teamIds.includes(t.teamId)) ||
+      (t.visibility === "DEPARTMENT" && !!t.visibleDepartmentId && a.departmentIds.includes(t.visibleDepartmentId)) ||
+      (t.visibility === "ROLES" && (t.visibleRoles ?? []).includes(a.role)) ||
       (!!t.teamId && a.leadTeamIds.includes(t.teamId)));
   const open = (OPEN_TASK_STATUSES as string[]).includes(t.status);
   return {

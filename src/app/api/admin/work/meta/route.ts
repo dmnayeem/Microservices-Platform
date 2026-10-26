@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { STAFF_WHERE } from "@/lib/staff";
+import { STAFF_ROLES, STAFF_WHERE } from "@/lib/staff";
+import { visibleTaskWhere } from "@/lib/work/access";
 import { visibleProjectWhere } from "@/lib/work/projects";
 import { workGuard } from "@/lib/work/server";
-import { projectCode } from "@/lib/work/model";
+import { OPEN_TASK_STATUSES, projectCode, taskCode } from "@/lib/work/model";
 
 /**
  * GET /api/admin/work/meta — what the Team Work forms need: the admin-managed
@@ -45,6 +46,16 @@ export async function GET() {
     people = users.map((u) => ({ id: u.id, name: u.name || u.username || u.email, role: u.role, teamIds: teamsOf.get(u.id) ?? [] }));
   }
 
+  // For "depends on": open tasks this person can see.
+  const openTasks = canCreate
+    ? await prisma.workTask.findMany({
+        where: { AND: [visibleTaskWhere(a), { status: { in: OPEN_TASK_STATUSES } }] },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: { id: true, number: true, title: true },
+      })
+    : [];
+
   const rows = projects as unknown as Array<{ id: string; number: number; title: string; milestones: { id: string; title: string; status: string }[] }>;
   return NextResponse.json({
     me: { userId: a.userId, isSuper: a.isSuper, teamIds: a.teamIds, leadTeamIds: a.leadTeamIds },
@@ -65,5 +76,7 @@ export async function GET() {
     teams: teams.map((t) => ({ ...t, lead: a.leadTeamIds.includes(t.id), member: a.teamIds.includes(t.id) })),
     projects: rows.map((p) => ({ id: p.id, code: projectCode(p.number), title: p.title, milestones: p.milestones })),
     people,
+    tasks: openTasks.map((x) => ({ id: x.id, code: taskCode(x.number), title: x.title })),
+    staffRoles: STAFF_ROLES,
   });
 }

@@ -6,9 +6,7 @@ import { writeAudit } from "@/lib/audit";
 import { assignmentProblem, visibleTaskWhere } from "@/lib/work/access";
 import { bad, logWorkActivity, notifyWork, progressForTasks, userNames, workGuard } from "@/lib/work/server";
 import { CLOSED_TASK_STATUSES, OPEN_TASK_STATUSES, TASK_STATUSES, WORK_PRIORITIES, isOverdue, taskCode } from "@/lib/work/model";
-import { taskInputSchema, targetMemberProblem } from "@/lib/work/validate";
-
-const PAGE = 30;
+import { taskInputSchema, targetMemberProblem, visibilityProblem } from "@/lib/work/validate";
 
 /**
  * GET /api/admin/work/tasks — the task list, always inside visibleTaskWhere().
@@ -50,6 +48,14 @@ export async function GET(req: NextRequest) {
   const priority = sp.get("priority");
   if (priority && (WORK_PRIORITIES as readonly string[]).includes(priority)) and.push({ priority });
   if (sp.get("overdue") === "1") and.push({ status: { in: OPEN_TASK_STATUSES }, dueAt: { lt: new Date() } });
+  // Calendar: a due-date window.
+  const dueFrom = sp.get("dueFrom");
+  const dueTo = sp.get("dueTo");
+  if (dueFrom || dueTo) {
+    const f = dueFrom ? new Date(dueFrom) : null;
+    const tt = dueTo ? new Date(dueTo) : null;
+    and.push({ dueAt: { ...(f && !isNaN(+f) ? { gte: f } : {}), ...(tt && !isNaN(+tt) ? { lt: tt } : {}) } });
+  }
   for (const k of ["projectId", "milestoneId", "teamId"] as const) {
     const v = sp.get(k);
     if (v) and.push({ [k]: v });
@@ -65,7 +71,10 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const page = Math.max(1, Number(sp.get("page")) || 1);
+  const csv = sp.get("format") === "csv";
+  // Board and calendar views take up to 200 at once; a CSV export up to 5,000.
+  const PAGE = csv ? 5000 : Math.min(200, Math.max(1, Number(sp.get("pageSize")) || 30));
+  const page = csv ? 1 : Math.max(1, Number(sp.get("page")) || 1);
   const where: Prisma.WorkTaskWhereInput = { AND: and };
   // The extended client's types drop this `select` shape, so the row is
   // described here (the same workaround the rest of the codebase uses).
@@ -106,6 +115,35 @@ export async function GET(req: NextRequest) {
   const progress = await progressForTasks(rows.map((r) => r.id));
   const names = await userNames(rows.flatMap((r) => r.members.map((m) => m.userId)));
 
+  if (csv) {
+    // Exactly the rows this person could see in the list — the same filter.
+    const q = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const head = ["Task", "Title", "Status", "Priority", "Project", "Assignees", "Due", "Overdue", "Progress %", "Targets", "Last report"];
+    const lines = rows.map((r) => {
+      const p = progress.get(r.id);
+      return [
+        taskCode(r.number),
+        r.title,
+        r.status,
+        r.priority,
+        r.project?.title ?? "",
+        r.members.filter((m) => m.role === "ASSIGNEE").map((m) => names.get(m.userId)?.name ?? "").join("; "),
+        r.dueAt ? r.dueAt.toISOString() : "",
+        isOverdue(r.status, r.dueAt) ? "yes" : "",
+        p?.overall ?? 0,
+        (p?.targets ?? []).map((x) => `${x.label}: ${x.approved}/${x.quantity} ${x.unitLabel}`).join("; "),
+        r.lastReportAt ? r.lastReportAt.toISOString() : "",
+      ].map(q).join(",");
+    });
+    return new NextResponse([head.map(q).join(","), ...lines].join("\n"), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="team-work-${new Date().toISOString().slice(0, 10)}.csv"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   return NextResponse.json({
     total,
     page,
@@ -144,6 +182,9 @@ export async function POST(req: NextRequest) {
   const tm = targetMemberProblem(b.targetMode, b.members, b.targets);
   if (tm) return bad(tm);
   if (b.startAt && b.dueAt && b.dueAt < b.startAt) return bad("The due date is before the start date.");
+  const vp = visibilityProblem(b.visibility, b.visibleDepartmentId, b.visibleRoles);
+  if (vp) return bad(vp);
+  if (b.recurrence !== "NONE" && !b.dueAt) return bad("A repeating task needs a due date — the next one is due one period later.");
 
   const people = [...b.members.map((m) => m.userId), ...(b.managerId ? [b.managerId] : [])];
   const problem = await assignmentProblem(a, people, b.teamId ?? null);
@@ -175,6 +216,9 @@ export async function POST(req: NextRequest) {
         priority: b.priority,
         status: b.draft ? "DRAFT" : "ASSIGNED",
         visibility: b.visibility,
+        visibleDepartmentId: b.visibility === "DEPARTMENT" ? b.visibleDepartmentId || null : null,
+        visibleRoles: b.visibility === "ROLES" ? b.visibleRoles : [],
+        recurrence: b.recurrence,
         targetMode: b.targetMode,
         reviewRequired: b.reviewRequired,
         evidenceRequired: b.evidenceRequired,

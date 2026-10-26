@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ExternalLink, FileUp, Loader2, Lock, MessageSquare, Pencil, Send, ShieldAlert, X } from "lucide-react";
+import { AtSign, CheckCircle2, ExternalLink, FileUp, Loader2, Lock, MessageSquare, Pencil, Repeat, Send, ShieldAlert, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog, promptDialog } from "@/lib/confirm";
 import { sanitizeRichHtml } from "@/lib/rich-html";
 import { cn } from "@/lib/utils";
-import { ROLE_LABEL, STATUS_LABEL, TASK_VISIBILITY, VISIBILITY_LABEL, WORK_PRIORITIES, type MemberRole } from "@/lib/work/model";
+import { RECURRENCES, RECURRENCE_LABEL, ROLE_LABEL, STATUS_LABEL, TASK_VISIBILITY, VISIBILITY_LABEL, WORK_PRIORITIES, type MemberRole } from "@/lib/work/model";
 import { OverdueBadge, PriorityBadge, ProgressBar, StatusBadge, btnDanger, btnGhost, btnPrimary, card, fmtAgo, fmtDate, input, label, Note, workFetch } from "./ui";
 
 type Person = { id: string; name: string; avatar: string | null } | null;
@@ -18,7 +18,8 @@ interface Detail {
     targetMode: string; reviewRequired: boolean; evidenceRequired: boolean; acceptance: string | null; estimatedHours: number | null;
     startAt: string | null; dueAt: string | null; overdue: boolean; completedAt: string | null; closedReason: string | null; createdAt: string;
     createdBy: Person; manager: Person; project: { id: string; code: string; title: string } | null; milestone: { id: string; title: string; status: string } | null;
-    dependsOn: { id: string; code: string; title: string; status: string } | null; category: string | null; team: { id: string; name: string } | null;
+    dependsOn: { id: string | null; code: string; title: string; status: string } | null; dependsOnId: string | null; category: string | null; team: { id: string; name: string } | null;
+    visibleDepartmentId: string | null; visibleDepartment: string | null; visibleRoles: string[]; recurrence: string; recurrenceParentId: string | null;
   };
   caps: { view: boolean; manage: boolean; report: boolean; review: boolean; privateNotes: boolean; memberRole: MemberRole | null };
   me: { userId: string; role: string | null; acceptedAt: string | null };
@@ -52,6 +53,20 @@ export function TaskDetail({ taskId }: { taskId: string }) {
     const t = setTimeout(load, 0);
     return () => clearTimeout(t);
   }, [load]);
+  // Keep it current while it is open: new reports, messages and status changes
+  // from other people show up without a reload (paused in a background tab and while editing).
+  useEffect(() => {
+    if (editing) return;
+    const iv = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 45_000);
+    const onShow = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onShow);
+    };
+  }, [load, editing]);
 
   const act = async (action: string, opts: { reason?: boolean; prompt?: string; confirm?: string } = {}) => {
     let reason: string | undefined;
@@ -62,8 +77,9 @@ export function TaskDetail({ taskId }: { taskId: string }) {
     } else if (opts.confirm && !(await confirmDialog({ title: opts.confirm, confirmLabel: "Yes" }))) return;
     setBusy(action);
     try {
-      const r = await workFetch<{ waiting?: boolean }>(`/api/admin/work/tasks/${taskId}/action`, { method: "POST", body: JSON.stringify({ action, reason }) });
+      const r = await workFetch<{ waiting?: boolean; nextId?: string | null }>(`/api/admin/work/tasks/${taskId}/action`, { method: "POST", body: JSON.stringify({ action, reason }) });
       if (action === "accept") toast.success(r.waiting ? "Accepted — waiting for the task it depends on" : "Accepted — you've started the task");
+      else if (r.nextId) toast.success("Completed — the next occurrence has been created and assigned");
       else toast.success("Saved");
       load();
     } catch (e) {
@@ -90,6 +106,8 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           <PriorityBadge priority={task.priority} />
           {task.overdue && <OverdueBadge />}
           {task.visibility === "PARTICIPANTS" && <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Lock className="h-3 w-3" /> Private</span>}
+          {task.recurrence !== "NONE" && <span className="inline-flex items-center gap-1 text-[11px] text-sky-300"><Repeat className="h-3 w-3" /> {RECURRENCE_LABEL[task.recurrence as keyof typeof RECURRENCE_LABEL] ?? task.recurrence}</span>}
+          {task.recurrenceParentId && <Link href={`/admin/work/tasks/${task.recurrenceParentId}`} className="text-[11px] text-slate-400 underline hover:text-white">Previous occurrence</Link>}
         </div>
         <h1 className="mt-2 text-xl font-bold text-white">{task.title}</h1>
         {task.summary && <p className="mt-1 text-sm text-slate-300">{task.summary}</p>}
@@ -106,7 +124,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         {task.closedReason && <p className="mt-3 rounded-lg bg-slate-800/60 p-2 text-xs text-slate-300">{STATUS_LABEL[task.status]}: {task.closedReason}</p>}
         {task.dependsOn && task.dependsOn.status !== "COMPLETED" && (
           <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200">
-            Waiting on <Link href={`/admin/work/tasks/${task.dependsOn.id}`} className="underline">{task.dependsOn.code} {task.dependsOn.title}</Link> ({STATUS_LABEL[task.dependsOn.status]}) — it must be completed first.
+            Waiting on {task.dependsOn.id ? <Link href={`/admin/work/tasks/${task.dependsOn.id}`} className="underline">{task.dependsOn.code} {task.dependsOn.title}</Link> : task.dependsOn.title} ({STATUS_LABEL[task.dependsOn.status]}) — it must be completed first.
             {caps.manage && <button onClick={() => act("override_dependency", { reason: true, prompt: "Why start without it?" })} className="ml-2 underline">Override</button>}
           </p>
         )}
@@ -413,7 +431,11 @@ function MembersCard({ d }: { d: Detail }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11px] text-slate-500">{VISIBILITY_LABEL[d.task.visibility as keyof typeof VISIBILITY_LABEL] ?? d.task.visibility}</p>
+      <p className="mt-2 text-[11px] text-slate-500">
+        {VISIBILITY_LABEL[d.task.visibility as keyof typeof VISIBILITY_LABEL] ?? d.task.visibility}
+        {d.task.visibility === "DEPARTMENT" && d.task.visibleDepartment && `: ${d.task.visibleDepartment}`}
+        {d.task.visibility === "ROLES" && d.task.visibleRoles.length > 0 && `: ${d.task.visibleRoles.map((r) => r.replace(/_/g, " ").toLowerCase()).join(", ")}`}
+      </p>
     </section>
   );
 }
@@ -467,12 +489,28 @@ function Discussion({ d, onDone }: { d: Detail; onDone: () => void }) {
   const [body, setBody] = useState("");
   const [note, setNote] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [mentions, setMentions] = useState<Array<{ id: string; name: string }>>([]);
+  // Who can be @mentioned: the people on the task (the server re-checks each one).
+  const participants = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of [d.task.createdBy, d.task.manager, ...d.members.map((x) => x.user)]) if (p && p.id !== d.me.userId) m.set(p.id, p.name);
+    return [...m].map(([id, name]) => ({ id, name }));
+  }, [d]);
+  const mention = (p: { id: string; name: string }) => {
+    setBody((b) => `${b}${b && !/\s$/.test(b) ? " " : ""}@${p.name} `);
+    setMentions((xs) => (xs.some((x) => x.id === p.id) ? xs : [...xs, p]));
+    setPicking(false);
+  };
   const send = async () => {
     if (!body.trim()) return;
     setSaving(true);
     try {
-      await workFetch(`/api/admin/work/tasks/${d.task.id}/comments`, { method: "POST", body: JSON.stringify({ body: body.trim(), kind: note ? "NOTE" : "COMMENT" }) });
+      // Only the mentions still in the text (one may have been deleted while typing).
+      const mentionIds = mentions.filter((m) => body.includes(`@${m.name}`)).map((m) => m.id);
+      await workFetch(`/api/admin/work/tasks/${d.task.id}/comments`, { method: "POST", body: JSON.stringify({ body: body.trim(), kind: note ? "NOTE" : "COMMENT", mentionIds }) });
       setBody("");
+      setMentions([]);
       onDone();
     } catch (e) {
       toast.error("Not sent", { description: (e as Error).message });
@@ -494,8 +532,18 @@ function Discussion({ d, onDone }: { d: Detail; onDone: () => void }) {
         </ul>
       )}
       <textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message…" className={input} />
+      {picking && (
+        <div className="mt-2 flex flex-wrap gap-1.5 rounded-lg border border-slate-700 bg-slate-950/60 p-2">
+          {participants.length === 0 ? <span className="text-xs text-slate-500">No one else is on this task.</span> : participants.map((p) => (
+            <button key={p.id} type="button" onClick={() => mention(p)} className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-200 hover:bg-blue-600 hover:text-white">@{p.name}</button>
+          ))}
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        {d.caps.privateNotes ? <label className="flex items-center gap-2 text-xs text-amber-200"><input type="checkbox" checked={note} onChange={(e) => setNote(e.target.checked)} />Private note (managers of this task only)</label> : <span />}
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => setPicking((v) => !v)} className={cn("inline-flex items-center gap-1 text-xs", picking ? "text-blue-300" : "text-slate-400 hover:text-white")}><AtSign className="h-3.5 w-3.5" />Mention</button>
+          {d.caps.privateNotes && <label className="flex items-center gap-2 text-xs text-amber-200"><input type="checkbox" checked={note} onChange={(e) => setNote(e.target.checked)} />Private note (managers of this task only)</label>}
+        </div>
         <button onClick={send} disabled={saving || !body.trim()} className={btnPrimary}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}Send</button>
       </div>
     </section>
@@ -505,7 +553,9 @@ function Discussion({ d, onDone }: { d: Detail; onDone: () => void }) {
 function EditModal({ d, onClose, onSaved }: { d: Detail; onClose: () => void; onSaved: () => void }) {
   const t = d.task;
   const local = (v: string | null) => (v ? new Date(new Date(v).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
-  const [f, setF] = useState({ title: t.title, priority: t.priority, visibility: t.visibility, dueAt: local(t.dueAt), reason: "" });
+  const [f, setF] = useState({ title: t.title, priority: t.priority, visibility: t.visibility, dueAt: local(t.dueAt), reason: "", visibleDepartmentId: t.visibleDepartmentId ?? "", recurrence: t.recurrence, dependsOnId: t.dependsOnId ?? "" });
+  const [roles, setRoles] = useState<string[]>(t.visibleRoles ?? []);
+  const [meta, setMeta] = useState<{ departments: Array<{ id: string; label: string }>; staffRoles: string[]; tasks: Array<{ id: string; code: string; title: string }> }>({ departments: [], staffRoles: [], tasks: [] });
   const [qty, setQty] = useState<Record<string, string>>(Object.fromEntries((d.progress?.targets ?? []).map((x) => [x.targetId, String(x.quantity)])));
   const [people, setPeople] = useState<Array<{ id: string; name: string }>>([]);
   const [addId, setAddId] = useState("");
@@ -513,8 +563,13 @@ function EditModal({ d, onClose, onSaved }: { d: Detail; onClose: () => void; on
   const [remove, setRemove] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    workFetch<{ people: Array<{ id: string; name: string }> }>("/api/admin/work/meta").then((m) => setPeople(m.people)).catch(() => {});
-  }, []);
+    workFetch<{ people: Array<{ id: string; name: string }>; options: { DEPARTMENT: Array<{ id: string; label: string }> }; staffRoles: string[]; tasks: Array<{ id: string; code: string; title: string }> }>("/api/admin/work/meta")
+      .then((m) => {
+        setPeople(m.people);
+        setMeta({ departments: m.options.DEPARTMENT, staffRoles: m.staffRoles, tasks: m.tasks.filter((x) => x.id !== t.id) });
+      })
+      .catch(() => {});
+  }, [t.id]);
   const save = async () => {
     setSaving(true);
     try {
@@ -525,6 +580,11 @@ function EditModal({ d, onClose, onSaved }: { d: Detail; onClose: () => void; on
           title: f.title,
           priority: f.priority,
           visibility: f.visibility,
+          visibleDepartmentId: f.visibility === "DEPARTMENT" ? f.visibleDepartmentId || null : null,
+          visibleRoles: f.visibility === "ROLES" ? roles : [],
+          recurrence: f.recurrence,
+          // Sent only when changed: the current one may be a task this editor can't open.
+          ...((f.dependsOnId || null) !== t.dependsOnId ? { dependsOnId: f.dependsOnId || null } : {}),
           dueAt: f.dueAt ? new Date(f.dueAt).toISOString() : null,
           ...(targets.length ? { targets } : {}),
           ...(addId ? { addMembers: [{ userId: addId, role: addRole }] } : {}),
@@ -549,6 +609,24 @@ function EditModal({ d, onClose, onSaved }: { d: Detail; onClose: () => void; on
           <div><label className={label}>Due</label><input type="datetime-local" value={f.dueAt} onChange={(e) => setF({ ...f, dueAt: e.target.value })} className={input} /></div>
         </div>
         <div><label className={label}>Who can see it</label><select value={f.visibility} onChange={(e) => setF({ ...f, visibility: e.target.value })} className={input}>{TASK_VISIBILITY.map((v) => <option key={v} value={v}>{VISIBILITY_LABEL[v]}</option>)}</select></div>
+        {f.visibility === "DEPARTMENT" && (
+          <div><label className={label}>Department</label><select value={f.visibleDepartmentId} onChange={(e) => setF({ ...f, visibleDepartmentId: e.target.value })} className={input}><option value="">— Choose —</option>{meta.departments.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></div>
+        )}
+        {f.visibility === "ROLES" && (
+          <div className="flex flex-wrap gap-1.5">
+            {meta.staffRoles.map((r) => (
+              <button key={r} type="button" onClick={() => setRoles((xs) => (xs.includes(r) ? xs.filter((x) => x !== r) : [...xs, r]))} className={cn("rounded-full px-2.5 py-1 text-xs", roles.includes(r) ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300")}>{r.replace(/_/g, " ").toLowerCase()}</button>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <div><label className={label}>Repeats</label><select value={f.recurrence} onChange={(e) => setF({ ...f, recurrence: e.target.value })} className={input}>{RECURRENCES.map((r) => <option key={r} value={r}>{RECURRENCE_LABEL[r]}</option>)}</select></div>
+          <div><label className={label}>Depends on</label><select value={f.dependsOnId} onChange={(e) => setF({ ...f, dependsOnId: e.target.value })} className={input}>
+            <option value="">— Nothing —</option>
+            {f.dependsOnId && !meta.tasks.some((x) => x.id === f.dependsOnId) && <option value={f.dependsOnId}>{t.dependsOn?.code ? `${t.dependsOn.code} · ${t.dependsOn.title}` : t.dependsOn?.title ?? "Current"}</option>}
+            {meta.tasks.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.title}</option>)}
+          </select></div>
+        </div>
         {(d.progress?.targets ?? []).map((x) => (
           <div key={x.targetId} className="grid grid-cols-[1fr_7rem] items-center gap-2">
             <span className="text-sm text-slate-300">{x.label} target</span>

@@ -3,10 +3,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sanitizeRichHtml } from "@/lib/rich-html";
 import { writeAudit } from "@/lib/audit";
-import { assignmentProblem, loadTaskFor } from "@/lib/work/access";
+import { assignmentProblem, loadTaskFor, visibleTaskWhere } from "@/lib/work/access";
 import { bad, logWorkActivity, notFound, notifyWork, progressForTasks, userNames, workGuard } from "@/lib/work/server";
-import { MEMBER_ROLES, TASK_VISIBILITY, WORK_PRIORITIES, OVERALL_METHOD_NOTE, isOverdue, projectCode, taskCode } from "@/lib/work/model";
-import { targetSchema } from "@/lib/work/validate";
+import { MEMBER_ROLES, RECURRENCES, TASK_VISIBILITY, WORK_PRIORITIES, OVERALL_METHOD_NOTE, isOverdue, projectCode, taskCode } from "@/lib/work/model";
+import { targetSchema, visibilityProblem } from "@/lib/work/validate";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -47,6 +47,11 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     task.teamId ? prisma.workTeam.findUnique({ where: { id: task.teamId }, select: { id: true, name: true } }) : null,
   ]);
   const progress = (await progressForTasks([id])).get(id);
+  // The task this waits on is named only to someone who may open it.
+  const depVisible = dependsOn ? (await prisma.workTask.count({ where: { AND: [{ id: dependsOn.id }, visibleTaskWhere(a)] } })) > 0 : false;
+  const visibleDepartment = task.visibleDepartmentId
+    ? (await prisma.workOption.findUnique({ where: { id: task.visibleDepartmentId }, select: { label: true } }))?.label ?? null
+    : null;
   const names = await userNames([
     task.createdById,
     task.managerId ?? "",
@@ -69,7 +74,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
       project: project ? { ...project, code: projectCode(project.number) } : null,
       milestone,
       // Only named if this person may see it; otherwise just "waiting".
-      dependsOn: dependsOn ? { ...dependsOn, code: taskCode(dependsOn.number) } : null,
+      dependsOn: dependsOn
+        ? depVisible
+          ? { id: dependsOn.id, code: taskCode(dependsOn.number), title: dependsOn.title, status: dependsOn.status }
+          : { id: null, code: "", title: "a task you can't open", status: dependsOn.status }
+        : null,
+      visibleDepartment,
       category: category?.label ?? null,
       team,
     },
@@ -91,6 +101,10 @@ const patchSchema = z.object({
   instructions: z.string().max(200_000).nullish(),
   priority: z.enum(WORK_PRIORITIES).optional(),
   visibility: z.enum(TASK_VISIBILITY).optional(),
+  visibleDepartmentId: z.string().min(1).max(64).nullish(),
+  visibleRoles: z.array(z.string().max(40)).max(20).optional(),
+  recurrence: z.enum(RECURRENCES).optional(),
+  dependsOnId: z.string().min(1).max(64).nullish(),
   managerId: z.string().min(1).max(64).nullish(),
   categoryId: z.string().min(1).max(64).nullish(),
   teamId: z.string().min(1).max(64).nullish(),
@@ -138,6 +152,26 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   set("instructions", b.instructions === undefined ? undefined : b.instructions ? sanitizeRichHtml(b.instructions) : null, "instructions");
   set("priority", b.priority, "priority");
   set("visibility", b.visibility, "visibility");
+  {
+    const v = b.visibility ?? task.visibility;
+    const dep = b.visibleDepartmentId === undefined ? task.visibleDepartmentId : b.visibleDepartmentId;
+    const roles = b.visibleRoles ?? task.visibleRoles;
+    if (b.visibility !== undefined || b.visibleDepartmentId !== undefined || b.visibleRoles !== undefined) {
+      const vp = visibilityProblem(v, dep, roles);
+      if (vp) return bad(vp);
+      set("visibleDepartmentId", v === "DEPARTMENT" ? dep || null : null, "visible department");
+      if (JSON.stringify(v === "ROLES" ? roles : []) !== JSON.stringify(task.visibleRoles)) {
+        data.visibleRoles = v === "ROLES" ? roles : [];
+        changes.push("visible roles");
+      }
+    }
+  }
+  set("recurrence", b.recurrence, "repeat");
+  if (b.dependsOnId !== undefined) {
+    if (b.dependsOnId === id) return bad("A task can't depend on itself.");
+    if (b.dependsOnId && !(await loadTaskFor(a, b.dependsOnId))) return bad("The task this depends on was not found.");
+    set("dependsOnId", b.dependsOnId || null, "dependency");
+  }
   set("categoryId", b.categoryId === undefined ? undefined : b.categoryId || null, "category");
   set("reviewRequired", b.reviewRequired, "review rule");
   set("evidenceRequired", b.evidenceRequired, "evidence rule");
