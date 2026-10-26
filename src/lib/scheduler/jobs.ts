@@ -49,6 +49,7 @@ import { runBillReminders, summariseBillReminders } from "@/lib/company-finance/
 import { closeEndedSpotlights } from "@/lib/spotlight-server";
 import { runAmbassadorPayouts } from "@/lib/ambassadors-server";
 import { sweepBoosts } from "@/lib/boost/core";
+import { runWorkReminders } from "@/lib/work/reminders";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -586,6 +587,22 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
         ok: true,
         summary: `Paid ${released} held offerwall completion${released === 1 ? "" : "s"}.`,
         result: { released },
+      };
+    },
+  },
+  {
+    name: "work-reminders",
+    label: "Team Work reminders",
+    description:
+      "Reminds staff about their Team Work tasks: a deadline within 24 hours (once), an overdue task (once, also to its managers), and a task with no progress report for a few days (Work Settings; default 3). Every reminder is kept in the task's history. Hourly.",
+    intervalMs: HOUR,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const r = await runWorkReminders();
+      return {
+        ok: true,
+        summary: `${r.dueSoon} due-soon, ${r.overdue} overdue, ${r.nudged} report reminder${r.nudged === 1 ? "" : "s"}.`,
+        result: r,
       };
     },
   },

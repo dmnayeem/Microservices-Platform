@@ -63,6 +63,8 @@ import {
   BadgeDollarSign,
   Rocket,
   ListChecks,
+  Briefcase,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -151,6 +153,8 @@ export const iconMap: Record<string, LucideIcon> = {
   BadgeDollarSign,
   Rocket,
   ListChecks,
+  Briefcase,
+  SlidersHorizontal,
 };
 
 /** Which sidebar groups this admin has open (per browser). */

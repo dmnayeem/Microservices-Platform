@@ -66,6 +66,9 @@ const USER_EXEMPT: Record<string, string> = {
  * be registered in ADMIN_MODULES.
  */
 const ADMIN_INHERITS: Record<string, string> = {
+  "/admin/work/tasks/new": "Team Work's task form — part of the Team Work module (work.view to reach it, work.create to submit; the page checks work.create).",
+  "/admin/work/tasks/[id]": "one Team Work task — who may see it is decided per task by src/lib/work/access.ts.",
+  "/admin/work/projects/[id]": "one Team Work project — visibility decided by src/lib/work/projects.ts.",
   "/admin/no-access": "the refusal landing page itself — must always be reachable.",
   "/admin/courses/refunds": "Courses → refund queue (linked from /admin/courses).",
   "/admin/marketplace/brands": "Marketplace → brands manager (marketplace.manage, linked from /admin/marketplace).",

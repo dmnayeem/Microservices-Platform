@@ -17,6 +17,7 @@ import {
 import { ModuleOffNotice } from "@/components/admin/module-off-notice";
 import { getPendingCounts, badgesByModule } from "@/lib/admin/pending-counts";
 import { SIDEBAR_COOKIE } from "@/lib/stores/admin-ui-store";
+import { WorkAssignmentHost } from "@/components/admin/work/assignment-host";
 
 export default async function AdminLayout({
   children,
@@ -135,6 +136,8 @@ export default async function AdminLayout({
         </Suspense>
         {children}
       </AdminLayoutShell>
+      {/* Team Work: a new assignment stays on screen until accepted. */}
+      {perms.has("work.view") && <WorkAssignmentHost />}
     </div>
   );
 }
