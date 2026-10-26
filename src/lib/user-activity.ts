@@ -1,4 +1,5 @@
 import "server-only";
+import { adminSubmissionScope } from "@/lib/task-privacy";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 
@@ -37,7 +38,11 @@ export interface ActivityEvent {
 
 const PER_SOURCE = 30;
 
-export async function getUserActivity(userId: string): Promise<ActivityEvent[]> {
+export async function getUserActivity(
+  userId: string,
+  /** The admin looking — the super admin's private tasks are left out for anyone else. */
+  viewerRole: string | null = null
+): Promise<ActivityEvent[]> {
   const [txns, subs, withdrawals, deposits, kyc, referrals, adminActions] =
     await Promise.all([
       prisma.transaction.findMany({
@@ -55,7 +60,7 @@ export async function getUserActivity(userId: string): Promise<ActivityEvent[]> 
         },
       }),
       prisma.taskSubmission.findMany({
-        where: { userId },
+        where: { userId, ...adminSubmissionScope(viewerRole) },
         orderBy: { createdAt: "desc" },
         take: PER_SOURCE,
         select: {

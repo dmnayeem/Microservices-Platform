@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { taskNameForLog } from "@/lib/task-privacy";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminCanSeeTask } from "@/lib/task-privacy";
 import { quizPayout } from "@/lib/quiz-shape";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -61,7 +64,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    if (!submission) {
+    // A submission on the super admin's private task is theirs to see.
+    if (!submission || !adminCanSeeTask(await freshRole(session.user.id), submission.task)) {
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
@@ -137,7 +141,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    if (!existingSubmission) {
+    // Only the super admin reviews submissions on their private task
+    // (approve, reject, revision — every action below goes through here).
+    if (!existingSubmission || !adminCanSeeTask(await freshRole(session.user.id), existingSubmission.task)) {
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
@@ -414,7 +420,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
                 status: "COMPLETED",
                 points: earnedPoints,
                 amount: earnedPoints / pointsPerUsd,
-                description: `Completed task: ${task.title}`,
+                description: `Completed task: ${taskNameForLog(task)}`,
                 reference: ledgerReference,
                 metadata: {
                   taskId: task.id,
@@ -630,7 +636,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
                 status: "COMPLETED",
                 points: -applied,
                 amount: 0,
-                description: `Penalty: rejected task "${existingSubmission.task.title}"`,
+                description: `Penalty: rejected task "${taskNameForLog(existingSubmission.task)}"`,
                 // Prefixed. This used to be the bare submission id — the SAME
                 // reference the approval's EARNING row writes — so an earning
                 // and a penalty for one submission collided on

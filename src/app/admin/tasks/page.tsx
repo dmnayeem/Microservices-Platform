@@ -1,4 +1,6 @@
 import { parsePage } from "@/lib/paginate";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
@@ -141,10 +143,13 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
 
   // Build where clause based on filters
   // "All" still leaves out REMOVED: a deleted task must not come back here.
-  const where: Prisma.TaskWhereInput =
-    status === "all"
+  const where: Prisma.TaskWhereInput = {
+    ...(status === "all"
       ? { ...LISTED_TASK_WHERE }
-      : { status: status as Prisma.EnumTaskStatusFilter["equals"] };
+      : { status: status as Prisma.EnumTaskStatusFilter["equals"] }),
+    // The super admin's private tasks are listed for the super admin only.
+    ...adminTaskScope(session?.user?.id ? await freshRole(session.user.id) : null),
+  };
 
   if (params.type && params.type !== "all") {
     where.type = params.type as Prisma.EnumTaskTypeFilter["equals"];

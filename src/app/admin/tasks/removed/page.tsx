@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { freshRole } from "@/lib/task-privacy-server";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -55,7 +56,12 @@ export default async function RemovedTasksPage({
         ? ["TASK_ARCHIVED"]
         : [...TASK_REMOVAL_ACTIONS];
 
-  const where = { entity: "Task", action: { in: kind } };
+  // A super admin's private task leaves a record only the super admin sees.
+  const notPrivate =
+    session?.user?.id && (await freshRole(session.user.id)) === "SUPER_ADMIN"
+      ? {}
+      : { NOT: { newData: { path: ["superAdminOnly"], equals: true } } };
+  const where = { entity: "Task", action: { in: kind }, ...notPrivate };
 
   const [rows, total, deletedCount, archivedCount] = await Promise.all([
     prisma.auditLog.findMany({
@@ -77,9 +83,9 @@ export default async function RemovedTasksPage({
     // "Deleted" covers both kinds: gone for good, and deleted-but-kept
     // (REMOVED — the row stays because its submissions back payments).
     prisma.auditLog.count({
-      where: { entity: "Task", action: { in: ["TASK_DELETED", "TASK_REMOVED"] } },
+      where: { entity: "Task", action: { in: ["TASK_DELETED", "TASK_REMOVED"] }, ...notPrivate },
     }),
-    prisma.auditLog.count({ where: { entity: "Task", action: "TASK_ARCHIVED" } }),
+    prisma.auditLog.count({ where: { entity: "Task", action: "TASK_ARCHIVED", ...notPrivate } }),
   ]);
 
   const actorIds = [

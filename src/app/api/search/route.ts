@@ -5,6 +5,8 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { taskRunHref } from "@/lib/task-routes";
+import { getTaskViewerContext, visibleTaskWhere } from "@/lib/task-visibility";
+import { currentDevice } from "@/lib/device-current";
 
 interface SearchResult {
   id: string;
@@ -43,13 +45,24 @@ export async function GET(request: NextRequest) {
   const limit = 8;
   const wantAll = scope === "all";
 
-  if (wantAll || scope === "tasks") {
+  // Only tasks this member could open from their task list. The search used
+  // to filter on status alone, so it listed hidden, private, other-audience
+  // and above-plan tasks by name.
+  const taskCtx = wantAll || scope === "tasks" ? await getTaskViewerContext(session.user.id) : null;
+  if (taskCtx?.hasTasksFeature) {
     const tasks = await prisma.task.findMany({
       where: {
-        status: "ACTIVE",
-        OR: [
-          { title: { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } },
+        AND: [
+          visibleTaskWhere(
+            { ...taskCtx.viewer, device: await currentDevice() },
+            { accessLevel: taskCtx.accessLevel, allowedTypes: taskCtx.allowedTypes, includeBoardTasks: true }
+          ),
+          {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+            ],
+          },
         ],
       },
       select: { id: true, title: true, type: true, thumbnailUrl: true },

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { adminTaskScope, taskNameForLog } from "@/lib/task-privacy";
+import { freshRole, privacyFieldsFromBody } from "@/lib/task-privacy-server";
 import { normalizeVisitConfig, validateVisitConfig } from "@/lib/visit-tasks";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { announceTask, parseTaskNotify } from "@/lib/task-announce";
@@ -45,7 +47,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
 
     const task = await prisma.task.findUnique({
-      where: { id },
+      // A super admin's private task doesn't exist for other admins (lib/task-privacy.ts).
+      where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
       include: {
         _count: {
           select: { submissions: true },
@@ -98,12 +101,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if task exists
     const existingTask = await prisma.task.findUnique({
-      where: { id },
+      // A super admin's private task doesn't exist for other admins (lib/task-privacy.ts).
+      where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
     });
 
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+    const privacy = await privacyFieldsFromBody(await freshRole(session.user.id), body);
+    if (!privacy.ok) return NextResponse.json({ error: privacy.error }, { status: 400 });
     // Saving the edit form would write its status back and undo the delete.
     if (existingTask.status === "REMOVED") {
       return NextResponse.json({ error: "This task was deleted" }, { status: 409 });
@@ -270,6 +276,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             ? requiredAccessLevel
             : parseInt(String(requiredAccessLevel ?? 0)) || 0,
         ...(hidden !== undefined ? { hidden: hidden === true } : {}),
+        // Super admin only — ignored for anyone else (lib/task-privacy-server.ts).
+        ...privacy.data,
         order: order != null ? parseInt(String(order)) || 0 : existingTask.order,
         // Audience targeting (countries + state/division/district/upazila + gender + age).
         ...sanitizeTaskAudience(body),
@@ -328,7 +336,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       action: "TASK_UPDATED",
       entity: "Task",
       entityId: task.id,
-      summary: `Edited "${task.title}" (${type}, ${task.pointsReward} pts)`,
+      summary: `Edited "${taskNameForLog(task)}" (${type}, ${task.pointsReward} pts)`,
       meta: { type, title, pointsReward: task.pointsReward },
     });
 
@@ -377,7 +385,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // join to — so the audit record has to carry its own copy of what the task
     // was, not just its id.
     const existingTask = await prisma.task.findUnique({
-      where: { id },
+      // A super admin's private task doesn't exist for other admins (lib/task-privacy.ts).
+      where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
       select: {
         id: true,
         title: true,
@@ -388,6 +397,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         completedCount: true,
         createdById: true,
         createdAt: true,
+        superAdminOnly: true,
       },
     });
 
@@ -441,7 +451,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           action: "TASK_REMOVED",
           entity: "Task",
           entityId: id,
-          summary: `Deleted archived "${existingTask.title}" — ${submissions} submission${
+          summary: `Deleted archived "${taskNameForLog(existingTask)}" — ${submissions} submission${
             submissions === 1 ? "" : "s"
           } kept for the payment records`,
           meta: { ...taskSnapshot(existingTask), submissions, reversible: false },
@@ -468,7 +478,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         action: "TASK_ARCHIVED",
         entity: "Task",
         entityId: id,
-        summary: `Archived "${existingTask.title}" — ${submissions} submission${
+        summary: `Archived "${taskNameForLog(existingTask)}" — ${submissions} submission${
           submissions === 1 ? "" : "s"
         } kept`,
         meta: { ...taskSnapshot(existingTask), submissions, reversible: true },
@@ -495,7 +505,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       action: "TASK_DELETED",
       entity: "Task",
       entityId: id,
-      summary: `Deleted "${existingTask.title}" (${existingTask.type}, ${existingTask.pointsReward} pts) — no submissions, removed permanently`,
+      summary: `Deleted "${taskNameForLog(existingTask)}" (${existingTask.type}, ${existingTask.pointsReward} pts) — no submissions, removed permanently`,
       meta: { ...taskSnapshot(existingTask), submissions: 0, reversible: false },
     });
 
@@ -547,7 +557,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Check if task exists
     const existingTask = await prisma.task.findUnique({
-      where: { id },
+      // A super admin's private task doesn't exist for other admins (lib/task-privacy.ts).
+      where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
     });
 
     if (!existingTask) {
@@ -589,7 +600,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       action: "TASK_STATUS_CHANGED",
       entity: "Task",
       entityId: id,
-      summary: `${existingTask.status} → ${newStatus} on "${existingTask.title}"`,
+      summary: `${existingTask.status} → ${newStatus} on "${taskNameForLog(existingTask)}"`,
       meta: { from: existingTask.status, to: newStatus, action },
     });
 

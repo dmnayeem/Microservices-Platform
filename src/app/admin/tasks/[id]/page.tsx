@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { TaskInstructions } from "@/components/user/tasks/task-instructions";
 import { hasInstructions } from "@/lib/task-instructions";
 import { can } from "@/lib/permissions";
@@ -67,7 +69,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
   const { id } = await params;
 
   const taskRaw = await prisma.task.findUnique({
-    where: { id },
+    where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
     include: {
       _count: {
         // Opened-but-never-sent rows are visits, not submissions.

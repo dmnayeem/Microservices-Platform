@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminSubmissionScope } from "@/lib/task-privacy";
 import Link from "next/link";
 import { Users, Sparkles, ListChecks, AlertTriangle, Flag } from "lucide-react";
 import { auth } from "@/lib/auth";
@@ -141,6 +143,7 @@ export default async function AdminBuyersPage() {
   // job and the buyer generating them is the story.
   const reported = (await prisma.taskSubmission.findMany({
     where: {
+      ...adminSubmissionScope(session?.user?.id ? await freshRole(session.user.id) : null),
       metadata: { path: ["buyerReport", "status"], equals: "OPEN" },
     },
     orderBy: { reviewedAt: "desc" },

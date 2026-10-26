@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { memberCanSeeTask } from "@/lib/task-privacy";
 import { matchesDeviceTarget } from "@/lib/device-target";
 import { currentDevice } from "@/lib/device-current";
 import { syncCountryMode } from "@/lib/country-mode";
@@ -50,6 +51,10 @@ export async function GET(
     // had the id. Treat it as absent rather than forbidden: confirming that a
     // hidden task exists is itself a leak.
     if (task.hidden) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    // A super admin's private task: selected members only (lib/task-privacy.ts).
+    if (!memberCanSeeTask(task, { id: session.user.id, role: session.user.role })) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 

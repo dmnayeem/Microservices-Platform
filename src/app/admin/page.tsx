@@ -1,4 +1,6 @@
 import { usd } from "@/lib/utils";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminSubmissionScope } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { USER_HOME } from "@/lib/routes";
 import { redirect } from "next/navigation";
@@ -660,7 +662,8 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
       : Promise.resolve([]),
     perms.has("submissions.view")
       ? safeRead(prisma.taskSubmission.findMany({
-          where: { submittedAt: { not: null } },
+          // The super admin's private tasks stay out of other admins' live feed.
+          where: { submittedAt: { not: null }, ...adminSubmissionScope(session?.user?.id ? await freshRole(session.user.id) : null) },
           orderBy: { submittedAt: "desc" }, take,
           select: { id: true, status: true, submittedAt: true, user: { select: { name: true, username: true } }, task: { select: { title: true } } },
         }), [], "admin dashboard feed submissions") as unknown as Promise<FeedSub[]>

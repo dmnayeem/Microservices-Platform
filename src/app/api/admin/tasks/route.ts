@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { adminTaskScope } from "@/lib/task-privacy";
+import { taskNameForLog } from "@/lib/task-privacy";
+import { freshRole, privacyFieldsFromBody } from "@/lib/task-privacy-server";
 import { normalizeVisitConfig, validateVisitConfig } from "@/lib/visit-tasks";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { announceTask, parseTaskNotify } from "@/lib/task-announce";
@@ -217,6 +220,10 @@ export async function POST(request: NextRequest) {
       socialUrl: socialUrlOut,
     });
 
+    // The two private-task fields — super admin only (lib/task-privacy-server.ts).
+    const privacy = await privacyFieldsFromBody(await freshRole(session.user.id), body);
+    if (!privacy.ok) return NextResponse.json({ error: privacy.error }, { status: 400 });
+
     // Create the task
     const task = await prisma.task.create({
       data: {
@@ -238,6 +245,7 @@ export async function POST(request: NextRequest) {
             ? requiredAccessLevel
             : parseInt(String(requiredAccessLevel ?? 0)) || 0,
         hidden: hidden === true,
+        ...privacy.data,
         order: order != null ? parseInt(String(order)) || 0 : 0,
         // Audience targeting (countries + state/division/district/upazila + gender + age).
         ...sanitizeTaskAudience(body),
@@ -299,7 +307,7 @@ export async function POST(request: NextRequest) {
       action: "TASK_CREATED",
       entity: "Task",
       entityId: task.id,
-      summary: `Created "${task.title}" (${type}, ${task.pointsReward} pts)`,
+      summary: `Created "${taskNameForLog(task)}" (${type}, ${task.pointsReward} pts)`,
       meta: { ...taskSnapshot(task) },
     });
 
@@ -359,10 +367,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
 
     // REMOVED (a deleted archived task) is never listed, "all" included.
-    const where: Record<string, unknown> =
-      status && status !== "all" && status !== "REMOVED"
-        ? { status }
-        : { ...LISTED_TASK_WHERE };
+    const where: Record<string, unknown> = {
+      ...(status && status !== "all" && status !== "REMOVED" ? { status } : { ...LISTED_TASK_WHERE }),
+      // The super admin's private tasks are listed for the super admin only.
+      ...adminTaskScope(await freshRole(session.user.id)),
+    };
 
     if (type && type !== "all") {
       where.type = type;

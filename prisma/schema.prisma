@@ -2450,6 +2450,13 @@ model Task {
   // Super-admin hard hide — excludes the task from all user-facing lists
   // regardless of level/access/type gating. Admin-only visibility control.
   hidden              Boolean          @default(false)
+  /// Super admin's private task: in the admin panel only SUPER_ADMIN sees it
+  /// (lists, submissions, review, analytics, exports), and on the member side
+  /// staff accounts don't get it unless selected below. src/lib/task-privacy.ts.
+  superAdminOnly      Boolean          @default(false)
+  /// Only these members may see and do the task. Empty = everyone the other
+  /// rules (audience, level, plan, device) allow.
+  allowedUserIds      String[]         @default([])
   // Sequential-unlock ordering — lower shows/unlocks first (feature #7).
   order               Int              @default(0)
   countries           String[]         @default([])
@@ -6600,4 +6607,295 @@ model PromotionRequest {
   @@index([courseId])
   @@index([listingId])
   @@index([userId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Team Work — internal staff work management (src/lib/work/*).
+//
+// Staff (admin-role accounts) get projects → milestones → tasks with targets,
+// progress reports, reviews, comments and update requests. Every read goes
+// through src/lib/work/access.ts — the ONE place that decides who may see a
+// task — so a private task never leaks through a list, a count or a search.
+// Statuses are strings validated in src/lib/work/model.ts (no new enums).
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Admin-managed lists: DEPARTMENT | CATEGORY | PLATFORM | UNIT | POSITION.
+/// Deactivated, never deleted, so old tasks keep reading correctly.
+model WorkOption {
+  id        String   @id @default(cuid())
+  kind      String
+  label     String
+  isActive  Boolean  @default(true)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([kind, label])
+  @@index([kind, isActive])
+}
+
+model WorkTeam {
+  id           String           @id @default(cuid())
+  name         String           @unique
+  description  String?
+  /// WorkOption (DEPARTMENT)
+  departmentId String?
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  members      WorkTeamMember[]
+}
+
+model WorkTeamMember {
+  id         String   @id @default(cuid())
+  teamId     String
+  team       WorkTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId     String
+  /// A Team Lead may create and manage tasks for this team (with work.create).
+  isLead     Boolean  @default(false)
+  /// WorkOption (POSITION)
+  positionId String?
+  createdAt  DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model WorkProject {
+  id          String          @id @default(cuid())
+  /// Shown as PRJ-<number>.
+  number      Int             @unique @default(autoincrement())
+  title       String
+  description String?         @db.Text
+  teamId      String?
+  leadId      String?
+  createdById String
+  priority    String          @default("NORMAL")
+  /// ACTIVE | ON_HOLD | COMPLETED | CANCELLED | ARCHIVED
+  status      String          @default("ACTIVE")
+  startAt     DateTime?
+  dueAt       DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  milestones  WorkMilestone[]
+  tasks       WorkTask[]
+
+  @@index([status])
+  @@index([teamId])
+}
+
+model WorkMilestone {
+  id             String      @id @default(cuid())
+  projectId      String
+  project        WorkProject @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  title          String
+  description    String?     @db.Text
+  ownerId        String?
+  /// NOT_STARTED | IN_PROGRESS | AT_RISK | BLOCKED | IN_REVIEW | COMPLETED | CANCELLED
+  status         String      @default("NOT_STARTED")
+  /// TASKS = from linked tasks' approved progress; MANUAL = manualProgress.
+  progressMode   String      @default("TASKS")
+  manualProgress Int         @default(0)
+  acceptance     String?     @db.Text
+  /// Another milestone that must be COMPLETED first.
+  dependsOnId    String?
+  startAt        DateTime?
+  dueAt          DateTime?
+  sort           Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  tasks          WorkTask[]
+
+  @@index([projectId])
+}
+
+model WorkTask {
+  id               String           @id @default(cuid())
+  /// Shown as TW-<number>.
+  number           Int              @unique @default(autoincrement())
+  title            String
+  summary          String?
+  /// Sanitized rich-text HTML.
+  instructions     String?          @db.Text
+  projectId        String?
+  project          WorkProject?     @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  milestoneId      String?
+  milestone        WorkMilestone?   @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
+  /// WorkOption (CATEGORY)
+  categoryId       String?
+  teamId           String?
+  createdById      String
+  /// Responsible manager (may manage + approve).
+  managerId        String?
+  /// LOW | NORMAL | HIGH | URGENT
+  priority         String           @default("NORMAL")
+  /// DRAFT | ASSIGNED | IN_PROGRESS | BLOCKED | IN_REVIEW | CHANGES_REQUESTED | COMPLETED | CANCELLED | ARCHIVED
+  status           String           @default("ASSIGNED")
+  /// PARTICIPANTS (creator + members only) | TEAM (+ team members) |
+  /// DEPARTMENT (+ every team in visibleDepartmentId) | ROLES (+ staff whose
+  /// role is in visibleRoles) | ALL_STAFF
+  visibility       String           @default("PARTICIPANTS")
+  /// WorkOption (DEPARTMENT) — for visibility DEPARTMENT.
+  visibleDepartmentId String?
+  /// Staff roles — for visibility ROLES.
+  visibleRoles     String[]         @default([])
+  /// NONE | DAILY | WEEKLY | MONTHLY — a completed occurrence creates the next.
+  recurrence       String           @default("NONE")
+  /// The occurrence this one was created from (recurring tasks).
+  recurrenceParentId String?
+  /// SHARED (one target for everyone) | INDIVIDUAL (a target per assignee)
+  targetMode       String           @default("SHARED")
+  /// false = an assignee's report counts as soon as it is submitted.
+  reviewRequired   Boolean          @default(true)
+  evidenceRequired Boolean          @default(false)
+  acceptance       String?          @db.Text
+  estimatedHours   Float?
+  startAt          DateTime?
+  dueAt            DateTime?
+  /// Another task that must be COMPLETED before this one can start.
+  dependsOnId      String?
+  completedAt      DateTime?
+  closedReason     String?
+  lastReportAt     DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  members          WorkTaskMember[]
+  targets          WorkTarget[]
+  reports          WorkReport[]
+  comments         WorkComment[]
+  requests         WorkRequest[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([teamId])
+  @@index([projectId])
+  @@index([milestoneId])
+  @@index([dueAt])
+  @@index([recurrenceParentId])
+}
+
+model WorkTaskMember {
+  id         String    @id @default(cuid())
+  taskId     String
+  task       WorkTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId     String
+  /// ASSIGNEE (does + reports) | COLLABORATOR (reports) | REVIEWER (approves) | OBSERVER (reads)
+  role       String
+  acceptedAt DateTime?
+  startedAt  DateTime?
+  addedById  String?
+  createdAt  DateTime  @default(now())
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+/// One measurable target of a task — per platform and/or per assignee.
+/// Progress = SUM of APPROVED report lines; never stored twice.
+model WorkTarget {
+  id               String           @id @default(cuid())
+  taskId           String
+  task             WorkTask         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label            String
+  /// WorkOption (PLATFORM)
+  platformId       String?
+  unitLabel        String           @default("items")
+  quantity         Int
+  /// The target as first set; changes are logged in WorkActivity.
+  originalQuantity Int
+  /// null = shared by all assignees; set = this assignee's own target.
+  assigneeId       String?
+  sort             Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  lines            WorkReportLine[]
+
+  @@index([taskId])
+}
+
+model WorkReport {
+  id             String           @id @default(cuid())
+  taskId         String
+  task           WorkTask         @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  authorId       String
+  /// SUBMITTED | APPROVED | REJECTED | CHANGES_REQUESTED
+  status         String           @default("SUBMITTED")
+  summary        String?          @db.Text
+  inProgress     String?          @db.Text
+  blockers       String?          @db.Text
+  nextSteps      String?          @db.Text
+  nextUpdateAt   DateTime?
+  links          String[]         @default([])
+  /// [{ key, name, size, type }] in S3 (work-evidence/...)
+  attachments    Json?
+  /// Submitted for final completion review.
+  isFinal        Boolean          @default(false)
+  /// Client-generated; a double tap or retry never files the report twice.
+  idempotencyKey String           @unique
+  reviewerId     String?
+  reviewedAt     DateTime?
+  reviewNote     String?          @db.Text
+  createdAt      DateTime         @default(now())
+  lines          WorkReportLine[]
+
+  @@index([taskId, status])
+  @@index([status, createdAt])
+}
+
+model WorkReportLine {
+  id       String     @id @default(cuid())
+  reportId String
+  report   WorkReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  targetId String
+  target   WorkTarget @relation(fields: [targetId], references: [id], onDelete: Restrict)
+  /// Work ADDED in this report (not a running total).
+  quantity Int
+
+  @@index([targetId])
+}
+
+model WorkComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      WorkTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  authorId  String
+  /// COMMENT (all who can see the task) | NOTE (private: managers of the task only)
+  kind      String   @default("COMMENT")
+  body      String   @db.Text
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+model WorkActivity {
+  id        String   @id @default(cuid())
+  taskId    String?
+  projectId String?
+  actorId   String?
+  type      String
+  summary   String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@index([projectId, createdAt])
+}
+
+/// Update requests, reminders and clarification requests.
+model WorkRequest {
+  id         String    @id @default(cuid())
+  taskId     String
+  task       WorkTask  @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  /// UPDATE | REMINDER | CLARIFICATION
+  kind       String
+  fromId     String
+  toId       String
+  message    String    @db.Text
+  /// OPEN | ANSWERED | CLOSED
+  status     String    @default("OPEN")
+  answeredAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([toId, status])
+  @@index([taskId, createdAt])
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { VisitTaskBuilder } from "./VisitTaskBuilder";
+import { PrivateTaskFields, type PickedUser } from "@/components/admin/tasks/private-task-fields";
 import { normalizeVisitConfig, validateVisitConfig, type VisitConfig } from "@/lib/visit-tasks";
 import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
 import type { DeviceTarget } from "@/lib/device-target";
@@ -99,6 +100,10 @@ const taskTypes = [
 // (SOCIAL_PLATFORMS) and are sourced via the SocialTaskBuilder component.
 
 interface TaskFormProps {
+  /** Shows the Private task section (lib/task-privacy.ts). The server enforces it too. */
+  isSuperAdmin?: boolean;
+  /** Names of the members already selected (edit). */
+  initialAllowedUsers?: PickedUser[];
   /** Task types the current admin may create. Omitted = all (e.g. editing). */
   allowedTypes?: string[];
   /** Pre-select a Task Board when creating (e.g. from /admin/boards/[id]). */
@@ -120,6 +125,8 @@ interface TaskFormProps {
     minLevel: number;
     requiredAccessLevel: number;
     hidden?: boolean;
+    superAdminOnly?: boolean;
+    allowedUserIds?: string[];
     order: number;
     countries: string[];
     genders?: string[];
@@ -172,8 +179,10 @@ interface QuizQuestion {
   explanation: string;
 }
 
-export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) {
+export function TaskForm({ task, allowedTypes, defaultBoardId, isSuperAdmin = false, initialAllowedUsers = [] }: TaskFormProps) {
   const router = useRouter();
+  const [superAdminOnly, setSuperAdminOnly] = useState<boolean>(task?.superAdminOnly ?? false);
+  const [allowedUsers, setAllowedUsers] = useState<PickedUser[]>(initialAllowedUsers);
   const searchParams = useSearchParams();
   // When creating, restrict the type picker to types the admin may create.
   const visibleTaskTypes =
@@ -635,6 +644,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
         // showed up as a paused task.
         status: isDraft ? "DRAFT" : "ACTIVE",
         hidden: formData.hidden === true,
+        // Super admin only; the server ignores these from anyone else.
+        ...(isSuperAdmin ? { superAdminOnly, allowedUserIds: allowedUsers.map((u) => u.id) } : {}),
         questions: formData.type === "QUIZ" ? questions : null,
         boardId: formData.boardId || null,
         ...(alreadyAnnounced ? {} : { notify }),
@@ -1418,6 +1429,15 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               / plan gating. Admin-only visibility control.
             </p>
           </div>
+
+          {isSuperAdmin && (
+            <PrivateTaskFields
+              superAdminOnly={superAdminOnly}
+              onSuperAdminOnly={setSuperAdminOnly}
+              users={allowedUsers}
+              onUsers={setAllowedUsers}
+            />
+          )}
         </div>
 
         {/* Audience targeting — country / state / district / upazila / gender / age */}

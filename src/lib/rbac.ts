@@ -252,7 +252,14 @@ export type Permission =
   | "admin.activity"
   // Media
   | "media.view"
-  | "media.manage";
+  | "media.manage"
+  // Team Work (internal staff tasks, src/lib/work/*)
+  | "work.view"
+  | "work.create"
+  | "work.assign_any"
+  | "work.review"
+  | "work.oversee"
+  | "work.settings";
 
 // ── Per-task-type creation permissions ──
 // Mirrors the TaskType enum in schema.prisma. `taskCreatePermFor(type)` maps a
@@ -430,6 +437,10 @@ export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] 
     ],
   },
   {
+    label: "Team Work",
+    permissions: ["work.view", "work.create", "work.assign_any", "work.review", "work.oversee", "work.settings"],
+  },
+  {
     label: "System & Security",
     permissions: [
       "settings.view",
@@ -528,13 +539,18 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   // `users.grant_badge` is also left out: giving away a paid badge defaults to
   // the super admin only (tick it in the role matrix to hand it on).
   MANAGER: ALL_PERMISSIONS.filter(
-    (p) => !FINANCE_PERMISSIONS.includes(p) && p !== "users.grant_badge"
+    // work.oversee reads PRIVATE tasks — a broad role must not imply it; the
+    // super admin grants it to a person deliberately.
+    (p) => !FINANCE_PERMISSIONS.includes(p) && p !== "users.grant_badge" && p !== "work.oversee"
   ),
 
   // Generic admin — broad by default, but NEVER finance and NEVER admins.manage
   // (super admin tunes it down further via the editor; the resolver also strips
   // finance + admins.manage as a hard backstop). Custom-role users share this base.
   ADMIN: [
+    "work.view",
+    "work.create",
+    "work.review",
     "dashboard.view",
     "users.view", "users.edit", "users.ban", "users.delete",
     // (users.adjust_balance is finance now — granted by a super admin by name.)
@@ -576,6 +592,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   FINANCE_ADMIN: [
+    "work.view",
     "dashboard.view",
     "finance.view",
     "finance.entries.create", "finance.entries.approve",
@@ -610,12 +627,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
    * from a super admin or finance admin.
    */
   FINANCE_MODERATOR: [
+    "work.view",
     "dashboard.view",
     "finance.view",
     "finance.entries.create",
   ],
 
   CONTENT_ADMIN: [
+    "work.view",
     "dashboard.view",
     "users.view",
     "tasks.view", "tasks.create", "tasks.edit",
@@ -639,6 +658,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   SUPPORT_ADMIN: [
+    "work.view",
     "dashboard.view",
     "users.view", "users.edit", "users.ban", "users.impersonate",
     "users.adjust_xp", "users.adjust_level", "users.adjust_followers",
@@ -650,6 +670,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   MARKETING_ADMIN: [
+    "work.view",
     "dashboard.view",
     "users.view",
     "campaigns.view", "campaigns.manage",
@@ -667,6 +688,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   MODERATOR: [
+    "work.view",
     "dashboard.view",
     "tasks.view",
     "submissions.view", "submissions.approve", "submissions.reject",
@@ -680,6 +702,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 
   // Ad Manager admin — scoped to the Ads Manager surface + its analytics.
   AD_MANAGER: [
+    "work.view",
     "dashboard.view",
     "ads.view", "ads.manage",
     "analytics.view",
@@ -790,6 +813,29 @@ export const GRANULAR_ADJUST_PERMISSIONS: Permission[] = [
  */
 export const GRANULAR_SPLIT_MARKER = "_granularSplit";
 
+/**
+ * Team Work arrived after many role sets were already saved. A saved set is
+ * literal, so without this no existing role would ever receive work.view and
+ * staff could be assigned tasks they cannot open. Same idea as the split
+ * marker above: a set saved BEFORE this marker gets the code defaults for the
+ * work.* permissions (custom roles: work.view only); once the super admin saves
+ * it again it carries the marker and is taken literally — removals stick.
+ */
+export const TEAM_WORK_MARKER = "_teamWork";
+
+export function addTeamWorkDefaults<T extends string>(
+  perms: Set<T>,
+  role: UserRole | "CUSTOM",
+  /** True when the set carries TEAM_WORK_MARKER — saved after Team Work. */
+  savedAfterTeamWork: boolean
+): Set<T> {
+  if (savedAfterTeamWork) return perms;
+  const defaults =
+    role === "CUSTOM" ? (["work.view"] as Permission[]) : (ROLE_PERMISSIONS[role] ?? []).filter((p) => p.startsWith("work."));
+  for (const p of defaults) perms.add(p as T);
+  return perms;
+}
+
 export function expandLegacyPermissions<T extends string>(
   perms: Set<T>,
   /** True when the set carries GRANULAR_SPLIT_MARKER — saved after the split. */
@@ -819,7 +865,8 @@ export function expandLegacyPermissions<T extends string>(
 export function customRolePermissionsForEditor(stored: readonly string[]): string[] {
   const marked = stored.includes(GRANULAR_SPLIT_MARKER);
   const set = new Set(stored.filter(isPermission));
-  return [...expandLegacyPermissions(set, marked)];
+  // Shown as enforced, so a plain re-save doesn't strip work.view (TEAM_WORK_MARKER).
+  return [...addTeamWorkDefaults(expandLegacyPermissions(set, marked), "CUSTOM", stored.includes(TEAM_WORK_MARKER))];
 }
 
 export function stripProtectedForRole(
@@ -1051,7 +1098,7 @@ export function sanitizeCustomRolePermissions(raw: unknown): string[] {
   const set = new Set<Permission>(list.filter(isPermission) as Permission[]);
   // "ADMIN" role → strips finance + admins.manage. The marker says "saved
   // after the adjust split — take literally" (see GRANULAR_SPLIT_MARKER).
-  return [...Array.from(stripProtectedForRole(set, "ADMIN")), GRANULAR_SPLIT_MARKER];
+  return [...Array.from(stripProtectedForRole(set, "ADMIN")), GRANULAR_SPLIT_MARKER, TEAM_WORK_MARKER];
 }
 
 /** Sparse per-user permission grants/denials (true = grant, false = deny). */
@@ -1078,6 +1125,13 @@ export function parsePermissionOverrides(v: unknown): PermissionOverrides {
 // super-admin can grant access understanding what it does. Order mirrors
 // PERMISSION_CATALOG. (Anything somehow missing falls back to a humanized key.)
 export const PERMISSION_META: Partial<Record<Permission, { label: string; description: string }>> = {
+  // ── Team Work ──
+  "work.view": { label: "Team Work", description: "Open Team Work: see the tasks you are part of, accept them and report progress." },
+  "work.create": { label: "Create & assign work", description: "Create projects, milestones and tasks — for the teams you lead (or anyone with \"Assign across teams\")." },
+  "work.assign_any": { label: "Assign across teams", description: "Assign tasks to any staff member, not only the teams you lead." },
+  "work.review": { label: "Review work reports", description: "Approve, reject or return progress reports on tasks you are a reviewer or manager of." },
+  "work.oversee": { label: "See all work", description: "Read every task, including private ones. Super admins always have it; grant it deliberately." },
+  "work.settings": { label: "Team Work settings", description: "Manage teams, Team Leads, departments, categories, platforms and units." },
   // ── Dashboard & Analytics ──
   "dashboard.view": { label: "Admin dashboard", description: "Open the main admin overview (required to enter the admin panel)." },
   "analytics.view": { label: "View analytics", description: "Open platform analytics — traffic, earnings, task and user reports." },
@@ -1292,6 +1346,23 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin",
     icon: "LayoutDashboard",
     permissions: ["dashboard.view"],
+    category: "OVERVIEW",
+  },
+  // Team Work — internal staff tasks. Every staff role has work.view, so it
+  // sits right under the Dashboard; what each person sees inside is decided by
+  // src/lib/work/access.ts, not by this entry.
+  {
+    name: "Team Work",
+    href: "/admin/work",
+    icon: "Briefcase",
+    permissions: ["work.view"],
+    category: "OVERVIEW",
+  },
+  {
+    name: "Work Settings",
+    href: "/admin/work/settings",
+    icon: "SlidersHorizontal",
+    permissions: ["work.settings"],
     category: "OVERVIEW",
   },
   {

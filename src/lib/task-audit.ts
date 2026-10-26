@@ -115,6 +115,7 @@ export interface TaskSnapshotSource {
   completedCount?: number | null;
   createdById?: string | null;
   createdAt?: Date | string | null;
+  superAdminOnly?: boolean | null;
 }
 
 /** What a task WAS, captured before it stops existing. */
@@ -128,6 +129,8 @@ export interface TaskSnapshot {
   completedCount: number;
   createdById: string | null;
   createdAt: string | null;
+  /** The super admin's private task — its record is shown to the super admin only. */
+  superAdminOnly?: boolean;
 }
 
 /**
@@ -151,6 +154,7 @@ export function taskSnapshot(t: TaskSnapshotSource): TaskSnapshot {
       t.createdAt instanceof Date
         ? t.createdAt.toISOString()
         : (t.createdAt ?? null),
+    ...(t.superAdminOnly ? { superAdminOnly: true } : {}),
   };
 }
 

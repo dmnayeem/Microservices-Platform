@@ -60,6 +60,8 @@ export async function listTasksForUser(
         dateOfBirth: true,
         pointsBalance: true,
         xp: true,
+        // Private tasks stay off staff accounts (lib/task-privacy.ts).
+        role: true,
       },
     }),
     // Resolve the user's effective plan — handles expiry + isDefault fallback.

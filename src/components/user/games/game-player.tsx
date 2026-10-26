@@ -5,6 +5,7 @@ import { X, Loader2, Coins, ExternalLink, AlertTriangle } from "lucide-react";
 import { AdInterstitialOverlay } from "@/components/user/primitives/ad-interstitial-overlay";
 import type { AdPlacementName } from "@/lib/ad-placements";
 import { notifyCenter } from "@/lib/notify-center";
+import { markGameOpen } from "@/lib/game-open";
 import { pts } from "@/lib/utils";
 
 export interface PlayableGame {
@@ -21,6 +22,9 @@ export interface PlayableGame {
  * the iframe has loaded — it never sends a duration, because there would be
  * nothing stopping it sending a large one.
  */
+
+/** After the game says the member is sharing a link, the return is not a "resume" (no ad for inviting a friend). */
+const SHARE_GRACE_MS = 10 * 60_000;
 
 /** How long to wait for the iframe's load event before calling it broken. */
 const LOAD_WATCHDOG_MS = 8_000;
@@ -79,6 +83,9 @@ export function GamePlayer({
   const [earned, setEarned] = useState(0);
   const [flash, setFlash] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Bumped when the page comes back from the back/forward cache after its session was closed. */
+  const [sessionGen, setSessionGen] = useState(0);
+  const sharedAtRef = useRef(0);
 
   const afterAdRef = useRef<() => void>(() => {});
   const lastAdRef = useRef(0);
@@ -112,6 +119,12 @@ export function GamePlayer({
     sessionRef.current = session;
   }, [session]);
 
+  // App-level housekeeping (update reloads, return-to-Home) waits while a game is open.
+  useEffect(() => {
+    markGameOpen(true);
+    return () => markGameOpen(false);
+  }, []);
+
   // ── Open the session ─────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -123,8 +136,14 @@ export function GamePlayer({
           if (!cancelled) setStarted(true);
           return;
         }
+        endedRef.current = false;
+        scoreRef.current.total = 0;
+        earnedRef.current = 0;
+        setEarned(0);
         setSession(d);
-        if (d.ads.enabled && d.ads.onOpen) {
+        // A re-opened session (page restored from the back/forward cache)
+        // goes straight back to the game — no "on open" ad in front of it.
+        if (sessionGen === 0 && d.ads.enabled && d.ads.onOpen) {
           afterAdRef.current = () => setStarted(true);
           setShowAd(true);
         } else {
@@ -135,7 +154,7 @@ export function GamePlayer({
     return () => {
       cancelled = true;
     };
-  }, [game.id]);
+  }, [game.id, sessionGen]);
 
   // Lock body scroll while the player is open.
   useEffect(() => {
@@ -176,9 +195,16 @@ export function GamePlayer({
 
   useEffect(() => {
     const onHide = () => endSession();
+    // The page came back from the back/forward cache: its session was closed
+    // on the way out, so open a new one and keep earning.
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted && endedRef.current) setSessionGen((n) => n + 1);
+    };
     window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
     return () => {
       window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pageshow", onShow);
       endSession();
     };
   }, [endSession]);
@@ -307,6 +333,7 @@ export function GamePlayer({
       const d = e.data as { source?: string; type?: string; n?: unknown } | null;
       if (!d || d.source !== "revtype-sdk") return;
       if (d.type === "hello") welcome();
+      else if (d.type === "sharing") sharedAtRef.current = Date.now();
       else if (d.type === "login-token") {
         // "Sign in with RevType" inside this player: a fresh one-time token for
         // the game's own website (it cannot open the connect popup from here).
@@ -357,6 +384,11 @@ export function GamePlayer({
       }
       if (wasHiddenRef.current && started && !showAd) {
         wasHiddenRef.current = false;
+        // Back from sharing an invite: not a resume.
+        if (Date.now() - sharedAtRef.current < SHARE_GRACE_MS) {
+          sharedAtRef.current = 0;
+          return;
+        }
         if (
           adsOn &&
           session?.ads.onResume &&
@@ -440,8 +472,11 @@ export function GamePlayer({
                 welcome();
               }}
               className="absolute inset-0 w-full h-full border-0"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-orientation-lock"
-              allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; clipboard-write"
+              // web-share: the game can open the phone's own share sheet (WhatsApp,
+              // Messenger…) for an invite. Custom protocols: a "Messenger"/"SMS"
+              // button can hand off to that app — it never navigates this page.
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-orientation-lock allow-top-navigation-to-custom-protocols"
+              allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; clipboard-write; web-share"
               allowFullScreen
             />
             {!loaded && !loadFailed && (

@@ -229,6 +229,9 @@ export function modulesSharingPermissions(): Record<string, string[]> {
  * break the others. Longest prefix wins.
  */
 export const API_MODULE_PREFIXES: Record<string, string> = {
+  // Team Work: settings APIs follow the settings page, the rest the workspace.
+  "/api/admin/work/settings": "/admin/work/settings",
+  "/api/admin/work": "/admin/work",
   "/api/admin/cpa": "/admin/cpa",
   // Templates are one feature: the Templates page manages them and the task
   // form's picker / "save as template" use them. Switching the page off

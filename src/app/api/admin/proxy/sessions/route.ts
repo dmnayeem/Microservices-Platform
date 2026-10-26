@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminSubmissionScope } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +18,7 @@ export async function GET() {
   const cutoff = new Date(Date.now() - 60 * 60 * 1000); // last hour
   const raw = await prisma.taskSubmission.findMany({
     where: {
+      ...adminSubmissionScope(await freshRole(session.user.id)),
       status: SubmissionStatus.PENDING,
       createdAt: { gte: cutoff },
       task: { type: TaskType.PROXY },

@@ -1,4 +1,5 @@
 import "server-only";
+import { taskNameForLog } from "@/lib/task-privacy";
 import { prisma } from "@/lib/prisma";
 import { syncUserLevelQuietly } from "@/lib/level-sync";
 import {
@@ -180,6 +181,7 @@ export async function recheckPendingSocialSubmissions(opts?: {
           pointsReward: true,
           xpReward: true,
           fundedByUserId: true,
+          superAdminOnly: true,
           remainingBudget: true,
         },
       },
@@ -418,7 +420,7 @@ export async function recheckPendingSocialSubmissions(opts?: {
               status: TransactionStatus.COMPLETED,
               points,
               amount: points / pointsPerUsd,
-              description: `Completed task: ${sub.task.title}`,
+              description: `Completed task: ${taskNameForLog(sub.task)}`,
               reference: `task_${sub.taskId}_${sub.id}`,
               metadata: {
                 taskId: sub.taskId,

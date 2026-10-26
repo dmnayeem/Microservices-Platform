@@ -15,6 +15,8 @@ import {
   stripProtectedForRole,
   expandLegacyPermissions,
   GRANULAR_SPLIT_MARKER,
+  TEAM_WORK_MARKER,
+  addTeamWorkDefaults,
   moduleForPath,
   ADMIN_MODULES,
   CATEGORY_LABELS,
@@ -58,6 +60,10 @@ export type RolePermissionConfig = Partial<Record<UserRole, Permission[]>>;
 function isSplitMarked(raw: unknown): boolean {
   return !!raw && typeof raw === "object" && (raw as Record<string, unknown>)[GRANULAR_SPLIT_MARKER] === true;
 }
+/** Saved after Team Work existed? (see TEAM_WORK_MARKER in rbac.ts) */
+function isWorkMarked(raw: unknown): boolean {
+  return !!raw && typeof raw === "object" && (raw as Record<string, unknown>)[TEAM_WORK_MARKER] === true;
+}
 
 /** Sanitize a stored/submitted role→permission config (drops unknown keys). */
 export function parseRolePermissionConfig(raw: unknown): RolePermissionConfig {
@@ -84,6 +90,7 @@ export const getConfiguredRolePermissions = cache(
     const raw = await getSetting<unknown>(ROLE_PERM_SETTING_KEY, null);
     const cfg = parseRolePermissionConfig(raw);
     const marked = isSplitMarked(raw);
+    const workMarked = isWorkMarked(raw);
     const result = {} as Record<UserRole, Set<Permission>>;
     for (const role of Object.keys(ROLE_PERMISSIONS) as UserRole[]) {
       if (role === "SUPER_ADMIN") {
@@ -92,9 +99,10 @@ export const getConfiguredRolePermissions = cache(
       }
       // Expanded HERE, once: a saved role in a marked matrix is literal; an
       // unmarked (pre-split) one and the code defaults get the legacy expansion.
-      result[role] = expandLegacyPermissions(
-        new Set(cfg[role] ?? ROLE_PERMISSIONS[role]),
-        marked && cfg[role] !== undefined
+      result[role] = addTeamWorkDefaults(
+        expandLegacyPermissions(new Set(cfg[role] ?? ROLE_PERMISSIONS[role]), marked && cfg[role] !== undefined),
+        role,
+        workMarked && cfg[role] !== undefined
       );
     }
     return result;
@@ -107,9 +115,13 @@ export const getConfiguredRolePermissions = cache(
 export async function getRolePermissionConfig(): Promise<RolePermissionConfig> {
   const raw = await getSetting<unknown>(ROLE_PERM_SETTING_KEY, null);
   const cfg = parseRolePermissionConfig(raw);
-  if (isSplitMarked(raw)) return cfg;
+  const split = isSplitMarked(raw);
+  const work = isWorkMarked(raw);
+  if (split && work) return cfg;
   for (const role of Object.keys(cfg) as UserRole[]) {
-    cfg[role] = [...expandLegacyPermissions(new Set(cfg[role]))];
+    let set = new Set(cfg[role]);
+    if (!split) set = expandLegacyPermissions(set);
+    cfg[role] = [...addTeamWorkDefaults(set, role, work)];
   }
   return cfg;
 }
@@ -121,7 +133,7 @@ export async function saveRolePermissionConfig(
   const clean = parseRolePermissionConfig(cfg);
   delete clean.SUPER_ADMIN;
   // Saved now = saved after the adjust split: every role in it is literal.
-  const stored = { ...clean, [GRANULAR_SPLIT_MARKER]: true };
+  const stored = { ...clean, [GRANULAR_SPLIT_MARKER]: true, [TEAM_WORK_MARKER]: true };
   await prisma.systemSetting.upsert({
     where: { key: ROLE_PERM_SETTING_KEY },
     create: {
@@ -261,9 +273,13 @@ const resolveAccess = cache(async function resolveAccess(
   // getConfiguredRolePermissions — so only a custom role is expanded here.)
   const perms =
     user.customRoleId && customRole?.isActive
-      ? expandLegacyPermissions(
-          new Set(customRole.permissions.filter(isPermission)),
-          customRole.permissions.includes(GRANULAR_SPLIT_MARKER)
+      ? addTeamWorkDefaults(
+          expandLegacyPermissions(
+            new Set(customRole.permissions.filter(isPermission)),
+            customRole.permissions.includes(GRANULAR_SPLIT_MARKER)
+          ),
+          "CUSTOM",
+          customRole.permissions.includes(TEAM_WORK_MARKER)
         )
       : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
 
@@ -328,9 +344,13 @@ export async function getAccessBreakdown(userId: string): Promise<{
     role === "SUPER_ADMIN"
       ? new Set(ROLE_PERMISSIONS.SUPER_ADMIN)
       : user.customRoleId && user.customRole?.isActive
-        ? expandLegacyPermissions(
-            new Set(user.customRole.permissions.filter(isPermission)),
-            user.customRole.permissions.includes(GRANULAR_SPLIT_MARKER)
+        ? addTeamWorkDefaults(
+            expandLegacyPermissions(
+              new Set(user.customRole.permissions.filter(isPermission)),
+              user.customRole.permissions.includes(GRANULAR_SPLIT_MARKER)
+            ),
+            "CUSTOM",
+            user.customRole.permissions.includes(TEAM_WORK_MARKER)
           )
         : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
   // "Default" for a money permission = what the designation gives. A money

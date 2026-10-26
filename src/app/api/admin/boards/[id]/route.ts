@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { sanitizeKycAudience } from "@/lib/banner-audience";
 import { auth } from "@/lib/auth";
@@ -53,7 +55,8 @@ export async function GET(
   }
 
   const tasks = await prisma.task.findMany({
-    where: { boardId: id, ...LISTED_TASK_WHERE },
+    // The super admin's private tasks are listed to them only.
+    where: { boardId: id, ...LISTED_TASK_WHERE, ...adminTaskScope(await freshRole(session.user.id)) },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,

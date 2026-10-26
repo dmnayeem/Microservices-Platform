@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -118,9 +118,43 @@ export function GamesCatalog({
   /** From `/games?play=<id>`: open this game straight away. */
   initialPlayId?: string | null;
 }) {
-  const [playing, setPlaying] = useState<CatalogGame | null>(
+  const [playing, setPlayingState] = useState<CatalogGame | null>(
     () => (initialPlayId ? games.find((g) => g.id === initialPlayId) ?? null : null)
   );
+  // The open game is kept in the address (`?play=<id>`): if the phone reloads
+  // the page while the member is away (sharing an invite on WhatsApp, low
+  // memory, an app update), they come back into the same game instead of the
+  // list. Opening pushes a history entry, so the phone's Back closes the game.
+  const pushedRef = useRef(false);
+  const setPlaying = useCallback((g: CatalogGame) => {
+    setPlayingState(g);
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get("play") === g.id) return;
+      u.searchParams.set("play", g.id);
+      if (pushedRef.current) window.history.replaceState(window.history.state, "", u);
+      else window.history.pushState(window.history.state, "", u);
+      pushedRef.current = true;
+    } catch {
+      /* the game still opens */
+    }
+  }, []);
+  const closeGame = useCallback(() => {
+    setPlayingState(null);
+    try {
+      const u = new URL(window.location.href);
+      if (!u.searchParams.has("play")) return;
+      if (pushedRef.current) {
+        pushedRef.current = false;
+        window.history.back();
+      } else {
+        u.searchParams.delete("play");
+        window.history.replaceState(window.history.state, "", u);
+      }
+    } catch {
+      /* nothing to tidy */
+    }
+  }, []);
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<string>(ALL);
   const [view, setView] = useState<SectionId | null>(null);
@@ -130,6 +164,17 @@ export function GamesCatalog({
   const [page, setPage] = useState<{ key: string; n: number }>({ key: "", n: PAGE });
 
   const byId = useMemo(() => new Map(games.map((g) => [g.id, g])), [games]);
+
+  // Back / Forward: follow the address.
+  useEffect(() => {
+    const onPop = () => {
+      const id = new URLSearchParams(window.location.search).get("play");
+      if (!id) pushedRef.current = false;
+      setPlayingState(id ? byId.get(id) ?? null : null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [byId]);
 
   const sections = useMemo(() => {
     const featured = games.filter((g) => g.isFeatured);
@@ -420,7 +465,7 @@ export function GamesCatalog({
         <GamePlayer
           game={playing}
           adPlacement={playing.adPlacement as AdPlacementName}
-          onClose={() => setPlaying(null)}
+          onClose={closeGame}
         />
       )}
     </div>

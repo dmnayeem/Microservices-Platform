@@ -1,4 +1,6 @@
 import { toNum } from "@/lib/money";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminSubmissionScope, adminTaskScope } from "@/lib/task-privacy";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -16,6 +18,7 @@ import { COMPLETED_STATUSES } from "@/lib/submission-status";
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
+    const exportRole = session?.user?.id ? await freshRole(session.user.id) : null;
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -72,7 +75,8 @@ export async function GET(request: NextRequest) {
         );
       }
       const task = await prisma.task.findUnique({
-        where: { id: taskId },
+        // A private task's survey export is the super admin's.
+        where: { id: taskId, ...adminTaskScope(exportRole) },
         select: { id: true, title: true, type: true, surveyConfig: true },
       });
       if (!task) {
@@ -192,7 +196,8 @@ export async function GET(request: NextRequest) {
     } else if (reportType === "tasks") {
       // Task submissions export
       const submissionsData = await prisma.taskSubmission.findMany({
-        where: { createdAt: { gte: startDate } },
+        // Submissions on the super admin's private tasks are exported for them only.
+        where: { createdAt: { gte: startDate }, ...adminSubmissionScope(exportRole) },
         include: {
           user: { select: { email: true, name: true } },
           task: { select: { title: true, type: true } },
@@ -315,7 +320,7 @@ export async function GET(request: NextRequest) {
       ];
       const taskIds = taskPages.map((t) => t.key);
       const taskRows = taskIds.length
-        ? await prisma.task.findMany({ where: { id: { in: taskIds } }, select: { id: true, title: true } })
+        ? await prisma.task.findMany({ where: { id: { in: taskIds }, ...adminTaskScope(exportRole) }, select: { id: true, title: true } })
         : [];
       const titleById = new Map(taskRows.map((t) => [t.id, t.title]));
       const avg = (d: number | null, v: number | null) => (v && v > 0 ? Math.round((d ?? 0) / v) : 0);

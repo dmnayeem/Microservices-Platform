@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
       postalCode: true,
       gender: true,
       dateOfBirth: true,
+      // Private tasks stay off staff accounts (lib/task-privacy.ts).
+      role: true,
     },
   });
   if (!user) {

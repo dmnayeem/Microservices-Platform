@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +19,7 @@ export default async function SurveyResponsesPage({ params }: PageProps) {
   const { id } = await params;
 
   const task = await prisma.task.findUnique({
-    where: { id },
+    where: { id, ...adminTaskScope(await freshRole(session.user.id)) },
     select: { id: true, title: true, type: true },
   });
   if (!task) notFound();

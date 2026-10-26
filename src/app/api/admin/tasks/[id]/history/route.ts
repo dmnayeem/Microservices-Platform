@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { freshRole } from "@/lib/task-privacy-server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +29,12 @@ export async function GET(
   }
 
   const { id } = await params;
+  // A private task's history is the super admin's (lib/task-privacy.ts). A
+  // task that no longer exists keeps its history (Removed tasks).
+  if ((await freshRole(session.user.id)) !== "SUPER_ADMIN") {
+    const isPrivate = await prisma.task.count({ where: { id, superAdminOnly: true } });
+    if (isPrivate) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
 
   const rows = await prisma.auditLog.findMany({
     where: { entity: "Task", entityId: id },

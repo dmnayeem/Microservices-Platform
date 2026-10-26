@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { taskNameForLog } from "@/lib/task-privacy";
 import { NextRequest, NextResponse } from "next/server";
 import { chargeTaskCompletion, claimTaskCompletionSlot, notifyTaskClosed } from "@/lib/task-credit";
 import { getPlanMultipliers } from "@/lib/plan-multipliers";
@@ -515,7 +516,7 @@ export async function POST(request: NextRequest) {
               status: "COMPLETED",
               points: pointsEarned,
               amount: pointsEarned / pointsPerUsd,
-              description: `Quiz completed: ${task.title} (Score: ${score}%)`,
+              description: `Quiz completed: ${taskNameForLog(task)} (Score: ${score}%)`,
               reference: `quiz_${sub.id}`,
               metadata: { taskId, score, correctAnswers, totalQuestions, multiplier: planMult.taskReward, xpMultiplier: planMult.xp },
             },

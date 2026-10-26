@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -58,8 +60,8 @@ async function gate(perm: "tasks.view" | "tasks.create") {
   return { userId: session.user.id };
 }
 
-async function articleTask(id: string) {
-  const task = await prisma.task.findUnique({ where: { id }, select: { id: true, type: true, status: true } });
+async function articleTask(id: string, userId: string) {
+  const task = await prisma.task.findUnique({ where: { id, ...adminTaskScope(await freshRole(userId)) }, select: { id: true, type: true, status: true } });
   return task && task.type === "ARTICLE" ? task : null;
 }
 
@@ -68,6 +70,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const g = await gate("tasks.view");
   if (g.error) return g.error;
   const { id } = await params;
+  // Only for a task this admin may see (a private task is the super admin's).
+  if (!(await articleTask(id, g.userId))) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
   const sp = req.nextUrl.searchParams;
   const page = Math.max(1, Math.min(100_000, parseInt(sp.get("page") ?? "1", 10) || 1));
@@ -152,7 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const g = await gate("tasks.create");
   if (g.error) return g.error;
   const { id } = await params;
-  const task = await articleTask(id);
+  const task = await articleTask(id, g.userId);
   if (!task) return NextResponse.json({ error: "Article task not found" }, { status: 404 });
 
   const v = ACTION_SCHEMA.safeParse(await req.json().catch(() => null));
@@ -255,7 +259,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const g = await gate("tasks.create");
   if (g.error) return g.error;
   const { id } = await params;
-  const task = await articleTask(id);
+  const task = await articleTask(id, g.userId);
   if (!task) return NextResponse.json({ error: "Article task not found" }, { status: 404 });
 
   const pool = await ensureKeyPool(id);

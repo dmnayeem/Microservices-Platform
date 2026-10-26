@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminTaskScope } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +43,8 @@ export async function POST(
   }
 
   const result = await prisma.task.updateMany({
-    where: { id: { in: v.data.taskIds } },
+    // Another admin can't move the super admin's private task onto a board.
+    where: { id: { in: v.data.taskIds }, ...adminTaskScope(await freshRole(session.user.id)) },
     data: { boardId: id },
   });
 
@@ -82,7 +85,7 @@ export async function DELETE(
   }
 
   const result = await prisma.task.updateMany({
-    where: { id: { in: v.data.taskIds }, boardId: id },
+    where: { id: { in: v.data.taskIds }, boardId: id, ...adminTaskScope(await freshRole(session.user.id)) },
     data: { boardId: null },
   });
 

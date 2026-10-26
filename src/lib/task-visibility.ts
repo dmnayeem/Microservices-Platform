@@ -12,6 +12,7 @@ import {
   type PackageFeatureKey,
 } from "@/lib/packages";
 import { taskAudienceWhere, type TaskAudienceUser } from "@/lib/task-targeting";
+import { memberTaskPrivacyWhere } from "@/lib/task-privacy";
 
 /**
  * THE definition of "may this viewer see this task".
@@ -58,9 +59,14 @@ export const TASK_VIEWER_SELECT = {
   dateOfBirth: true,
   // Boards (and banners) can target KYC status.
   kycStatus: true,
+  // A super admin's private task stays off staff accounts (lib/task-privacy.ts).
+  role: true,
 } as const;
 
 export type TaskViewer = TaskAudienceUser & {
+  /** Selected-members tasks (Task.allowedUserIds) need it; without it they never show. */
+  id?: string | null;
+  role?: string | null;
   level?: number | null;
   kycStatus?: string | null;
   /** The device they are on now (lib/device-current.ts). Undefined = not
@@ -106,6 +112,9 @@ export function visibleTaskWhere(
     ...taskAudienceWhere(viewer),
     // Device targeting: phone / computer, OS, brand (lib/device-target.ts).
     ...deviceTargetWhere<Prisma.TaskWhereInput>(viewer.device),
+    // The super admin's private tasks: only the selected members (and never
+    // other staff accounts browsing the site). lib/task-privacy.ts.
+    ...memberTaskPrivacyWhere(viewer),
   ];
 
   if (!opts.includeBoardTasks) {

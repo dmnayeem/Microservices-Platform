@@ -1,4 +1,6 @@
 import { parsePage } from "@/lib/paginate";
+import { freshRole } from "@/lib/task-privacy-server";
+import { adminSubmissionScope } from "@/lib/task-privacy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
@@ -97,6 +99,9 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
      the original rule. */
   const VISIBLE: Prisma.TaskSubmissionWhereInput = {
     OR: [{ submittedAt: { not: null } }, { status: { not: "PENDING" } }],
+    // Submissions on the super admin's private tasks: in their queue only —
+    // list AND the counts above it, so the numbers match the list.
+    ...adminSubmissionScope(session?.user?.id ? await freshRole(session.user.id) : null),
   };
   const where: Prisma.TaskSubmissionWhereInput = { ...VISIBLE };
   const taskWhere: Prisma.TaskWhereInput = {};
@@ -124,7 +129,8 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
   }
 
   if (Object.keys(taskWhere).length > 0) {
-    where.task = taskWhere;
+    // Merged, not replaced: VISIBLE already carries the private-task scope.
+    where.task = { ...(where.task as Prisma.TaskWhereInput | undefined), ...taskWhere };
   }
 
   if (params.taskId) {
