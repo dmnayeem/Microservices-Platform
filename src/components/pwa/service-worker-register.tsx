@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { APP_REFRESH_EVENT } from "@/hooks/use-app-refresh";
+import { GAME_CLOSED_EVENT, isGameOpen } from "@/lib/game-open";
 
 /**
  * Registers the service worker (/sw.js) and gets every deploy onto installed
@@ -15,7 +16,9 @@ import { APP_REFRESH_EVENT } from "@/hooks/use-app-refresh";
  *  - if they stay in the app, an "Update available" card in the middle of the
  *    screen offers Update now / Later (asks again after 30 min);
  *  - never on first install, and the manifest id is unchanged, so it stays
- *    the same installed app — never a second icon.
+ *    the same installed app — never a second icon;
+ *  - never while a game is open: leaving to share an invite on WhatsApp must
+ *    not restart the game — the update waits until the game is closed.
  */
 export function ServiceWorkerRegister() {
   // "Update available" card — shown when a new build took over while the
@@ -84,16 +87,25 @@ export function ServiceWorkerRegister() {
     // runs the old code until it reloads, so reload at a moment that costs the
     // member nothing — and if they stay in the app, ask in the middle of the
     // screen (owner, 2026-10-17).
-    const onUpdateReady = () => {
-      if (updateReady) return;
-      updateReady = true;
+    const applyUpdate = () => {
+      if (!updateReady || isGameOpen()) return;
       if (justOpened() || document.visibilityState === "hidden") {
         reloadNow();
         return;
       }
       // Give them a few seconds, then show the "Update available" card.
-      askTimer = window.setTimeout(() => setAsk(true), 4_000);
+      window.clearTimeout(askTimer);
+      askTimer = window.setTimeout(() => {
+        if (!isGameOpen()) setAsk(true);
+      }, 4_000);
     };
+    const onUpdateReady = () => {
+      if (updateReady) return;
+      updateReady = true;
+      applyUpdate();
+    };
+    // An update that arrived during a game is offered once the game is closed.
+    window.addEventListener(GAME_CLOSED_EVENT, applyUpdate);
 
     const onControllerChange = () => {
       if (!hadController) return;
@@ -120,13 +132,14 @@ export function ServiceWorkerRegister() {
         const onVis = () => {
           if (document.visibilityState === "hidden") {
             hiddenAt = Date.now();
-            // Leaving the app with an update ready: reload now, unseen.
-            if (updateReady) reloadNow();
+            // Leaving the app with an update ready: reload now, unseen
+            // (not during a game — they are coming back to it).
+            if (updateReady && !isGameOpen()) reloadNow();
             return;
           }
           check();
           // Reopened after being backgrounded a while → apply a pending update.
-          if (hiddenAt && Date.now() - hiddenAt > 60_000) {
+          if (hiddenAt && Date.now() - hiddenAt > 60_000 && !isGameOpen()) {
             if (updateReady) reloadNow();
             else applyPending();
           }
@@ -155,6 +168,7 @@ export function ServiceWorkerRegister() {
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      window.removeEventListener(GAME_CLOSED_EVENT, applyUpdate);
       window.clearTimeout(askTimer);
       cleanup();
     };
@@ -184,7 +198,9 @@ export function ServiceWorkerRegister() {
             onClick={() => {
               setAsk(false);
               // Ask again in a while if they keep going.
-              window.setTimeout(() => setAsk(true), 30 * 60 * 1000);
+              window.setTimeout(() => {
+                if (!isGameOpen()) setAsk(true);
+              }, 30 * 60 * 1000);
             }}
             className="flex-1 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/5"
           >

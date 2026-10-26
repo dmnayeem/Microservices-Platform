@@ -27,7 +27,8 @@ import { lsGet, lsSet, ssGet, ssSet } from "@/lib/safe-storage";
  *         the feed (iOS keeps the start_url it was installed with)
  *     → Home.
  * A push notification or link that opens a DIFFERENT page is a real
- * destination and is left alone.
+ * destination and is left alone. So is an open game (`/games?play=…`): a
+ * member who left to share an invite comes back to the game, not to Home.
  *
  * A quick app switch (page still alive) never reloads, so it never triggers.
  */
@@ -72,6 +73,7 @@ export function PwaLaunchHome() {
     const longAway = hiddenAt > 0 && Date.now() - hiddenAt > STALE_MS;
 
     if (navigationType() === "reload") return;
+    if (params.has("play")) return;
     if (fromIcon) {
       // Strip the marker (and land on Home if a restore swapped the path).
       router.replace(path === HOME ? here : HOME);
@@ -98,6 +100,7 @@ export function PwaLaunchHome() {
     // (bfcache): same rule as a cold launch.
     const onShow = (e: PageTransitionEvent) => {
       if (!e.persisted) return;
+      if (new URLSearchParams(window.location.search).has("play")) return;
       const hiddenAt = Number(lsGet(HIDDEN_AT) || 0);
       if (hiddenAt > 0 && Date.now() - hiddenAt > STALE_MS && window.location.pathname !== HOME) {
         router.replace(HOME);
