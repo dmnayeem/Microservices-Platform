@@ -78,6 +78,7 @@ import {
   toPageContent,
   looksUnreadable,
 } from "@/lib/link-verify";
+import { expandShortLinks } from "@/lib/short-links";
 import {
   verifyTelegramMember,
   verifyDiscordMember,
@@ -1551,8 +1552,9 @@ export async function POST(
               // Off the platform is a definite failure (nothing to read is not
               // the same as "couldn't read"): task.autoApprove may not pay it.
               if (offPlatform) socialCheckFailed = true;
+              // Short links (X shows every link as t.co) count as where they point.
               const evaluation = evaluateContentRules(
-                html === null ? null : toPageContent(html),
+                html === null ? null : await expandShortLinks(toPageContent(html)),
                 rules,
                 {
                   submittedUsername:

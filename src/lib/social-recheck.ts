@@ -17,6 +17,7 @@ import {
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { proofHostAllowed } from "@/lib/social-proof-url";
 import { verifyCodeFor, contentHasCode, codeVerdict } from "@/lib/task-verify-code";
+import { expandShortLinks } from "@/lib/short-links";
 import { autoApproveHold } from "@/lib/auto-approve-gates";
 import { bumpTrust, TRUST_APPROVE } from "@/lib/trust";
 import { getPointsPerUsd } from "@/lib/economy";
@@ -273,7 +274,8 @@ export async function recheckPendingSocialSubmissions(opts?: {
           // later), the same test the CONTENT check uses — see `codeVerdict`.
           status = codeVerdict(html, verifyCodeFor(sub.taskId, i, sub.userId));
         } else {
-          const page = toPageContent(html);
+          // Short links (X shows every link as t.co) count as where they point.
+          const page = await expandShortLinks(toPageContent(html));
           const res = evaluateContentRules(page, parseContentRules(it.contentRules), {
             submittedUsername: (items[i]?.username as string | undefined) ?? undefined,
             expectedCode: verifyCodeFor(sub.taskId, i, sub.userId),
