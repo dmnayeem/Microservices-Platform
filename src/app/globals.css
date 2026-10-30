@@ -3575,3 +3575,367 @@ span[style*=";color:"] mark {
   -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
   mask-image: linear-gradient(to bottom, #000, transparent);
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Marketing kit (mkx) — the editorial skin of the public feature pages
+   (components/marketing/kit.tsx). 2026-10-30: the pages were a centred pill
+   badge over a two-tone headline and a grid of identical icon cards, which is
+   what read as generated. Type does the work here: tighter, lighter display
+   weights, split headings, hairline rules. Motion only when the admin's
+   animation switch is on and the visitor has not asked for less of it.
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer components {
+  .mkx-display {
+    font-size: clamp(2.125rem, 1rem + 4.3vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.042em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .mkx-h2 {
+    font-size: clamp(1.75rem, 1.05rem + 2.5vw, 3.125rem);
+    font-weight: 700;
+    line-height: 1.06;
+    letter-spacing: -0.036em;
+    text-wrap: balance;
+    color: var(--mk-text);
+  }
+  .mkx-h3 {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.014em;
+    color: var(--mk-text);
+  }
+  .mkx-lead {
+    font-size: clamp(1rem, 0.93rem + 0.35vw, 1.1875rem);
+    line-height: 1.6;
+    color: var(--mk-muted);
+    text-wrap: pretty;
+  }
+  .mkx-body {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--mk-muted);
+    text-wrap: pretty;
+  }
+  .mkx-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--mk-accent);
+  }
+  /* A small status dot with a soft halo, not a rule. */
+  .mkx-kicker::before {
+    content: "";
+    flex-shrink: 0;
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 9999px;
+    background: currentColor;
+    box-shadow: 0 0 0 4px color-mix(in oklab, currentColor 18%, transparent);
+  }
+  .mkx-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--mk-subtle);
+  }
+  .mkx-num {
+    font-family: var(--font-jetbrains);
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--mk-accent);
+    letter-spacing: 0;
+  }
+  .mkx-figure {
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.875rem, 1.35rem + 1.6vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.045em;
+    color: var(--mk-text);
+  }
+  .mkx-band {
+    padding-block: clamp(3.5rem, 8vw, 7rem);
+  }
+  .mkx-head {
+    margin-bottom: clamp(2rem, 4.5vw, 3.75rem);
+  }
+}
+
+/* Hero background: a fine grid that fades out — texture, not decoration. */
+.mkx-grid-bg {
+  background-image: linear-gradient(var(--mk-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mk-grid) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 72% 35%, #000 20%, transparent 72%);
+  mask-image: radial-gradient(ellipse 75% 70% at 72% 35%, #000 20%, transparent 72%);
+}
+
+/* Rows: a rule draws across the top of the row under the pointer. */
+.mkx-row {
+  position: relative;
+}
+.mkx-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  height: 1px;
+  width: 0;
+  background: var(--mk-accent);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mkx-row:hover::before {
+  width: 100%;
+}
+
+/* Steps: a short accent segment on the rail that runs to full width on hover. */
+.mkx-step {
+  position: relative;
+  border-top: 1px solid var(--mk-border-strong);
+  padding-top: 1.25rem;
+}
+.mkx-step::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  height: 2px;
+  width: 2.5rem;
+  background: var(--mk-accent);
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mkx-step:hover::before {
+  width: 100%;
+}
+
+.mkx-tile {
+  transition: border-color 0.25s ease, box-shadow 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mkx-tile:hover {
+  border-color: var(--mk-border-strong);
+}
+[data-mk-anim="on"] .mkx-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--mk-shadow-lg);
+}
+.mkx-arrow svg {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mkx-arrow:hover svg {
+  transform: translateX(3px);
+}
+.mkx-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.mkx-chip-wait {
+  border-color: rgba(217, 119, 6, 0.3);
+  background-color: rgba(217, 119, 6, 0.1);
+  color: #b45309;
+}
+[data-mk-theme="dark"] .mkx-chip-wait {
+  color: #fcd34d;
+}
+
+/* The closing band keeps its deep green in both themes. */
+.mkx-closing {
+  background: radial-gradient(120% 140% at 100% 0%, #0a7353 0%, #064e3b 42%, #032319 100%);
+  color: #fff;
+}
+.mkx-closing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: linear-gradient(115deg, transparent 35%, #000 100%);
+  mask-image: linear-gradient(115deg, transparent 35%, #000 100%);
+}
+
+.mkx-marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.mkx-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 0.75rem;
+}
+
+/* ── Motion ── */
+@keyframes mkx-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mkx-marquee {
+  to {
+    transform: translateX(calc(-50% - 0.375rem));
+  }
+}
+@keyframes mkx-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes mkx-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes mkx-ping {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 9px rgba(16, 185, 129, 0);
+  }
+}
+@keyframes mkx-pop {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  20%,
+  85% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.mkx-fill {
+  transform-origin: left center;
+}
+[data-mk-anim="on"] .mkx-enter {
+  animation: mkx-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+[data-mk-anim="on"] .mkx-delay-1 {
+  animation-delay: 0.1s;
+}
+[data-mk-anim="on"] .mkx-delay-2 {
+  animation-delay: 0.2s;
+}
+[data-mk-anim="on"] .mkx-delay-3 {
+  animation-delay: 0.32s;
+}
+[data-mk-anim="on"] .mkx-reveal {
+  animation: mkx-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@supports (animation-timeline: view()) {
+  [data-mk-anim="on"] .mkx-reveal {
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+}
+[data-mk-anim="on"] .mkx-marquee-track {
+  animation: mkx-marquee var(--mkx-dur, 60s) linear infinite;
+}
+.mkx-marquee:hover .mkx-marquee-track {
+  animation-play-state: paused;
+}
+[data-mk-anim="on"] .mkx-float {
+  animation: mkx-float 7s ease-in-out infinite;
+}
+[data-mk-anim="on"] .mkx-fill {
+  animation: mkx-fill 1.6s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+[data-mk-anim="on"] .mkx-live {
+  animation: mkx-ping 1.8s ease-out infinite;
+}
+[data-mk-anim="on"] .mkx-pop {
+  animation: mkx-pop 6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-mk-anim="on"] .mkx-enter,
+  [data-mk-anim="on"] .mkx-reveal,
+  [data-mk-anim="on"] .mkx-marquee-track,
+  [data-mk-anim="on"] .mkx-float,
+  [data-mk-anim="on"] .mkx-fill,
+  [data-mk-anim="on"] .mkx-live,
+  [data-mk-anim="on"] .mkx-pop {
+    animation: none;
+  }
+  [data-mk-anim="on"] .mkx-tile:hover {
+    transform: none;
+  }
+  .mkx-row::before,
+  .mkx-step::before,
+  .mkx-arrow svg {
+    transition: none;
+  }
+}
+
+/* A still marquee would cut its logos off at the edge: with motion off, the
+   strip becomes a wrapped list of its first copy instead. */
+[data-mk-anim="off"] .mkx-marquee {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+[data-mk-anim="off"] .mkx-marquee-track,
+[data-mk-anim="off"] .mkx-marquee-track > div:first-child {
+  width: auto;
+  flex-wrap: wrap;
+}
+[data-mk-anim="off"] .mkx-marquee-track > [aria-hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mkx-marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .mkx-marquee-track,
+  .mkx-marquee-track > div:first-child {
+    width: auto;
+    flex-wrap: wrap;
+  }
+  .mkx-marquee-track > [aria-hidden] {
+    display: none;
+  }
+}
+@keyframes mkx-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Ruled grid cell (home "features"): the surface lifts under the pointer. */
+.mkx-cell {
+  transition: background-color 0.3s ease;
+}
+.mkx-cell:hover {
+  background-color: var(--mk-surface);
+}
+
+/* Ruled grid cell (home "features"): the surface lifts under the pointer. */
+.mkx-cell {
+  transition: background-color 0.3s ease;
+}
+.mkx-cell:hover {
+  background-color: var(--mk-surface);
+}

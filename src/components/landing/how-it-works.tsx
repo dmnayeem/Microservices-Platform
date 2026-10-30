@@ -26,6 +26,7 @@ const ICONS: Record<string, LucideIcon> = {
 
 type Props = Partial<HowItWorksContent>;
 
+/** Steps on a rail (marketing kit `.mkx-step`), the same as the feature pages. */
 export function HowItWorks(props: Props) {
   const v: HowItWorksContent = {
     ...DEFAULT_LANDING_CONTENT.how_it_works,
@@ -33,7 +34,7 @@ export function HowItWorks(props: Props) {
   };
 
   return (
-    <section id="how-it-works" className="mk-section">
+    <section id="how-it-works" className="mkx-band">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow={v.badge}
@@ -42,42 +43,21 @@ export function HowItWorks(props: Props) {
           sub={v.subheading}
         />
 
-        <div className="relative">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-linear-to-r from-(--mk-grad-a)/30 via-(--mk-grad-b)/30 to-(--mk-grad-b)/30 hidden lg:block -translate-y-1/2 pointer-events-none" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 relative">
-            {v.steps.map((step, i) => {
-              const Icon = ICONS[step.iconKey] ?? Sparkles;
-              return (
-                <div
-                  key={i}
-                  className="mk-zoom mk-press relative h-full min-w-0 p-5 pt-8 sm:p-6 sm:pt-8 rounded-2xl mk-card text-center"
-                >
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span
-                      className={`inline-flex items-center justify-center w-10 h-10 rounded-full bg-linear-to-r ${step.gradient} text-white text-sm font-extrabold shadow-md`}
-                    >
-                      {step.step_number}
-                    </span>
-                  </div>
-
-                  <div
-                    className={`w-16 h-16 mx-auto mt-2 rounded-2xl bg-linear-to-br ${step.gradient} flex items-center justify-center mb-4 shadow-sm`}
-                  >
-                    <Icon className="w-8 h-8 text-white" />
-                  </div>
-
-                  <h3 className="text-base sm:text-lg font-bold text-(--mk-text) mb-2 text-balance">
-                    {step.title}
-                  </h3>
-                  <p className="text-sm sm:text-[0.9375rem] text-(--mk-muted) leading-relaxed text-pretty line-clamp-4">
-                    {step.description}
-                  </p>
+        <ol className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+          {v.steps.map((step, i) => {
+            const Icon = ICONS[step.iconKey] ?? Sparkles;
+            return (
+              <li key={i} className="mkx-step mkx-reveal min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="mkx-num">Step {step.step_number || i + 1}</span>
+                  <Icon aria-hidden className="h-5 w-5 text-(--mk-subtle)" />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <h3 className="mkx-h3 mt-4 text-balance">{step.title}</h3>
+                <p className="mkx-body mt-2 line-clamp-4">{step.description}</p>
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </section>
   );

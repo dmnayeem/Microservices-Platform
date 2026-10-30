@@ -3,68 +3,76 @@ import type { ReactNode } from "react";
 /**
  * One section heading for the whole landing page.
  *
- * Six sections had hand-copied heading markup: the same eyebrow chip in four
- * different hues, `text-3xl sm:text-4xl lg:text-5xl` retyped each time, and a
- * bottom margin that was mb-16 in four places and mb-12 in two. That is why
- * the page read as a stack of unrelated blocks rather than one document — the
- * rhythm changed every time you scrolled past a divider.
+ * 2026-10-30: the centred pill eyebrow over a gradient-clipped second line was
+ * the single most "generated" pattern on the page, repeated in every section.
+ * It is now the same editorial heading the feature pages use (marketing kit,
+ * globals.css "mkx"): a small ruled label, the title in solid ink with its
+ * second half in the muted ink, and the supporting sentence beside it on a
+ * desktop instead of under it.
  *
- * The eyebrow hues are also the reason the badges were unreadable in dark
- * mode: `text-(--mk-accent)` measures 3.00:1 on the dark marketing band. The
- * `mk-eyebrow` class uses the measured accent pair instead (6.97:1 light,
- * 8.23:1 dark).
+ *  - "split" (default): title left, sub right from `lg`.
+ *  - "stack": everything in one left column — for a heading that sits in a
+ *    narrow column of its own (the FAQ).
+ *  - "center": kept for pages that still centre a heading.
  */
 export function SectionHeading({
   eyebrow,
   line1,
   line2,
   sub,
-  align = "center",
+  align = "split",
   as: Tag = "h2",
+  id,
   children,
 }: {
   eyebrow?: string;
   line1: string;
   line2?: string;
   sub?: string;
-  align?: "center" | "start";
+  align?: "split" | "stack" | "center" | "start";
   /** "h1" when this is the page's own title (e.g. /pricing). Same look. */
   as?: "h1" | "h2";
+  id?: string;
   children?: ReactNode;
 }) {
-  const centered = align === "center";
+  const title = (
+    <Tag id={id} className="mkx-h2 mt-4">
+      {line1}
+      {line2 ? <span className="text-(--mk-subtle)"> {line2}</span> : null}
+    </Tag>
+  );
+  const label = eyebrow ? <p className="mkx-kicker">{eyebrow}</p> : null;
+
+  if (align === "center") {
+    return (
+      <div className="mkx-head mkx-reveal mx-auto max-w-3xl text-center">
+        {label}
+        {title}
+        {sub ? <p className="mkx-lead mx-auto mt-5 max-w-2xl">{sub}</p> : null}
+        {children}
+      </div>
+    );
+  }
+
+  if (align === "stack" || align === "start") {
+    return (
+      <div className="mkx-head mkx-reveal">
+        {label}
+        {title}
+        {sub ? <p className="mkx-lead mt-5 max-w-2xl">{sub}</p> : null}
+        {children}
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={
-        centered
-          ? "mk-section-head mk-rise text-center"
-          : "mk-section-head mk-rise text-left"
-      }
-    >
-      {eyebrow ? <span className="mk-eyebrow mb-5">{eyebrow}</span> : null}
-      <Tag className="mk-h2 text-(--mk-text) mt-0 mb-4">
-        {line1}
-        {line2 ? (
-          <>
-            {" "}
-            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              {line2}
-            </span>
-          </>
-        ) : null}
-      </Tag>
-      {sub ? (
-        <p
-          className={
-            centered
-              ? "mk-lead mk-measure mx-auto line-clamp-4 sm:line-clamp-none"
-              : "mk-lead mk-measure line-clamp-4 sm:line-clamp-none"
-          }
-        >
-          {sub}
-        </p>
-      ) : null}
-      {children}
+    <div className="mkx-head mkx-reveal grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-10">
+      <div className="lg:col-span-7">
+        {label}
+        {title}
+      </div>
+      {sub ? <p className="mkx-lead lg:col-span-5">{sub}</p> : null}
+      {children ? <div className="lg:col-span-12">{children}</div> : null}
     </div>
   );
 }

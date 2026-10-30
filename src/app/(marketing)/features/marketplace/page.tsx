@@ -1,194 +1,167 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
-  ShoppingBag,
-  Image as ImageIcon,
-  Music,
-  FileText,
-  Code2,
-  Palette,
-  Handshake,
-  ShieldCheck,
-  Zap,
-  Wallet,
-  Globe2,
-  Upload,
-  BadgeCheck,
-  CreditCard,
-  ArrowRight,
-} from "lucide-react";
-import {
-  Section,
-  SectionHeading,
-  GlassCard,
-  StatGrid,
-  PrimaryButton,
-  GhostButton, MarketingHero, CtaBand
-} from "@/components/marketing/ui";
+  PageHero,
+  Band,
+  SectionHead,
+  Facts,
+  Rows,
+  Steps,
+  Tile,
+  Btn,
+  Faq,
+  Closing,
+} from "@/components/marketing/kit";
+import { MarketplaceMock } from "@/components/marketing/mocks";
 import { COMPANY_NAME } from "@/config/company";
 import { pageMeta } from "@/lib/seo/page-meta";
 
+// Breadcrumb data comes from this route's layout.tsx.
+
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "Digital Marketplace — Products & Services",
+    title: "Digital Marketplace — Sell Products & Services",
     // ≤155 chars — what Google shows uncut.
-    description: `Sell digital products and freelance services on ${COMPANY_NAME}: reviewed listings, automatic download delivery and escrow for service deals.`,
+    description: `Sell templates, graphics, ebooks, stock media, code and freelance services on ${COMPANY_NAME}. Reviewed listings, instant downloads and escrow for custom work.`,
     path: "/features/marketplace",
   });
 }
 
-const STATS = [
-  { value: "Reviewed", label: "Every listing, before it goes live" },
-  { value: "Automatic", label: "Delivery of digital downloads" },
-  { value: "Escrow", label: "Protected payments" },
-  { value: "Yours", label: "You set every price" },
-];
-
 const CATEGORIES = [
-  { icon: Palette, title: "Graphics & Templates", body: "UI kits, presentation decks, social templates, print designs, and reusable creative assets." },
-  { icon: ImageIcon, title: "Stock Photos & Video", body: "License your photography and footage. Buyers filter by resolution, style, and asset age." },
-  { icon: Music, title: "Music & Audio", body: "Beats, loops, sound effects, and background tracks for creators and businesses." },
-  { icon: FileText, title: "Ebooks & Guides", body: "Sell knowledge as downloadable ebooks, playbooks, and study material." },
-  { icon: Code2, title: "Software & Digital Tools", body: "Scripts, plugins, spreadsheets, and digital utilities delivered as secure downloads." },
-  { icon: Handshake, title: "Services & Custom Work", body: "Offer freelance services — design, writing, editing, development and more. Each service listing states what you deliver, the turnaround and the revisions included, and deals run through escrow with built-in chat and admin mediation." },
+  { title: "Graphics & templates", body: "UI kits, decks, social templates, print designs and reusable creative assets.", meta: "Instant download" },
+  { title: "Stock photos & video", body: "License your photography and footage to creators and businesses.", meta: "Instant download" },
+  { title: "Music & audio", body: "Beats, loops, sound effects and background tracks.", meta: "Instant download" },
+  { title: "Ebooks & guides", body: "Playbooks, study material and anything you can teach in a document.", meta: "Instant download" },
+  { title: "Software & tools", body: "Scripts, plugins, spreadsheets and other digital utilities.", meta: "Instant download" },
+  {
+    title: "Services & custom work",
+    body: "Design, writing, editing, development and more. Each listing states what you deliver, the turnaround and the revisions included.",
+    meta: "Paid through escrow",
+  },
 ];
 
-const STEPS = [
-  { icon: Upload, title: "Apply and list", body: "Apply to sell, then upload your files or describe your service, write a clear description, and set your own price." },
-  { icon: BadgeCheck, title: "Get approved", body: "Every listing gets a quality-and-safety review before it is published, so buyers know what they are getting." },
-  { icon: CreditCard, title: "Buyers purchase", body: "Digital downloads unlock after payment. Service work and negotiated deals are paid into escrow and released when delivery is confirmed." },
-  { icon: Wallet, title: "Get paid", body: "Your share of each sale, after the platform fee, lands in your wallet, ready to withdraw under the usual withdrawal rules." },
+const SELL_STEPS = [
+  { title: "Apply and list", body: "Get approved as a seller, then upload your files or describe your service and set your price." },
+  { title: "Pass review", body: "Every listing is checked for quality and safety before it goes live." },
+  { title: "Make the sale", body: "Downloads unlock as soon as payment clears. Service work is paid into escrow." },
+  { title: "Get paid", body: "Your share, after the platform fee, lands in your wallet, ready to withdraw." },
 ];
 
-const BUYER = [
-  { icon: Zap, title: "Automatic delivery", body: "Digital downloads unlock as soon as payment clears — no waiting for the seller." },
-  { icon: ShieldCheck, title: "Escrow for services", body: "Custom work and negotiated deals are held in escrow, with admin mediation if a delivery is disputed." },
-  { icon: Globe2, title: "Reviewed listings", body: "Every product and service is checked by the team before it appears in the marketplace." },
+const ESCROW = [
+  { title: "Buyer pays", body: "The money is held by the platform, not sent to the seller." },
+  { title: "Seller delivers", body: "Work and messages stay in the deal's built-in chat." },
+  { title: "Buyer confirms", body: "Delivery accepted? The payment is released to the seller." },
+  { title: "Disagreement?", body: "Either side can ask our team to step in and mediate." },
+];
+
+const FAQ = [
+  {
+    q: "What can I sell?",
+    a: "Digital products — templates, graphics, stock photos and video, music and audio, ebooks and guides, software and tools — plus freelance services. Physical goods are not sold here.",
+  },
+  {
+    q: "Do I need approval to sell?",
+    a: "Yes. Selling requires an approved seller application, and every listing is reviewed before it goes live.",
+  },
+  {
+    q: `What does ${COMPANY_NAME} charge?`,
+    a: "A platform fee is taken from each sale. Your share goes to your wallet and is withdrawn under the usual withdrawal rules.",
+  },
+  {
+    q: "How does escrow work for services?",
+    a: "The buyer's payment is held until delivery is confirmed. Both sides talk in the deal's chat, and our team mediates if there's a dispute.",
+  },
+  {
+    q: "Can other people promote my products?",
+    a: "Yes. Turn on an affiliate reward for a listing and affiliates can share it with their own link. You pay a commission only when they make a sale.",
+  },
 ];
 
 export default function MarketplaceFeaturePage() {
   return (
     <>
-      <MarketingHero
-        badge="Digital Marketplace"
-        title="Sell your digital products to"
-        highlight="buyers worldwide"
-        subtitle="Sell templates, graphics, ebooks, stock media, code or your own services — or buy ready-made work for your next project."
+      <PageHero
+        kicker="Digital marketplace"
+        title="Sell what you make."
+        accent="Delivered and paid for safely."
+        lead="Templates, graphics, ebooks, stock media, code and freelance services. Listings are reviewed, downloads unlock the moment payment clears, and custom work runs through escrow."
         actions={
           <>
-            <PrimaryButton href="/register">
-              <ShoppingBag className="h-4 w-4" /> Start selling
-            </PrimaryButton>
-            <GhostButton href="/marketplace">Browse the marketplace →</GhostButton>
+            <Btn href="/register">Start selling</Btn>
+            <Btn href="/marketplace" variant="secondary">
+              Browse the marketplace
+            </Btn>
           </>
         }
+        note="Digital goods and services only · You set every price"
+        visual={<MarketplaceMock />}
       />
 
-      <Section className="bg-(--mk-band)">
-        <StatGrid stats={STATS} />
-      </Section>
-
-      {/* What you can sell */}
-      <Section>
-        <SectionHeading
-          badge="What you can sell"
-          tone="emerald"
-          title="A storefront for every kind of digital work"
-          subtitle="Digital goods and services only — no physical products. You set your own prices."
+      <div className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
+        <Facts
+          items={[
+            { value: String(CATEGORIES.length), label: "Kinds of listing" },
+            { value: "Reviewed", label: "Every listing, before launch" },
+            { value: "Instant", label: "Download delivery" },
+            { value: "Escrow", label: "For custom work" },
+          ]}
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CATEGORIES.map((c) => (
-            <GlassCard key={c.title}>
-              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 shadow-sm">
-                <c.icon className="h-5 w-5 text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-(--mk-text)">{c.title}</h3>
-              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{c.body}</p>
-            </GlassCard>
-          ))}
-        </div>
-      </Section>
+      </div>
 
-      {/* How selling works */}
-      <Section className="bg-(--mk-band)">
-        <SectionHeading
-          badge="How selling works"
-          title="From upload to payout in four steps"
+      <Band labelledBy="sell-title">
+        <SectionHead
+          id="sell-title"
+          n="01"
+          label="What you can sell"
+          title="A storefront for digital work"
+          lead="Files deliver themselves. Services are paid into escrow and released when the buyer confirms delivery."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s, i) => (
-            <GlassCard key={s.title} className="relative pt-8">
-              <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-teal-600 text-sm font-extrabold text-white shadow-sm">
-                {i + 1}
-              </span>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-success)/10 border border-emerald-500/20">
-                <s.icon className="h-5 w-5 text-(--mk-success)" />
-              </div>
-              <h3 className="font-bold text-(--mk-text)">{s.title}</h3>
-              <p className="mt-1.5 text-sm text-(--mk-muted) leading-relaxed">{s.body}</p>
-            </GlassCard>
-          ))}
-        </div>
-      </Section>
+        <Rows items={CATEGORIES} />
+      </Band>
 
-      {/* Buyer benefits */}
-      <Section>
-        <SectionHeading
-          badge="For buyers"
-          tone="cyan"
-          title="Shop with total confidence"
+      <Band labelledBy="how-title" alt>
+        <SectionHead id="how-title" n="02" label="Selling" title="From upload to payout" />
+        <Steps items={SELL_STEPS} />
+      </Band>
+
+      <Band labelledBy="escrow-title">
+        <SectionHead
+          id="escrow-title"
+          n="03"
+          label="Escrow"
+          title="Custom work, paid only on delivery"
+          lead="Services and negotiated deals never move money straight to the seller. It waits until the work is accepted."
         />
-        <div className="grid gap-4 sm:grid-cols-3">
-          {BUYER.map((b) => (
-            <GlassCard key={b.title}>
-              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) shadow-sm">
-                <b.icon className="h-5 w-5 text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-(--mk-text)">{b.title}</h3>
-              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{b.body}</p>
-            </GlassCard>
-          ))}
-        </div>
-      </Section>
+        <Steps items={ESCROW} prefix="" />
+      </Band>
 
-      {/* Affiliate tie-in */}
-      <Section width="narrow">
-        <GlassCard className="sm:p-10">
-          <div className="mb-3 inline-flex items-center gap-2 text-(--mk-accent)">
-            <Handshake className="w-5 h-5" />
-            <span className="text-sm font-bold uppercase tracking-wider">Sell more, effortlessly</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--mk-text)">
-            Let others promote your products
-          </h2>
-          <p className="mt-3 text-(--mk-muted) leading-relaxed">
-            Enable an affiliate reward on any listing and a community of
-            promoters will share your products for you — you only pay a
-            commission when they make a sale.
-          </p>
-          <Link
+      <Band labelledBy="more-title" alt>
+        <SectionHead id="more-title" n="04" label="Grow" title="Sell more without doing more" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Tile
             href="/features/affiliate"
-            className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-(--mk-accent) hover:text-(--mk-accent)"
-          >
-            Learn about the affiliate program <ArrowRight className="w-4 h-4" />
-          </Link>
-        </GlassCard>
-      </Section>
+            cta="How the affiliate program works"
+            title="Let affiliates promote your listings"
+            body="Turn on an affiliate reward and others share your product with their own link. You pay a commission only when they make a sale."
+          />
+          <Tile
+            href="/features/courses"
+            cta="Teach a course"
+            title="Teach what you sell"
+            body="Turn your expertise into a course with video lessons, quizzes and a completion certificate."
+          />
+        </div>
+      </Band>
 
-      {/* Final CTA */}
-      <Section>
-        <CtaBand
-          title="Turn your digital work into income"
-          subtitle={
-            <>
-              Create a free account and apply to sell. Questions about fees, delivery or disputes? The{" "}
-              <Link href="/help">Help Center</Link> covers them — or <Link href="/features/courses">teach a course</Link>.
-            </>
-          }
-          primary={{ href: "/register", label: <><ShoppingBag className="h-4 w-4" /> Create a free account</> }}
-          secondary={{ href: "/features/affiliate", label: "Explore affiliate →" }}
-        />
-      </Section>
+      <Band labelledBy="faq-title">
+        <Faq id="faq-title" items={FAQ} />
+      </Band>
+
+      <Closing
+        title="Turn your digital work into income."
+        lead="Create a free account and apply to sell. Your first listing can be live as soon as it passes review."
+        primary={{ href: "/register", label: "Create a free account" }}
+        secondary={{ href: "/marketplace", label: "Browse the marketplace" }}
+      />
     </>
   );
 }

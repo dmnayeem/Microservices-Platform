@@ -19,13 +19,14 @@ import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 
 const PLAN_GRADIENTS: Record<string, string> = {
   FREE: "from-[#64748b] to-[#475569]",
-  STARTER: "from-blue-500 to-cyan-500",
-  PRO: "from-purple-500 to-pink-500",
-  ELITE: "from-amber-500 to-orange-500",
+  // One hue family: the glow behind the total only brightens with the plan.
+  STARTER: "from-emerald-600 to-teal-700",
+  PRO: "from-emerald-500 to-teal-600",
+  ELITE: "from-emerald-400 to-teal-500",
   VIP: "from-emerald-500 to-teal-500",
 };
 
-const FALLBACK_GRADIENT = "from-blue-500 to-purple-500";
+const FALLBACK_GRADIENT = "from-emerald-500 to-teal-600";
 
 const TASK_PRESETS = [10, 50, 100, 250, 500] as const;
 
@@ -176,8 +177,6 @@ export function EarningsCalculator(props: Props) {
                     }}
                   >
                     {v.plans.map((p) => {
-                      const gradient =
-                        PLAN_GRADIENTS[p.name] ?? FALLBACK_GRADIENT;
                       const active = plan === p.name;
                       return (
                         <button
@@ -186,7 +185,7 @@ export function EarningsCalculator(props: Props) {
                           aria-pressed={active}
                           className={`group relative rounded-xl p-3 text-left transition-all duration-200 border ${
                             active
-                              ? `bg-linear-to-br ${gradient} border-transparent shadow-md scale-[1.02]`
+                              ? `bg-[#065f46] border-(--mk-accent) shadow-md`
                               : "bg-(--mk-surface) border-(--mk-border) hover:bg-(--mk-surface-2) hover:border-(--mk-border-strong)"
                           }`}
                         >
@@ -233,7 +232,7 @@ export function EarningsCalculator(props: Props) {
                       /task
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-(--mk-info)" />
+                      <span className="w-1 h-1 rounded-full bg-teal-400" />
                       Multiplier{" "}
                       <span className="text-(--mk-text) tabular-nums">
                         {activePlan?.multiplier ?? 1}×
@@ -364,10 +363,10 @@ export function EarningsCalculator(props: Props) {
                             value: l2,
                             set: setL2,
                             color: "purple",
-                            dot: "bg-(--mk-info)",
+                            dot: "bg-teal-400",
                             badge:
-                              "bg-(--mk-info)/10 text-(--mk-info) border-(--mk-info)/30",
-                            valueText: "text-(--mk-info)",
+                              "bg-teal-400/10 text-teal-500 border-teal-400/30",
+                            valueText: "text-teal-500",
                             rangeClass: "ec-range-purple",
                           },
                           {
@@ -447,7 +446,7 @@ export function EarningsCalculator(props: Props) {
                       <TrendingUp className="w-3.5 h-3.5" />
                       Illustrative monthly total
                     </p>
-                    <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold bg-linear-to-r from-(--mk-rail-a) via-(--mk-rail-b) to-(--mk-rail-b) bg-clip-text text-transparent tabular-nums leading-none">
+                    <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold text-(--mk-accent) tabular-nums leading-none">
                       ${formatCurrency(animatedMonthly)}
                     </p>
                     <p className="text-xs sm:text-sm text-(--mk-subtle) mt-2 tabular-nums">
@@ -477,16 +476,16 @@ export function EarningsCalculator(props: Props) {
                           {teamShare}%
                         </span>{" "}
                         Team
-                        <span className="w-2 h-2 rounded-sm bg-(--mk-info)" />
+                        <span className="w-2 h-2 rounded-sm bg-teal-400" />
                       </span>
                     </div>
                     <div className="h-2 w-full rounded-full overflow-hidden bg-(--mk-surface-2) border border-(--mk-border) flex">
                       <div
-                        className="h-full bg-linear-to-r from-(--mk-grad-a) to-cyan-400 transition-all duration-500"
+                        className="h-full bg-(--mk-accent) transition-all duration-500"
                         style={{ width: `${directShare}%` }}
                       />
                       <div
-                        className="h-full bg-linear-to-r from-(--mk-grad-a) to-(--mk-info) transition-all duration-500"
+                        className="h-full bg-teal-400 transition-all duration-500"
                         style={{ width: `${teamShare}%` }}
                       />
                     </div>
@@ -505,7 +504,7 @@ export function EarningsCalculator(props: Props) {
                       <p className="text-[9px] text-(--mk-subtle) mt-0.5">/mo</p>
                     </div>
                     <div className="min-w-0 rounded-xl mk-card p-2.5 sm:p-3 text-center">
-                      <Users className="w-4 h-4 text-(--mk-info) mx-auto mb-1" />
+                      <Users className="w-4 h-4 text-teal-500 mx-auto mb-1" />
                       <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wide leading-tight">
                         From Team
                       </p>
@@ -527,12 +526,12 @@ export function EarningsCalculator(props: Props) {
                   </div>
 
                   {/* Yearly callout */}
-                  <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 sm:p-4 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                      <Sparkles className="w-4 h-4 text-amber-600" />
+                  <div className="mt-4 rounded-xl bg-(--mk-surface-2) border border-(--mk-border) p-3 sm:p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg border border-(--mk-border) flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-(--mk-accent)" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] uppercase tracking-wider font-bold text-amber-600">
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-(--mk-subtle)">
                         Yearly total (example)
                       </p>
                       <p className="text-lg sm:text-xl font-extrabold text-(--mk-text) tabular-nums">
@@ -544,7 +543,7 @@ export function EarningsCalculator(props: Props) {
                   {/* CTA */}
                   <Link
                     href="/register"
-                    className="mk-press group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/25 active:scale-[0.99]"
+                    className="mk-press group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-full bg-(--mk-cta) hover:brightness-110 text-(--mk-on-cta) text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/25 active:scale-[0.99]"
                   >
                     Create a Free Account
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -568,8 +567,8 @@ export function EarningsCalculator(props: Props) {
           border-radius: 9999px;
           background: linear-gradient(
             to right,
-            rgb(79 70 229) 0%,
-            rgb(124 58 237) var(--ec-progress, 0%),
+            rgb(16 185 129) 0%,
+            rgb(5 150 105) var(--ec-progress, 0%),
             var(--mk-border) var(--ec-progress, 0%),
             var(--mk-border) 100%
           );
@@ -584,8 +583,8 @@ export function EarningsCalculator(props: Props) {
           height: 20px;
           border-radius: 9999px;
           background: white;
-          border: 3px solid rgb(79 70 229);
-          box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+          border: 3px solid rgb(16 185 129);
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
           cursor: grab;
           transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
@@ -595,15 +594,15 @@ export function EarningsCalculator(props: Props) {
         .ec-range::-webkit-slider-thumb:active {
           cursor: grabbing;
           transform: scale(1.05);
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.5);
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
         }
         .ec-range::-moz-range-thumb {
           width: 20px;
           height: 20px;
           border-radius: 9999px;
           background: white;
-          border: 3px solid rgb(79 70 229);
-          box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+          border: 3px solid rgb(16 185 129);
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
           cursor: grab;
           transition: transform 0.15s ease;
         }
@@ -630,19 +629,19 @@ export function EarningsCalculator(props: Props) {
         .ec-range-purple {
           background: linear-gradient(
             to right,
-            rgb(139 92 246) 0%,
-            rgb(217 70 239) var(--ec-progress, 0%),
+            rgb(45 212 191) 0%,
+            rgb(20 184 166) var(--ec-progress, 0%),
             var(--mk-border) var(--ec-progress, 0%),
             var(--mk-border) 100%
           );
         }
         .ec-range-purple::-webkit-slider-thumb {
-          border-color: rgb(139 92 246);
-          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+          border-color: rgb(45 212 191);
+          box-shadow: 0 2px 8px rgba(45, 212, 191, 0.35);
         }
         .ec-range-purple::-moz-range-thumb {
-          border-color: rgb(139 92 246);
-          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+          border-color: rgb(45 212 191);
+          box-shadow: 0 2px 8px rgba(45, 212, 191, 0.35);
         }
         .ec-range-amber {
           background: linear-gradient(

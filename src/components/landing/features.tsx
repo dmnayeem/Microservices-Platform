@@ -60,7 +60,7 @@ export function Features(props: Props) {
   const v: FeaturesContent = { ...DEFAULT_LANDING_CONTENT.features, ...props };
 
   return (
-    <section id="features" className="mk-section bg-(--mk-band)">
+    <section id="features" className="mkx-band border-y border-(--mk-border) bg-(--mk-band)">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow={v.badge}
@@ -69,43 +69,36 @@ export function Features(props: Props) {
           sub={v.subheading}
         />
 
-        <div className="mk-rise grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* One ruled grid instead of a card each: the cells share their
+            borders, so the items read as one catalogue, not a row of adverts.
+            Icons are a single ink — the per-item gradient tiles (the CMS
+            `gradient` field) were the loudest "template" signal on the page. */}
+        <div className="grid grid-cols-1 border-l border-t border-(--mk-border) sm:grid-cols-2 lg:grid-cols-3">
           {v.items.map((feature, i) => {
             const Icon = ICONS[feature.iconKey] ?? Sparkles;
             const href = feature.href?.trim();
-            const cardClass =
-              "mk-zoom mk-press group relative flex flex-col h-full min-w-0 p-5 sm:p-6 rounded-2xl mk-card hover:border-(--mk-border-strong)";
+            const cellClass =
+              "mkx-cell mkx-reveal group relative flex h-full min-w-0 flex-col border-b border-r border-(--mk-border) p-6 sm:p-8";
             const inner = (
               <>
-                <div
-                  className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-linear-to-br ${feature.gradient} flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform`}
-                >
-                  <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-                </div>
-                <h3 className="text-base sm:text-lg font-bold text-(--mk-text) mb-2 flex items-center gap-1.5 text-balance">
-                  <span className="min-w-0">{feature.title}</span>
-                  {href && (
-                    <ArrowUpRight className="w-4 h-4 shrink-0 text-(--mk-subtle) group-hover:text-(--mk-accent) transition-colors" />
-                  )}
-                </h3>
-                <p className="text-sm sm:text-[0.9375rem] text-(--mk-muted) leading-relaxed text-pretty line-clamp-4">
-                  {feature.description}
-                </p>
+                <Icon aria-hidden className="h-5 w-5 text-(--mk-accent)" />
+                <h3 className="mkx-h3 mt-5 text-balance">{feature.title}</h3>
+                <p className="mkx-body mt-2 line-clamp-4">{feature.description}</p>
                 {href && (
-                  <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-semibold text-(--mk-accent)">
+                  <span className="mkx-arrow mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-(--mk-accent)">
                     Learn more
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    <ArrowUpRight aria-hidden className="h-4 w-4" />
                   </span>
                 )}
               </>
             );
 
             return href ? (
-              <Link key={i} href={href} className={cardClass}>
+              <Link key={i} href={href} className={`${cellClass} mk-focus`}>
                 {inner}
               </Link>
             ) : (
-              <div key={i} className={cardClass}>
+              <div key={i} className={cellClass}>
                 {inner}
               </div>
             );

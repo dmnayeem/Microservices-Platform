@@ -1,418 +1,320 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Flame, Trophy, MessageSquare, Gamepad2, Medal } from "lucide-react";
 import {
-  ClipboardList,
-  Share2,
-  Video,
-  FileText,
-  Brain,
-  Smartphone,
-  Globe,
-  Gift,
-  Flame,
-  Trophy,
-  MessageSquare,
-  ShieldCheck,
-  Wallet,
-  Gamepad2,
-  Ticket,
-  CheckCircle2,
-} from "lucide-react";
-import {
-  Section,
-  SectionHeading,
-  GlassCard,
-  StatGrid,
-  PrimaryButton,
-  GhostButton, MarketingHero
-} from "@/components/marketing/ui";
+  PageHero,
+  Band,
+  SectionHead,
+  Facts,
+  Rows,
+  Steps,
+  Tile,
+  Btn,
+  Faq,
+  Closing,
+  Marquee,
+} from "@/components/marketing/kit";
+import { MicrotaskMock, PlatformMark } from "@/components/marketing/mocks";
+import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbLd } from "@/lib/seo/breadcrumbs";
 import { SOCIAL_PLATFORMS } from "@/lib/social-tasks";
-import { BUYER_TASK_TYPES, BUYER_TASK_TYPE_META } from "@/lib/buyer-task-types";
 import { COMPANY_NAME } from "@/config/company";
 import { pageMeta } from "@/lib/seo/page-meta";
 
 /**
  * Public explainer for the micro-task side of the platform.
  *
- * Every figure on this page is COMPUTED from the modules that define the thing
- * being counted — the social catalog, the buyer task-type list — never typed in
- * as a literal. A marketing page that hardcodes "40 platforms" is wrong the
- * first time someone adds the forty-first, and nobody re-reads a marketing page
- * when they edit a catalog.
+ * Every count on this page is COMPUTED from the module that defines the thing
+ * being counted — the social catalog, the task-type list — never typed in as
+ * a literal: a page that hardcodes "40 platforms" is wrong the first time
+ * someone adds the forty-first.
  *
- * Rates are deliberately absent. Every reward on this platform is an
- * admin-configurable setting (points per task, points per dollar, the
- * withdrawal fee); printing today's number on a public page promises a figure
- * the owner can change in the admin panel five minutes later.
+ * Rates are deliberately absent. Every reward is an admin setting (points per
+ * task, points per dollar, the withdrawal fee); printing today's number here
+ * promises a figure the owner can change five minutes later. The hero mock's
+ * figures are labelled "Example" for the same reason.
  */
 
 const PLATFORM_COUNT = SOCIAL_PLATFORMS.length;
 const ACTION_COUNT = SOCIAL_PLATFORMS.reduce((n, p) => n + p.actions.length, 0);
 
 export function generateMetadata(): Promise<Metadata> {
-  const title = "Freelance Micro-Tasks — How They Work";
-  // ≤155 chars — what Google shows uncut.
-  const description =
-    `Every freelance micro-task on ${COMPANY_NAME}: social actions on ` +
-    `${PLATFORM_COUNT} platforms, surveys, videos, quizzes, app installs and ` +
-    `offers, and how each is verified.`;
-  return pageMeta({ title, description, path: "/microtask" });
+  return pageMeta({
+    title: "Micro-Tasks — Small Online Jobs That Pay",
+    // ≤155 chars — what Google shows uncut.
+    description:
+      `Earn from short online jobs on ${COMPANY_NAME}: social tasks on ${PLATFORM_COUNT} platforms, ` +
+      `surveys, videos and app tests. Reward shown up front, work verified.`,
+    path: "/microtask",
+  });
 }
 
-/** The task types on the platform, as the TaskType enum actually defines them. */
+/** The task types, as the TaskType enum defines them — with the proof each one takes. */
 const TASK_TYPES = [
   {
-    icon: Share2,
     title: "Social actions",
-    body: `Follow, like, share, comment, subscribe, review or post — ${ACTION_COUNT} distinct actions across ${PLATFORM_COUNT} platforms, each with its own proof rules.`,
+    body: `Follow, like, comment, subscribe, review or post — ${ACTION_COUNT} actions across ${PLATFORM_COUNT} platforms.`,
+    meta: "Link or screenshot",
   },
   {
-    icon: Video,
     title: "Video tasks",
-    body: "Review a specific video for the time the task sets and complete its proof steps. Time is measured on the server from real playback, not claimed. This is a task with proof — RevType never pays for viewing ads.",
+    body: "Watch a set video for the time the task asks, then complete its steps. Watch time is measured from real playback.",
+    meta: "Measured watch time",
   },
   {
-    icon: FileText,
     title: "Read an article",
-    body: "Open a page, stay on it for the required time, and answer what it asked. Reading time is tracked, not self-reported.",
+    body: "Open a page, stay for the time required and answer what it asks. Reading time is tracked, not self-reported.",
+    meta: "Time on page + answer",
   },
   {
-    icon: ClipboardList,
     title: "Surveys",
-    body: "Answer a set of questions. The buyer sees every answer and never who gave it — you are told that before you start.",
+    body: "Answer a short set of questions. The business sees your answers, never your name.",
+    meta: "Your answers",
   },
   {
-    icon: Brain,
     title: "Quizzes",
-    body: "Answer questions against a time limit. The answer key stays on the server, so a quiz is worth taking honestly.",
+    body: "Beat the clock on a few questions. The answer key never leaves the server.",
+    meta: "Scored on the server",
   },
   {
-    icon: Smartphone,
     title: "App installs",
-    body: "Install an app and complete the steps the task asks for. Each task states exactly which proof it needs before you begin.",
+    body: "Install an app and complete the steps listed. Each task says exactly what proof it needs.",
+    meta: "Steps + screenshot",
   },
   {
-    icon: CheckCircle2,
     title: "Custom tasks",
-    body: "Anything that does not fit a box. The buyer writes the steps, you follow them, and a human reviews the proof.",
+    body: "Work that doesn't fit a box. The business writes the steps; a person reviews what you send.",
+    meta: "Human review",
   },
   {
-    icon: Globe,
     title: "Offerwalls",
-    body: "Curated offers from partner networks. Completion is confirmed by the provider's own server callback, then credited to you.",
+    body: "Offers from partner networks, credited once the partner confirms you completed them.",
+    meta: "Partner confirmation",
   },
 ];
 
-/** Earning surfaces that are not a task row. */
+const STEPS = [
+  { title: "Pick a task", body: "See the reward, the proof it needs and the time limit before you open it." },
+  { title: "Do the work", body: "Follow the steps. Video and reading time is tracked for you." },
+  { title: "Send proof", body: "Paste the link or upload the screenshot. Many links are checked in seconds." },
+  { title: "Get paid", body: "Approved work adds points to your wallet. Convert them to cash and withdraw." },
+];
+
 const MORE_WAYS = [
-  {
-    icon: Flame,
-    title: "Daily missions",
-    body: "A short list that resets every day. Claim it to keep your streak — the streak is also what several bonuses are gated on.",
-  },
-  {
-    icon: Trophy,
-    title: "Events & quests",
-    body: "Time-boxed goals with their own progress counter. Progress moves forward only, so it can never be reset out from under you.",
-  },
-  {
-    icon: MessageSquare,
-    title: "Social feed",
-    body: "Post, comment and engage in the feed. Feed earning is governed by your ratio of genuine activity to rewards, not by raw volume.",
-  },
-  {
-    icon: Gamepad2,
-    title: "Games & tournaments",
-    body: "HTML5 games, quiz competitions, lotteries and prize draws, each with its own entry rules and prize pool.",
-  },
-  {
-    icon: Ticket,
-    title: "Achievements & milestones",
-    body: "Long-run goals that pay once when you reach them. They are checked against your real history, not a counter you can nudge.",
-  },
+  { icon: Flame, title: "Daily missions", body: "A short list that resets every day and keeps your streak alive." },
+  { icon: Trophy, title: "Events & quests", body: "Time-boxed goals whose progress only ever moves forward." },
+  { icon: MessageSquare, title: "Social feed", body: "Post and take part. Rewards follow genuine activity, not volume." },
+  { icon: Gamepad2, title: "Games & tournaments", body: "HTML5 games, quiz contests and prize draws with their own rules." },
+  { icon: Medal, title: "Achievements", body: "Long-run milestones that pay once, checked against your real history." },
 ];
 
-const HOW = [
+const FAQ = [
   {
-    n: 1,
-    title: "Pick a task",
-    body: "Every task shows what it pays, what proof it needs and how long you have, before you open it.",
+    q: `Is ${COMPANY_NAME} free to join?`,
+    a: "Yes. Creating an account is free and needs no card. Some withdrawal options can require an active plan — when they do, the withdrawal screen tells you before you ask for a payout.",
   },
   {
-    n: 2,
-    title: "Do the work",
-    body: "Follow the steps exactly. Video and article tasks track time on the server; social tasks tell you what to screenshot.",
+    q: "How much does a task pay?",
+    a: "Every task shows its reward before you open it. Rewards differ from task to task and can change over time, so we don't quote figures here.",
   },
   {
-    n: 3,
-    title: "Submit proof",
-    body: "Upload the screenshot or paste the link the task asked for. Some tasks verify your link automatically within seconds.",
+    q: "How is my work checked?",
+    a: "Links that can be opened are matched automatically, often within seconds. Anything that can't be read goes to a person — a failed read never counts as a failed task.",
   },
   {
-    n: 4,
-    title: "Get paid",
-    body: "Approved work credits your balance once and only once. Points convert to cash in your wallet, and cash is what you withdraw.",
-  },
-];
-
-const FAIRNESS = [
-  {
-    icon: ShieldCheck,
-    title: "One credit per submission",
-    body: "Every payout is written against a unique reference, so an approval that runs twice pays once. This is enforced in the ledger, not by a screen.",
+    q: "How do I get my money?",
+    a: "Approved work adds points to your wallet. You convert points to cash at the rate shown in the app, then withdraw with the methods, minimums and fees shown on the withdrawal screen. Larger withdrawals need identity verification.",
   },
   {
-    icon: CheckCircle2,
-    title: "Automatic checks never auto-reject",
-    body: "When a link can be fetched and matched, approval is instant. When it cannot be read, it goes to a human — a failed read is never treated as a failed task.",
+    q: "Do I get paid for watching ads?",
+    a: `No. ${COMPANY_NAME} pays for tasks with proof, never for viewing ads.`,
   },
   {
-    icon: Gift,
-    title: "Targeted, not wasted",
-    body: "Tasks are matched to country, region and profile, so the list you see is work you are actually eligible to complete.",
+    q: "Why can't I see some tasks?",
+    a: "Tasks are matched to country, region and profile, so your list only shows work you can actually complete.",
   },
 ];
 
 export default function MicroTaskPage() {
+  // Two rows of logos moving at different speeds read as a living catalogue.
+  const half = Math.ceil(SOCIAL_PLATFORMS.length / 2);
+  const rows = [SOCIAL_PLATFORMS.slice(0, half), SOCIAL_PLATFORMS.slice(half)];
+
   return (
     <>
-      {/* Hero. Not "paid the same day": approval turnaround is per task — some
-          auto-approve, some wait for a human — so a same-day promise is one the
-          platform has no code to keep. What IS true of every task is that the
-          reward is stated before you start, so that is what the headline says. */}
-      <MarketingHero
-        badge="Micro Tasks"
-        title="Small jobs,"
-        highlight="and you know the pay before you start"
-        subtitle="Do short online jobs for real businesses — follow a page, test an app, answer a survey, review a product video. Every task shows its reward up front, and approved work is paid to your wallet. Some tasks are sponsored by advertisers."
+      <JsonLd data={breadcrumbLd([{ name: "Micro-tasks", path: "/microtask" }])} />
+
+      <PageHero
+        kicker="Micro-tasks"
+        title="Small online jobs."
+        accent="The pay is clear before you start."
+        lead="Follow a page, test an app, answer a survey, review a video. Each task shows its reward and the proof it needs up front, and approved work goes straight to your wallet."
         actions={
           <>
-            <PrimaryButton href="/register">
-              <ClipboardList className="h-4 w-4" /> Create a free account
-            </PrimaryButton>
-            <GhostButton href="/advertise">Need work done instead? →</GhostButton>
+            <Btn href="/register">Create a free account</Btn>
+            <Btn href="/advertise" variant="secondary">
+              Hire people for tasks
+            </Btn>
           </>
         }
+        note="Free to join · No card needed"
+        visual={<MicrotaskMock />}
       />
 
-      <Section className="bg-(--mk-band)">
-        <StatGrid
-          stats={[
-            { value: String(TASK_TYPES.length), label: "Kinds of micro task" },
-            { value: String(PLATFORM_COUNT), label: "Social platforms covered" },
-            { value: String(ACTION_COUNT), label: "Distinct social actions" },
-            { value: "Daily", label: "New tasks and missions" },
+      <div className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
+        <Facts
+          items={[
+            { value: String(TASK_TYPES.length), label: "Kinds of task" },
+            { value: String(PLATFORM_COUNT), label: "Social platforms" },
+            { value: String(ACTION_COUNT), label: "Social actions" },
+            { value: "Up front", label: "Reward and proof shown" },
           ]}
         />
-      </Section>
+      </div>
 
-      {/* Task types */}
-      <Section>
-        <div id="task-types" className="scroll-mt-24" />
-        <SectionHeading
-          badge="What you can do"
-          tone="blue"
-          title="Eight kinds of micro task"
-          subtitle="Each type asks for different work and different proof. Every task tells you which before you start it. Tasks are created by businesses, advertisers and partner networks; some are sponsored."
+      <Band id="task-types" labelledBy="task-types-title">
+        <SectionHead
+          id="task-types-title"
+          n="01"
+          label="Task types"
+          title={`${TASK_TYPES.length} kinds of work, each with its own proof`}
+          lead="Tasks come from businesses, advertisers and partner networks. You always know what's being asked before you accept."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {TASK_TYPES.map((t) => (
-            <GlassCard key={t.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent)/10 border border-(--mk-accent)/20">
-                <t.icon className="h-5 w-5 text-(--mk-accent)" />
-              </div>
-              <h3 className="text-base font-bold text-(--mk-text)">{t.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--mk-muted)">
-                {t.body}
-              </p>
-            </GlassCard>
-          ))}
-        </div>
-      </Section>
+        <Rows items={TASK_TYPES} />
+      </Band>
 
-      {/* Social catalog */}
-      <Section className="bg-(--mk-band)">
-        <div id="social" className="scroll-mt-24" />
-        <SectionHeading
-          badge="Social tasks"
-          tone="purple"
-          title={`${PLATFORM_COUNT} platforms, ${ACTION_COUNT} actions`}
-          subtitle="The social catalog is the biggest single source of work on the platform. These are the platforms it covers today."
+      <Band id="social" labelledBy="social-title" alt>
+        <SectionHead
+          id="social-title"
+          n="02"
+          label="Social tasks"
+          title={`${PLATFORM_COUNT} platforms. ${ACTION_COUNT} actions.`}
+          lead="The largest single source of work on the platform. Which platforms are open at any moment is set by our team."
         />
-        <div className="flex flex-wrap justify-center gap-2">
-          {SOCIAL_PLATFORMS.map((p) => (
-            <span
-              key={p.key}
-              className="inline-flex items-center gap-1.5 rounded-full border border-(--mk-border) bg-(--mk-surface) px-3 py-2 text-sm font-medium text-(--mk-text)"
-            >
-              <span aria-hidden>{p.emoji}</span>
-              {p.label}
-              <span className="text-xs font-semibold text-(--mk-accent)">
-                {p.actions.length}
-              </span>
-            </span>
-          ))}
-        </div>
-        <p className="mt-6 text-center text-sm text-(--mk-subtle)">
-          The number beside each platform is how many different actions it
-          offers. Which platforms are open at any moment is set by an
-          administrator.
-        </p>
-      </Section>
-
-      {/* How it works */}
-      <Section>
-        <SectionHeading
-          badge="How it works"
-          tone="blue"
-          title="From task to payout in four steps"
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {HOW.map((s) => (
-            <GlassCard key={s.n} className="relative pt-8">
-              <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-sm font-extrabold text-white shadow-sm">
-                {s.n}
-              </span>
-              <h3 className="text-base font-bold text-(--mk-text)">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--mk-muted)">
-                {s.body}
-              </p>
-            </GlassCard>
-          ))}
-        </div>
-      </Section>
-
-      {/* Other earning surfaces */}
-      <Section className="bg-(--mk-band)">
-        <div id="more-ways" className="scroll-mt-24" />
-        <SectionHeading
-          badge="Beyond tasks"
-          tone="emerald"
-          title="Six more ways to earn"
-          subtitle="Not everything that pays is a task. These run alongside the task list."
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {MORE_WAYS.map((m) => (
-            <GlassCard key={m.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-success)/10 border border-emerald-500/20">
-                <m.icon className="h-5 w-5 text-(--mk-success)" />
-              </div>
-              <h3 className="text-base font-bold text-(--mk-text)">{m.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--mk-muted)">
-                {m.body}
-              </p>
-            </GlassCard>
-          ))}
-        </div>
-        <div id="feed" className="scroll-mt-24" />
-      </Section>
-
-      {/* Fairness */}
-      <Section>
-        <SectionHeading
-          badge="How we keep it fair"
-          tone="blue"
-          title="Paid once, judged by a human when it matters"
-        />
-        <div className="grid gap-4 sm:grid-cols-3">
-          {FAIRNESS.map((f) => (
-            <GlassCard key={f.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent)/10 border border-(--mk-accent)/20">
-                <f.icon className="h-5 w-5 text-(--mk-accent)" />
-              </div>
-              <h3 className="text-base font-bold text-(--mk-text)">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--mk-muted)">
-                {f.body}
-              </p>
-            </GlassCard>
-          ))}
-        </div>
-      </Section>
-
-      {/* Payout */}
-      <Section className="bg-(--mk-band)" width="narrow">
-        <div id="payout" className="scroll-mt-24" />
-        <SectionHeading
-          badge="Getting paid"
-          tone="emerald"
-          title="Points in, cash out"
-          subtitle="Tasks pay points. Points convert to cash in your wallet, and withdrawals are made from the cash balance."
-        />
-        <GlassCard>
-          <ul className="space-y-3 text-sm leading-relaxed text-(--mk-muted)">
-            <li className="flex gap-3">
-              <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
-              <span>
-                One wallet holds both balances. You convert points to cash
-                yourself, at the rate shown in the app at the time you convert.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
-              <span>
-                Withdrawal methods, minimums, maximums and any fee are set by
-                the administrator and shown to you on the withdrawal screen
-                before you confirm — this page will never quote you a figure
-                that could be out of date.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
-              <span>
-                Identity verification is required for larger withdrawals and
-                can be required for all of them. One verified identity belongs
-                to one account.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <Ticket className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
-              <span>
-                Withdrawals can require an active paid plan. When that setting
-                is on, the withdrawal screen tells you before you request a
-                payout. Earnings are never guaranteed — see the{" "}
-                <Link href="/help" className="font-semibold text-(--mk-accent) hover:underline">FAQ</Link>{" "}
-                for details.
-              </span>
-            </li>
-          </ul>
-        </GlassCard>
-        <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-          <PrimaryButton href="/register">Create your free account</PrimaryButton>
-          <GhostButton href="/referral">How referral rewards work →</GhostButton>
-        </div>
-      </Section>
-
-      {/* Buyer cross-link */}
-      <Section width="narrow">
-        <GlassCard className="text-center">
-          <h2 className="text-xl font-bold text-(--mk-text)">
-            Want these tasks done for you?
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-(--mk-muted)">
-            Buyers can create{" "}
-            {BUYER_TASK_TYPES.map((t, i) => (
-              <span key={t}>
-                {i > 0 && (i === BUYER_TASK_TYPES.length - 1 ? " and " : ", ")}
-                <span className="font-semibold text-(--mk-accent)">
-                  {BUYER_TASK_TYPE_META[t].label.toLowerCase()}
+        <div className="space-y-3">
+          {rows.map((row, i) => (
+            <Marquee key={i} seconds={i === 0 ? 70 : 85}>
+              {row.map((p) => (
+                <span
+                  key={p.key}
+                  className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-(--mk-border) bg-(--mk-surface) px-4 py-2.5 text-sm font-medium text-(--mk-text)"
+                >
+                  <PlatformMark brand={p.key} label={p.label} />
+                  {p.label}
+                  <span className="text-xs text-(--mk-subtle)">{p.actions.length}</span>
                 </span>
-              </span>
-            ))}{" "}
-            tasks and have real people complete them.
-          </p>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-(--mk-muted)">
-            Prefer to earn from your skills instead? You can also{" "}
-            <Link href="/features/marketplace" className="font-semibold text-(--mk-accent) hover:underline">sell digital products and services</Link>{" "}
-            or{" "}
-            <Link href="/features/courses" className="font-semibold text-(--mk-accent) hover:underline">teach a course</Link>, and the{" "}
-            <Link href="/blog" className="font-semibold text-(--mk-accent) hover:underline">blog</Link>{" "}
-            has guides for getting started.
-          </p>
-          <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-            <PrimaryButton href="/advertise">See advertising options</PrimaryButton>
-          </div>
-        </GlassCard>
-      </Section>
+              ))}
+            </Marquee>
+          ))}
+        </div>
+        <p className="mt-6 text-sm text-(--mk-subtle)">The number beside each platform is how many different actions it offers.</p>
+      </Band>
+
+      <Band labelledBy="how-title">
+        <SectionHead id="how-title" n="03" label="How it works" title="From task to payout in four steps" />
+        <Steps items={STEPS} />
+      </Band>
+
+      <Band id="payout" labelledBy="fair-title" alt>
+        <SectionHead
+          id="fair-title"
+          n="04"
+          label="Fair by design"
+          title="Checked carefully. Paid once."
+          lead="The rules that decide whether you're paid are written into the platform, not left to a screen."
+        />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Tile
+            title="One credit per submission"
+            body="Every payout carries a unique reference, so an approval can never pay twice or go missing."
+          />
+          <Tile
+            title="A failed read goes to a person"
+            body="When a link can't be opened, a reviewer looks at it. It is never rejected just because a check couldn't run."
+          />
+          <Tile
+            title="Only tasks you qualify for"
+            body="Tasks are matched to your country, region and profile, so you don't waste time on work you can't finish."
+          />
+          <Tile
+            className="md:col-span-2 lg:col-span-3"
+            title="Points in, cash out"
+            body={
+              <>
+                Approved work pays points. You convert them to cash in your wallet at the rate shown in the app, then withdraw.
+                Methods, minimums and any fee are shown on the withdrawal screen before you confirm, and larger withdrawals need
+                identity verification. Earnings are never guaranteed — see the <Link href="/help" className="font-semibold text-(--mk-accent) hover:underline">Help Center</Link>.
+              </>
+            }
+            visual={
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {["Task approved", "Points", "Cash balance", "Withdrawal"].map((s, i, a) => (
+                  <span key={s} className="flex items-center gap-2">
+                    <span className="rounded-full border border-(--mk-border) bg-(--mk-surface-2) px-3 py-1.5 font-medium text-(--mk-text)">
+                      {s}
+                    </span>
+                    {i < a.length - 1 && <span aria-hidden className="h-px w-5 bg-(--mk-border-strong)" />}
+                  </span>
+                ))}
+              </div>
+            }
+          />
+        </div>
+      </Band>
+
+      <Band id="more-ways" labelledBy="more-title">
+        <SectionHead
+          id="more-title"
+          n="05"
+          label="Beyond tasks"
+          title={`${MORE_WAYS.length} more ways to earn`}
+          lead="Not everything that pays is a task. These run alongside your task list."
+        />
+        <ul className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
+          {MORE_WAYS.map((m) => (
+            <li key={m.title} id={m.title === "Social feed" ? "feed" : undefined} className="mkx-step mkx-reveal scroll-mt-24">
+              <m.icon aria-hidden className="h-5 w-5 text-(--mk-accent)" />
+              <h3 className="mkx-h3 mt-4">{m.title}</h3>
+              <p className="mkx-body mt-2">{m.body}</p>
+            </li>
+          ))}
+        </ul>
+      </Band>
+
+      <Band labelledBy="other-title" alt>
+        <SectionHead id="other-title" n="06" label="Other sides of RevType" title="On the other side of the task" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Tile
+            href="/advertise"
+            cta="Advertise"
+            title="Need work done?"
+            body="Create tasks, fund them up front and review what comes back from real people."
+          />
+          <Tile
+            href="/features/marketplace"
+            cta="Marketplace"
+            title="Sell your skills"
+            body="List digital products and services, with escrow on custom work."
+          />
+          <Tile
+            href="/features/courses"
+            cta="Courses"
+            title="Teach what you know"
+            body="Build a course, set your price and earn on every enrolment."
+          />
+        </div>
+      </Band>
+
+      <Band labelledBy="faq-title">
+        <Faq id="faq-title" items={FAQ} />
+      </Band>
+
+      <Closing
+        title="Your first task is a few minutes away."
+        lead="Create a free account, pick something that fits, and see exactly what it pays before you start."
+        primary={{ href: "/register", label: "Create a free account" }}
+        secondary={{ href: "/referral", label: "How referrals work" }}
+      />
     </>
   );
 }

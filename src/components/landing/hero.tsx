@@ -49,7 +49,7 @@ export function Hero(props: Props) {
   return (
     <section
       id="hero"
-      className="relative pt-24 sm:pt-28 lg:pt-32 pb-16 sm:pb-20 lg:pb-24 overflow-hidden"
+      className="relative pt-24 sm:pt-28 lg:pt-32 pb-2 sm:pb-4 overflow-hidden"
     >
       {/* Subtle fine grid, theme-aware and calm */}
       <div
@@ -63,46 +63,39 @@ export function Hero(props: Props) {
       />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="grid items-center gap-12 lg:gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <div className="grid items-center gap-12 lg:gap-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           {/* ── Claim + action ── */}
-          <div className="mk-in min-w-0 text-center lg:text-left max-w-2xl mx-auto lg:mx-0">
-            <div className="mk-card inline-flex max-w-full items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full mb-6">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-              <span className="min-w-0 truncate text-xs sm:text-sm text-(--mk-text) font-medium">
-                {v.badge}
-              </span>
-            </div>
+          <div className="mk-in min-w-0 max-w-3xl">
+            {/* A ruled kicker, not a pill with a pinging dot. */}
+            <p className="mkx-kicker mb-6 max-w-full">
+              <span className="min-w-0 truncate">{v.badge}</span>
+            </p>
 
-            <h1 className="mk-h1 mb-5 break-words lg:text-[clamp(2.5rem,4.2vw,3.5rem)]">
+            <h1 className="mkx-display mb-6 break-words lg:text-[clamp(2.25rem,3.4vw,3.375rem)]">
               <span className="block text-(--mk-text)">{v.title_line1}</span>
-              <span className="block bg-linear-to-r from-(--mk-rail-a) via-(--mk-rail-b) to-(--mk-rail-b) bg-clip-text text-transparent">
-                {v.title_line2}
-              </span>
+              <span className="block text-(--mk-subtle)">{v.title_line2}</span>
             </h1>
 
-            <p className="mk-lead mk-measure mx-auto lg:mx-0 mb-7 sm:mb-8 line-clamp-4 sm:line-clamp-none">
+            <p className="mkx-lead mk-measure mb-8 line-clamp-4 sm:line-clamp-none">
               {v.subtitle}
             </p>
 
             {/* The primary action is visually first on every size. On mobile the
                 two buttons stack full-width at 56px tall; `sm:` puts them side
                 by side with the primary leading. */}
-            <div className="flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
               <Link
                 href={v.cta_primary_href}
-                className="mk-press w-full sm:w-auto min-h-14 px-8 py-4 bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) text-white font-semibold rounded-xl hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) flex items-center justify-center gap-2 shadow-lg shadow-(--app-cta)/25"
+                className="mk-press mkx-arrow w-full sm:w-auto h-12 px-7 bg-(--mk-cta) text-(--mk-on-cta) font-semibold rounded-full hover:brightness-110 flex items-center justify-center gap-2 whitespace-nowrap"
               >
                 {v.cta_primary_label}
-                <ArrowRight className="w-5 h-5 shrink-0" />
+                <ArrowRight aria-hidden className="w-4 h-4 shrink-0" />
               </Link>
               <a
                 href={v.cta_secondary_href}
-                className="mk-press w-full sm:w-auto min-h-14 px-8 py-4 bg-(--mk-surface) text-(--mk-text) font-semibold rounded-xl hover:bg-(--mk-surface-2) flex items-center justify-center gap-2 border border-(--mk-border-strong)"
+                className="mk-press w-full sm:w-auto h-12 px-7 bg-(--mk-surface) text-(--mk-text) font-semibold rounded-full hover:border-(--mk-text)/40 flex items-center justify-center gap-2 whitespace-nowrap border border-(--mk-border-strong)"
               >
-                <Play className="w-5 h-5 shrink-0 text-(--mk-accent)" />
+                <Play aria-hidden className="w-4 h-4 shrink-0 text-(--mk-accent)" />
                 {v.cta_secondary_label}
               </a>
             </div>
@@ -110,7 +103,7 @@ export function Hero(props: Props) {
             {/* Risk reversal belongs with the button it de-risks, not 64px below
                 it. On a 360px screen the three claims wrap to their own lines
                 rather than overflowing the viewport. */}
-            <p className="inline-flex flex-wrap items-center lg:justify-start justify-center gap-x-2 gap-y-1 text-xs sm:text-sm text-(--mk-subtle)">
+            <p className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-(--mk-subtle)">
               <ShieldCheck className="w-4 h-4 shrink-0 text-(--mk-success)" />
               <span>No credit card required</span>
               <span aria-hidden>·</span>
@@ -126,31 +119,31 @@ export function Hero(props: Props) {
           </div>
         </div>
 
-        {/* Supporting numbers. Below the two columns now, because a statistic
-            is corroboration, not the argument. */}
-        <div className="mk-in mk-in-3 mt-14 sm:mt-16 lg:mt-20 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {/* Supporting numbers, below the two columns because a statistic is
+            corroboration, not the argument. One ruled row (the feature pages'
+            "Facts" strip) rather than four icon cards. */}
+        <dl className="mk-in mk-in-3 mt-14 sm:mt-16 lg:mt-20 grid grid-cols-2 border-y border-(--mk-border) md:grid-cols-4">
           {v.stats.map((stat, i) => {
             const Icon = ICONS[stat.iconKey] ?? Star;
             return (
               <div
                 key={i}
-                /* One axis. The icon was centred and the figure and label
-                   were not, so each card read as two different layouts. */
-                className="mk-card mk-press group flex min-w-0 flex-col items-center rounded-2xl px-3 py-4 sm:p-5 text-center hover:border-(--mk-border-strong)"
+                className={[
+                  "flex min-w-0 flex-col gap-2 py-6 sm:py-8",
+                  i % 2 === 1 ? "border-l border-(--mk-border) pl-4 sm:pl-6" : "pr-4",
+                  i >= 2 ? "border-t border-(--mk-border) md:border-t-0" : "",
+                  i === 2 ? "md:border-l md:pl-6" : "",
+                ].join(" ")}
               >
-                <span className="mx-auto mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--mk-accent-soft) text-(--mk-accent)">
-                  <Icon className="w-5 h-5" />
-                </span>
-                <div className="mk-figure max-w-full truncate whitespace-nowrap text-2xl sm:text-3xl text-(--mk-text)">
-                  {stat.value}
-                </div>
-                <div className="text-xs sm:text-sm text-(--mk-subtle) mt-1 text-balance line-clamp-2">
-                  {stat.label}
-                </div>
+                <dt className="flex items-start gap-2 text-sm text-(--mk-subtle)">
+                  <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-accent)" />
+                  <span className="min-w-0 line-clamp-2">{stat.label}</span>
+                </dt>
+                <dd className="mkx-figure order-first max-w-full truncate">{stat.value}</dd>
               </div>
             );
           })}
-        </div>
+        </dl>
       </div>
     </section>
   );
