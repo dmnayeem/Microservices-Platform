@@ -67,23 +67,23 @@ export function Hero(props: Props) {
           {/* ── Claim + action ── */}
           <div className="mk-in min-w-0 max-w-3xl">
             {/* A ruled kicker, not a pill with a pinging dot. */}
-            <p className="mkx-kicker mb-6 max-w-full">
+            <p className="mkx-kicker mb-8 max-w-full">
               <span className="min-w-0 truncate">{v.badge}</span>
             </p>
 
-            <h1 className="mkx-display mb-6 break-words lg:text-[clamp(2.25rem,3.4vw,3.375rem)]">
+            <h1 className="mkx-display mb-8 break-words lg:text-[clamp(2.25rem,3.4vw,3.375rem)]">
               <span className="block text-(--mk-text)">{v.title_line1}</span>
               <span className="block text-(--mk-subtle)">{v.title_line2}</span>
             </h1>
 
-            <p className="mkx-lead mk-measure mb-8 line-clamp-4 sm:line-clamp-none">
+            <p className="mkx-lead mk-measure mb-10 line-clamp-4 sm:line-clamp-none">
               {v.subtitle}
             </p>
 
             {/* The primary action is visually first on every size. On mobile the
                 two buttons stack full-width at 56px tall; `sm:` puts them side
                 by side with the primary leading. */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-7">
               <Link
                 href={v.cta_primary_href}
                 className="mk-press mkx-arrow w-full sm:w-auto h-12 px-7 bg-(--mk-cta) text-(--mk-on-cta) font-semibold rounded-full hover:brightness-110 flex items-center justify-center gap-2 whitespace-nowrap"
@@ -103,7 +103,7 @@ export function Hero(props: Props) {
             {/* Risk reversal belongs with the button it de-risks, not 64px below
                 it. On a 360px screen the three claims wrap to their own lines
                 rather than overflowing the viewport. */}
-            <p className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-(--mk-subtle)">
+            <p className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm tracking-[0.01em] text-(--mk-subtle)">
               <ShieldCheck className="w-4 h-4 shrink-0 text-(--mk-success)" />
               <span>No credit card required</span>
               <span aria-hidden>·</span>
