@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { inZone } from "@/lib/zoned-date";
 import { Check, ClipboardCheck, Send, Wallet, XCircle, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,17 +40,19 @@ export function WithdrawalTracker({
   w,
   payoutMessage,
   compact = false,
+  timeZone,
 }: {
   w: TrackedWithdrawal;
   /** Admin's "you'll receive funds in …" text, e.g. "3-7 business days". */
   payoutMessage?: string;
   compact?: boolean;
+  timeZone?: string;
 }) {
   const s = w.status;
   const failed = s === "REJECTED" || s === "CANCELLED";
   const reviewed = s === "PROCESSING" || s === "COMPLETED" || !!w.reviewedAt;
   const paid = s === "COMPLETED";
-  const when = (d: Date | null) => (d ? format(d, "d MMM, HH:mm") : null);
+  const when = (d: Date | null) => (d ? format(inZone(d, timeZone), "d MMM, HH:mm") : null);
 
   const steps: { title: string; detail: string; at: string | null; state: StepState; Icon: typeof Check }[] = [
     {

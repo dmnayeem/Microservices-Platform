@@ -106,6 +106,8 @@ export interface WalletViewProps {
   withdrawalFeePct?: number;
   /** Recent withdrawals: the status cards and the record on the Withdraw tab. */
   withdrawals?: MyWithdrawal[];
+  /** The member's IANA zone, for withdrawal times. */
+  timeZone?: string;
   /** Spend-only balances (src/lib/ad-wallet.ts). */
   adPointsBalance?: number;
   adFundBalance?: number;
@@ -180,6 +182,7 @@ export function WalletView(props: WalletViewProps) {
       <WithdrawalStatusCards
         items={props.withdrawals ?? []}
         onOpenRecord={() => setTab("withdraw")}
+        timeZone={props.timeZone}
       />
 
       {/* Tabs */}
@@ -263,7 +266,7 @@ export function WalletView(props: WalletViewProps) {
         />
       )}
       {/* The record: every withdrawal, its date, amount and outcome. */}
-      {tab === "withdraw" && <MyWithdrawals items={props.withdrawals ?? []} />}
+      {tab === "withdraw" && <MyWithdrawals items={props.withdrawals ?? []} timeZone={props.timeZone} />}
     </div>
   );
 }

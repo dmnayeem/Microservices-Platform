@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { WithdrawalActions } from "./_components/WithdrawalActions";
+import { EditWithdrawalDates } from "./_components/EditWithdrawalDates";
 import { mediaSrc } from "@/lib/media-url";
 import { FraudRiskChip } from "@/components/admin/fraud/fraud-risk-chip";
 import { assessWithdrawalRisk } from "@/lib/withdrawal-risk";
@@ -144,6 +145,9 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
   const StatusIcon = config.icon;
 
   const canProcess = await can(session.user.id, "withdrawals.process");
+  // Moving the dates is for these two roles only — the same check as the API.
+  const actorRole = (await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } }))?.role;
+  const canEditDates = actorRole === "SUPER_ADMIN" || actorRole === "FINANCE_ADMIN";
 
   // Parse account details from JSON
   const accountDetails = withdrawal.accountDetails as Record<string, string> | null;
@@ -464,6 +468,17 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+            {canEditDates && (
+              <EditWithdrawalDates
+                withdrawalId={withdrawal.id}
+                createdAt={withdrawal.createdAt.toISOString()}
+                processedAt={withdrawal.processedAt ? withdrawal.processedAt.toISOString() : null}
+                processedLabel={
+                  withdrawal.status === "COMPLETED" ? "Completed" :
+                  withdrawal.status === "REJECTED" ? "Rejected" : "Processing started"
+                }
+              />
+            )}
           </div>
 
           {/* Status-aware Process panel */}

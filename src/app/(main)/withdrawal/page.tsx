@@ -9,6 +9,7 @@ import { ServerAdSlot } from "@/components/user/primitives/server-ad-slot";
 import { ProfileGate } from "@/components/user/profile/profile-gate";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { MyWithdrawals } from "@/components/user/wallet/my-withdrawals";
+import { resolveUserTimezone } from "@/lib/user-day";
 
 export default async function WithdrawalPage() {
   const session = await auth();
@@ -23,6 +24,8 @@ export default async function WithdrawalPage() {
         cashBalance: true,
         pointsBalance: true,
         kycStatus: true,
+        country: true,
+        timezone: true,
       },
     }),
     prisma.userPaymentMethod.findMany({
@@ -81,6 +84,7 @@ export default async function WithdrawalPage() {
       />
       <MyWithdrawals
         payoutMessage={wcfg.payoutMessage}
+        timeZone={resolveUserTimezone({ country: user?.country, timezone: user?.timezone })}
         items={mine.map((w) => ({
           ...w,
           amount: Number(w.amount),

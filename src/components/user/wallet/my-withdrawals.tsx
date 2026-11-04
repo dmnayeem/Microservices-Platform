@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
 import { usd } from "@/lib/utils";
 import { mediaSrc } from "@/lib/media-url";
 import { WithdrawalTracker } from "@/components/user/wallet/withdrawal-tracker";
+import { inZone } from "@/lib/zoned-date";
 
 export interface MyWithdrawal {
   id: string;
@@ -34,7 +35,16 @@ const STATUS: Record<string, { label: string; tone: string; Icon: typeof Clock }
  * payment screenshot. There was no such list before — a user could request a
  * withdrawal and then see only a ledger line.
  */
-export function MyWithdrawals({ items, payoutMessage }: { items: MyWithdrawal[]; payoutMessage?: string }) {
+export function MyWithdrawals({
+  items,
+  payoutMessage,
+  timeZone,
+}: {
+  items: MyWithdrawal[];
+  payoutMessage?: string;
+  /** The member's own zone, so times read the same on the server and in the browser. */
+  timeZone?: string;
+}) {
   return (
     <section id="history" className="mt-6 scroll-mt-20">
       <h2 className="mb-3 text-base font-bold text-white">My withdrawals</h2>
@@ -52,7 +62,7 @@ export function MyWithdrawals({ items, payoutMessage }: { items: MyWithdrawal[];
                   <div className="min-w-0">
                     <p className="text-base font-bold tabular-nums text-white">{usd(w.netAmount)}</p>
                     <p className="text-xs text-(--app-ink-3)">
-                      {w.method.replace(/_/g, " ")} · requested {format(w.createdAt, "d MMM yyyy, HH:mm")}
+                      {w.method.replace(/_/g, " ")} · requested {format(inZone(w.createdAt, timeZone), "d MMM yyyy, HH:mm")}
                       {w.fee > 0 && ` · ${usd(w.amount)} − ${usd(w.fee)} fee`}
                     </p>
                   </div>
@@ -63,12 +73,12 @@ export function MyWithdrawals({ items, payoutMessage }: { items: MyWithdrawal[];
                 </div>
 
                 {/* Where it is now — every step, not just "Pending". */}
-                <WithdrawalTracker w={w} payoutMessage={payoutMessage} compact={w.status === "COMPLETED"} />
+                <WithdrawalTracker w={w} payoutMessage={payoutMessage} timeZone={timeZone} compact={w.status === "COMPLETED"} />
 
                 {w.status === "COMPLETED" && (
                   <dl className="mt-3 grid gap-1.5 text-sm">
                     {w.processedAt && (
-                      <Row label="Paid on" value={format(w.processedAt, "d MMM yyyy, HH:mm")} />
+                      <Row label="Paid on" value={format(inZone(w.processedAt, timeZone), "d MMM yyyy, HH:mm")} />
                     )}
                     {w.transactionId && <Row label="Payment reference" value={w.transactionId} mono />}
                     {w.paidFrom && <Row label="Sent from" value={w.paidFrom} />}

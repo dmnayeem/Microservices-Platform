@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
+import { inZone } from "@/lib/zoned-date";
 import { CheckCircle2, Clock, XCircle, X, ChevronRight } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
 import type { MyWithdrawal } from "@/components/user/wallet/my-withdrawals";
@@ -42,8 +43,10 @@ const method = (m: string) => m.replace(/_/g, " ");
 export function WithdrawalStatusCards({
   items,
   onOpenRecord,
+  timeZone,
 }: {
   items: MyWithdrawal[];
+  timeZone?: string;
   /** Opens the full withdrawal record (the Withdraw tab). */
   onOpenRecord: () => void;
 }) {
@@ -89,7 +92,7 @@ export function WithdrawalStatusCards({
               {w.status === "PROCESSING" ? "Withdrawal approved — being sent" : "Withdrawal pending"}
             </span>
             <span className="block text-xs text-amber-100/80">
-              {usd(w.netAmount)} · {method(w.method)} · requested {format(new Date(w.createdAt), "d MMM, h:mm a")}
+              {usd(w.netAmount)} · {method(w.method)} · requested {format(inZone(w.createdAt, timeZone), "d MMM, h:mm a")}
             </span>
           </span>
           <ChevronRight className="h-4 w-4 shrink-0 text-amber-300" />

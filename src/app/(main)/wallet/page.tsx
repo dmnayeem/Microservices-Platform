@@ -225,6 +225,7 @@ export default async function WalletPage() {
         </div>
       )}
       <WalletView
+        timeZone={resolveUserTimezone({ country: user.country, timezone: user.timezone })}
         pointsBalance={user.pointsBalance}
         cashBalance={Number(user.cashBalance)}
         adCreditBalance={toNum(user.adCreditBalance)}
