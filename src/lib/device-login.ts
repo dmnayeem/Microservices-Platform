@@ -20,14 +20,32 @@ import { isStaffRole } from "@/lib/staff";
 export const ONE_ACCOUNT_PER_DEVICE_KEY = "antifraud.one_account_per_device";
 export const DEVICE_LOGIN_EXEMPT_KEY = "antifraud.device_login_exempt";
 
+/**
+ * Members the admin allowed to share a device, as lowercased emails. The Fraud
+ * Monitor's "Allow" button and the settings field edit this one list. It
+ * exempts the sign-in rule below and the per-device task limit
+ * (task-start-gates.ts).
+ */
+export async function getDeviceExemptEmails(): Promise<string[]> {
+  return String((await getSetting<string>(DEVICE_LOGIN_EXEMPT_KEY, "")) ?? "")
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .filter(Boolean);
+}
+
+/** Has the admin allowed this account to share a device? */
+export async function isDeviceShareAllowed(userId: string): Promise<boolean> {
+  const exempt = await getDeviceExemptEmails();
+  if (exempt.length === 0) return false;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  return !!u?.email && exempt.includes(u.email.toLowerCase());
+}
+
 export async function deviceLoginBlocked(user: { id: string; email: string; role: string }): Promise<boolean> {
   try {
     const on = (await getSetting<boolean>(ONE_ACCOUNT_PER_DEVICE_KEY, true)) !== false;
     if (!on || isStaffRole(user.role)) return false;
-    const exempt = String((await getSetting<string>(DEVICE_LOGIN_EXEMPT_KEY, "")) ?? "")
-      .toLowerCase()
-      .split(/[\s,]+/)
-      .filter(Boolean);
+    const exempt = await getDeviceExemptEmails();
     if (exempt.includes(user.email.toLowerCase())) return false;
 
     const { deviceId } = await readDevice();

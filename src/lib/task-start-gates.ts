@@ -7,6 +7,7 @@ import { clientIp } from "@/lib/rate-limit";
 import { getFraudConfig, accountsOnIp } from "@/lib/fraud";
 import { addFraudRisk } from "@/lib/fraud-risk";
 import { accountsOnDevice, flagOnce, readDevice, recordDevice } from "@/lib/device";
+import { isDeviceShareAllowed } from "@/lib/device-login";
 import { getEffectivePackage } from "@/lib/packages";
 import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
 import {
@@ -84,7 +85,12 @@ export async function taskStartFraudGate(
   }
   if (fraud.maxAccountsPerDevice > 0 && seen.deviceId) {
     const n = await accountsOnDevice(seen.deviceId);
-    if (n > fraud.maxAccountsPerDevice) {
+    // An account the admin allowed to share a device (Fraud Monitor → Allow)
+    // works on as normal. Looked up only when the device is over the limit.
+    const allowed =
+      n > fraud.maxAccountsPerDevice &&
+      (await isDeviceShareAllowed(userId));
+    if (n > fraud.maxAccountsPerDevice && !allowed) {
       await addFraudRisk({
         userId: userId,
         signal: "MULTIPLE_ACCOUNTS",

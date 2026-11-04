@@ -18,7 +18,8 @@ import { REASK_MINUTES } from "@/lib/user-warnings";
 import { resolveSubjects, type SubjectPerson } from "@/lib/signal-subjects";
 import { describeUserAgent } from "@/lib/user-agent";
 import { getRiskConfig, FRAUD_SIGNALS, type FraudSignal } from "@/lib/fraud-risk";
-import { AppealDecision, ResetRisk, ResolveEvents } from "@/components/admin/fraud/fraud-actions";
+import { AllowDeviceShare, AppealDecision, ResetRisk, ResolveEvents } from "@/components/admin/fraud/fraud-actions";
+import { getDeviceExemptEmails } from "@/lib/device-login";
 import Link from "next/link";
 import { format } from "date-fns";
 import { AdminTable } from "@/components/admin/ui/admin-table";
@@ -208,6 +209,7 @@ export default async function FraudMonitorPage({
     }>).filter((r) => r.deviceId === g.deviceId);
     return { deviceId: g.deviceId, count: g._count.userId, ua: rows[0]?.userAgent ?? null, rows };
   });
+  const deviceExempt = new Set(sharedDevices.length ? await getDeviceExemptEmails() : []);
 
   // The nested `user` select is lost in the Promise.all tuple's inference.
   const appeals = appealRows as unknown as Array<{
@@ -426,7 +428,8 @@ export default async function FraudMonitorPage({
         </h2>
         <p className="mb-3 text-xs text-slate-500">
           The same browser/device signing in to several accounts — unlike a shared IP, this is rarely innocent. Family
-          members sharing one phone are the usual honest case.
+          members sharing one phone are the usual honest case: press Allow on each of their accounts and they can sign
+          in and work on that device as normal.
         </p>
         {sharedDevices.length === 0 ? (
           <p className="text-sm text-slate-500">
@@ -444,7 +447,7 @@ export default async function FraudMonitorPage({
                 </div>
                 <ul className="mt-2 flex flex-wrap gap-1.5">
                   {d.rows.map((r) => (
-                    <li key={r.user.id}>
+                    <li key={r.user.id} className="inline-flex items-center gap-1">
                       <Link
                         href={`/admin/users/${r.user.id}`}
                         className={`inline-flex items-center gap-1 rounded bg-slate-800 px-2 py-0.5 text-xs hover:bg-slate-700 ${
@@ -455,6 +458,11 @@ export default async function FraudMonitorPage({
                         {r.user.name || r.user.email}
                         {r.country && <span className="text-slate-500">{r.country}</span>}
                       </Link>
+                      <AllowDeviceShare
+                        userId={r.user.id}
+                        allowed={deviceExempt.has(r.user.email.toLowerCase())}
+                        canManage={canManage}
+                      />
                     </li>
                   ))}
                 </ul>

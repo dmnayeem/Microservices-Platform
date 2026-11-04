@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, Loader2, RotateCcw } from "lucide-react";
+import { Check, X, Loader2, RotateCcw, UserCheck } from "lucide-react";
 import { toast } from "@/lib/toast";
 
 async function post(body: Record<string, unknown>): Promise<boolean> {
@@ -115,6 +115,50 @@ export function ResolveEvents({
     >
       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
       {label}
+    </button>
+  );
+}
+
+/**
+ * Allow one member to use a device other accounts also use (a family on one
+ * phone): they can sign in there and start tasks past the per-device limit.
+ * Clicking again takes the permission back.
+ */
+export function AllowDeviceShare({
+  userId,
+  allowed,
+  canManage,
+}: {
+  userId: string;
+  allowed: boolean;
+  canManage: boolean;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  if (!canManage) {
+    return allowed ? <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-300">Allowed</span> : null;
+  }
+  return (
+    <button
+      onClick={async () => {
+        if (allowed && !confirm("Stop allowing this account to share a device?")) return;
+        setBusy(true);
+        if (await post({ action: "device_share", userId, allow: !allowed })) {
+          toast.success(allowed ? "Permission removed" : "Allowed to use multiple accounts on this device");
+          router.refresh();
+        }
+        setBusy(false);
+      }}
+      disabled={busy}
+      title={allowed ? "Allowed to share a device. Click to remove the permission" : "Allow this account to share a device"}
+      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium disabled:opacity-50 ${
+        allowed
+          ? "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+          : "border border-slate-700 text-slate-300 hover:bg-slate-700"
+      }`}
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : allowed ? <Check className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+      {allowed ? "Allowed" : "Allow"}
     </button>
   );
 }

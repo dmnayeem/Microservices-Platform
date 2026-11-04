@@ -7,6 +7,8 @@ import { writeAudit } from "@/lib/audit";
 import { sendNotificationEmail } from "@/lib/email";
 import { canAdministerStaffAccount, type UserRole } from "@/lib/rbac";
 import { WARNING_TEXT_MAX } from "@/lib/user-warnings";
+import { saveSetting } from "@/lib/system-settings";
+import { DEVICE_LOGIN_EXEMPT_KEY, getDeviceExemptEmails } from "@/lib/device-login";
 
 export const runtime = "nodejs";
 
@@ -52,6 +54,13 @@ const schema = z.discriminatedUnion("action", [
     action: z.literal("suspend"),
     userId: z.string().min(1),
     reason: z.string().trim().min(3).max(500),
+  }),
+  // Allow (or stop allowing) one member to use a device other accounts also
+  // use — a family on one phone. Edits the antifraud.device_login_exempt list.
+  z.object({
+    action: z.literal("device_share"),
+    userId: z.string().min(1),
+    allow: z.boolean(),
   }),
 ]);
 
@@ -128,6 +137,30 @@ export async function POST(request: NextRequest) {
       meta: { reason: b.reason },
     });
     return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === "device_share") {
+    const target = await prisma.user.findUnique({ where: { id: b.userId }, select: { id: true, name: true, email: true } });
+    if (!target?.email) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const email = target.email.toLowerCase();
+    const list = await getDeviceExemptEmails();
+    const has = list.includes(email);
+    if (has !== b.allow) {
+      const next = b.allow ? [...list, email] : list.filter((e) => e !== email);
+      await saveSetting(DEVICE_LOGIN_EXEMPT_KEY, next.join(", "), "limits");
+      await writeAudit({
+        actorId,
+        action: b.allow ? "DEVICE_SHARE_ALLOWED" : "DEVICE_SHARE_REVOKED",
+        entity: "User",
+        entityId: target.id,
+        targetUserId: target.id,
+        summary: b.allow
+          ? `Allowed ${target.name || target.email} to use a device shared with other accounts`
+          : `Stopped allowing ${target.name || target.email} to share a device`,
+        meta: { email },
+      });
+    }
+    return NextResponse.json({ ok: true, allowed: b.allow });
   }
 
   if (b.action === "resolve_events") {
