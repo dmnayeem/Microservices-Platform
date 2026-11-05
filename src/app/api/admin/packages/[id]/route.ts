@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { PLAN_ICONS } from "@/lib/plan-compare";
+import { fieldErrors } from "@/lib/package-field-errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -83,9 +84,15 @@ const PLAN_PATCH = z
     withdrawalFeeDiscount: z.number().min(0).max(100).optional(),
 
     socialEarningEnabled: z.boolean().optional(),
+    // null = "use the global defaults", which is what a plan that never set
+    // overrides holds. It used to fail validation, so every save of such a
+    // plan was refused with "Invalid input". Null is dropped (nothing to
+    // write); a Json column cannot take a bare null anyway.
     socialEarningConfig: z
       .record(z.string(), z.number().int().min(0))
-      .optional(),
+      .nullable()
+      .optional()
+      .transform((v) => v ?? undefined),
 
     xpMultiplier: z.number().min(0.1).max(50).optional(),
     taskRewardMultiplier: z.number().min(0.1).max(50).optional(),
@@ -143,7 +150,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   const parsed = PLAN_PATCH.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.issues },
+      {
+        error: "Some fields need fixing",
+        details: parsed.error.issues,
+        fields: fieldErrors(parsed.error.issues),
+      },
       { status: 400 }
     );
   }

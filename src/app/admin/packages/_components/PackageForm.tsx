@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -192,6 +192,68 @@ const TASK_TOGGLES: Array<{ key: keyof PackageFormPkg; label: string; tooltip: s
   { key: "visitTasksEnabled", label: "Visit Tasks", tooltip: "TaskType.VISIT — direct / smart link visits and URL-shortener tasks." },
 ];
 
+// Server field path → the id of the input that edits it, so a refused save
+// can point at the exact box. Fields without a box of their own (toggles,
+// the referral selector, features) are listed in the error banner by label.
+const FIELD_IDS: Record<string, string> = {
+  slug: "slug",
+  name: "name",
+  description: "desc",
+  accessLevel: "accessLevel",
+  order: "order",
+  priceMonthly: "pmo",
+  priceYearly: "pyr",
+  validityDays: "vd",
+  dailyTaskLimit: "dtl",
+  dailyPostLimit: "dpl",
+  minWithdrawal: "mw",
+  withdrawalFeeDiscount: "wfd",
+  xpMultiplier: "xpm",
+  taskRewardMultiplier: "trm",
+  socialEarningMultiplier: "sem",
+};
+const FIELD_LABELS: Record<string, string> = {
+  slug: "Slug",
+  name: "Display Name",
+  description: "Description",
+  accessLevel: "Access Level",
+  order: "Display Order",
+  priceMonthly: "Monthly Price",
+  priceYearly: "Yearly Price",
+  validityDays: "Validity (days)",
+  dailyTaskLimit: "Daily Task Limit",
+  dailyPostLimit: "Daily Post Limit",
+  minWithdrawal: "Min Withdrawal",
+  withdrawalFeeDiscount: "Withdrawal Fee Discount",
+  xpMultiplier: "Daily Check-in XP ×",
+  taskRewardMultiplier: "Task Reward ×",
+  socialEarningMultiplier: "Social Earning ×",
+  dailyReferralPoints: "Daily referral points",
+  referralCommissionLevels: "Referral levels",
+  features: "Features",
+  badgeColor: "Badge colour",
+  icon: "Plan icon",
+  _form: "Form",
+};
+const idFor = (path: string): string | undefined =>
+  path.startsWith("socialEarningConfig.") ? `sep-${path.split(".")[1]}` : FIELD_IDS[path.split(".")[0]];
+const labelFor = (path: string): string => {
+  if (path.startsWith("socialEarningConfig.")) {
+    const k = path.split(".")[1];
+    return SOCIAL_POINT_FIELDS.find((f) => f.key === k)?.label ?? k;
+  }
+  const top = path.split(".")[0];
+  return FIELD_LABELS[top] ?? top.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
+};
+const focusField = (id: string) => {
+  const el = document.getElementById(id) as HTMLInputElement | null;
+  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  el?.focus({ preventScroll: true });
+};
+
+/** Input id → the server's message for it, read by <Field>. */
+const FieldErrorsCtx = createContext<Record<string, string>>({});
+
 export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
   const router = useRouter();
   const isCreate = mode === "create";
@@ -200,11 +262,29 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
   const [newFeature, setNewFeature] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Field path → message, from the last refused save.
+  const [fieldErrs, setFieldErrs] = useState<Record<string, string>>({});
+  const clearErr = (prefix: string) =>
+    setFieldErrs((e) => {
+      const keys = Object.keys(e).filter((k) => k === prefix || k.startsWith(prefix + "."));
+      if (keys.length === 0) return e;
+      const next = { ...e };
+      for (const k of keys) delete next[k];
+      return next;
+    });
+  const errsById: Record<string, string> = {};
+  for (const [path, msg] of Object.entries(fieldErrs)) {
+    const id = idFor(path);
+    if (id) errsById[id] = msg;
+  }
 
   const setField = <K extends keyof PackageFormPkg>(
     key: K,
     value: PackageFormPkg[K]
-  ) => setData((d) => ({ ...d, [key]: value }));
+  ) => {
+    clearErr(key as string);
+    setData((d) => ({ ...d, [key]: value }));
+  };
 
   const toggle = (key: keyof PackageFormPkg) =>
     setData((d) => ({ ...d, [key]: !d[key] as PackageFormPkg[typeof key] }));
@@ -226,6 +306,7 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setFieldErrs({});
 
     try {
       const url = isCreate
@@ -247,6 +328,20 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
+        const fields: Record<string, string> =
+          d.fields && typeof d.fields === "object" ? d.fields : {};
+        const paths = Object.keys(fields);
+        if (paths.length > 0) {
+          setFieldErrs(fields);
+          // Bring the first broken box into view, cursor in it.
+          const firstId = paths.map(idFor).find(Boolean);
+          if (firstId) focusField(firstId);
+          throw new Error(
+            paths.length === 1
+              ? `Not saved: ${labelFor(paths[0])} — ${fields[paths[0]]}`
+              : `Not saved: ${paths.length} fields need fixing (marked in red below)`
+          );
+        }
         throw new Error(d.error || "Failed to save");
       }
       const live = publish ?? data.isActive;
@@ -271,11 +366,41 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
   };
 
   return (
+    <FieldErrorsCtx.Provider value={errsById}>
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-red-400 text-sm">{error}</p>
+            {Object.keys(fieldErrs).length > 1 && (
+              <ul className="mt-2 space-y-1">
+                {Object.entries(fieldErrs).map(([path, msg]) => {
+                  const id = idFor(path);
+                  const text = (
+                    <>
+                      <span className="font-semibold">{labelFor(path)}:</span> {msg}
+                    </>
+                  );
+                  return (
+                    <li key={path} className="text-sm text-red-300">
+                      {id ? (
+                        <button
+                          type="button"
+                          onClick={() => focusField(id)}
+                          className="text-left underline-offset-2 hover:underline"
+                        >
+                          {text}
+                        </button>
+                      ) : (
+                        text
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 
@@ -488,6 +613,7 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
                   value={data.socialEarningConfig?.[f.key] ?? ""}
                   onChange={(e) => {
                     const raw = e.target.value;
+                    clearErr(`socialEarningConfig.${f.key}`);
                     setData((d) => {
                       const next = { ...(d.socialEarningConfig ?? {}) };
                       if (raw === "") delete next[f.key];
@@ -622,6 +748,7 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
         )}
       </div>
     </form>
+    </FieldErrorsCtx.Provider>
   );
 }
 
@@ -666,13 +793,23 @@ function Field({
   className?: string;
   children: React.ReactNode;
 }) {
+  const err = useContext(FieldErrorsCtx)[htmlFor ?? ""];
   return (
-    <div className={className}>
-      <label htmlFor={htmlFor} className="text-sm font-medium text-gray-400 mb-1.5 inline-flex items-center gap-1.5">
+    <div className={`${className} ${err ? "[&_input]:border-red-500/70 [&_textarea]:border-red-500/70" : ""}`}>
+      <label
+        htmlFor={htmlFor}
+        className={`text-sm font-medium mb-1.5 inline-flex items-center gap-1.5 ${err ? "text-red-300" : "text-gray-400"}`}
+      >
         {label}
         {tooltip && <Tooltip text={tooltip} />}
       </label>
       {children}
+      {err && (
+        <p role="alert" className="mt-1.5 flex items-start gap-1 text-xs text-red-400">
+          <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+          {err}
+        </p>
+      )}
     </div>
   );
 }
