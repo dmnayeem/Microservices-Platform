@@ -367,9 +367,10 @@ if (window.RevType) RevType.setScore(score);`;
         </Step>
         <Step n={2} title="Create this game">
           <P>
-            <TabLink onClick={() => onGoToTab("basics")}>Basics</TabLink> tab: title, icon, category.{" "}
-            <TabLink onClick={() => onGoToTab("embed")}>Embed</TabLink> tab: the game&apos;s address on your
-            website. Press <strong>Create game</strong>.
+            <TabLink onClick={() => onGoToTab("embed")}>Game link</TabLink> tab first: paste the game&apos;s
+            address on your website. Its name, logo and cover are filled in from that page. Then check the{" "}
+            <TabLink onClick={() => onGoToTab("basics")}>Basics</TabLink> tab (title, icon, category) and press{" "}
+            <strong>Create game</strong>.
           </P>
           <P>
             Your game server decides the income, so leave the score and time options in the{" "}
@@ -521,7 +522,7 @@ if (window.RevType) RevType.setScore(score);`;
           )}
           <P>
             Then press <strong>Test this URL</strong> in the{" "}
-            <TabLink onClick={() => onGoToTab("embed")}>Embed</TabLink> tab.
+            <TabLink onClick={() => onGoToTab("embed")}>Game link</TabLink> tab.
           </P>
         </div>
       </details>

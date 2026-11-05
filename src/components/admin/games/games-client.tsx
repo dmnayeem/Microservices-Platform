@@ -19,6 +19,7 @@ import {
   Search,
   Tags,
   ListPlus,
+  Wand2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
@@ -549,10 +550,12 @@ function GameRow({
 
 type Tab = "setup" | "basics" | "embed" | "ads" | "rewards";
 
+// The game link comes straight after the guide: the name, icon and cover
+// are read from it (lib/game-meta.ts), so Basics is filled in by then.
 const TABS: { id: Tab; label: string }[] = [
   { id: "setup", label: "Setup guide" },
+  { id: "embed", label: "Game link" },
   { id: "basics", label: "Basics" },
-  { id: "embed", label: "Embed" },
   { id: "ads", label: "Ads" },
   { id: "rewards", label: "Rewards" },
 ];
@@ -610,6 +613,59 @@ function GameModal({
     scoreDailyCapPoints: game?.scoreDailyCapPoints ?? 0,
   });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+
+  // Read the game page's name, description, icon and cover. `overwrite` is
+  // the explicit button; the automatic run after typing the link only fills
+  // what is still empty, so it never replaces something the admin chose.
+  const [fetchingMeta, setFetchingMeta] = useState(false);
+  const [metaNote, setMetaNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [metaFor, setMetaFor] = useState<string | null>(null);
+  const fetchMeta = async (overwrite: boolean) => {
+    const url = form.embedUrl.trim();
+    if (!/^https:\/\//i.test(url)) {
+      if (overwrite) toast.error("Enter the full game link, starting with https://");
+      return;
+    }
+    setFetchingMeta(true);
+    setMetaNote(null);
+    setMetaFor(url);
+    try {
+      const res = await fetch("/api/admin/games/fetch-meta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      const got: string[] = [];
+      setForm((f) => {
+        const next = { ...f };
+        const take = (key: "title" | "description" | "iconUrl" | "coverUrl", v: unknown, label: string) => {
+          if (typeof v !== "string" || !v.trim()) return;
+          if (overwrite || !String(f[key] ?? "").trim()) {
+            next[key] = v.trim();
+            got.push(label);
+          }
+        };
+        take("iconUrl", d.iconUrl, "logo");
+        take("coverUrl", d.coverUrl, "cover image");
+        take("title", d.title, "name");
+        take("description", d.description, "description");
+        return next;
+      });
+      const missing = [!d.iconUrl && "logo", !d.coverUrl && "cover image"].filter(Boolean);
+      setMetaNote({
+        ok: missing.length === 0,
+        text:
+          (got.length ? `Filled in the ${got.join(", ")}.` : "Nothing new to fill in.") +
+          (missing.length ? ` The page has no ${missing.join(" or ")} — add it in Basics.` : " Check them in Basics."),
+      });
+    } catch (err) {
+      setMetaNote({ ok: false, text: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setFetchingMeta(false);
+    }
+  };
 
   const perHour =
     form.rewardTickSeconds > 0
@@ -712,6 +768,14 @@ function GameModal({
 
           {tab === "basics" && (
             <>
+              {!game && !form.embedUrl.trim() && (
+                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  Add the game link first: the name, logo and cover are filled in from it.{" "}
+                  <button type="button" onClick={() => setTab("embed")} className="font-semibold underline underline-offset-2">
+                    Go to Game link
+                  </button>
+                </p>
+              )}
               <Field label="Title">
                 <input
                   value={form.title}
@@ -794,8 +858,8 @@ function GameModal({
           {tab === "embed" && (
             <>
               <Field
-                label="Game URL"
-                hint="The page that gets loaded in the full-screen frame. Must be https."
+                label="Game link"
+                hint="The page that gets loaded in the full-screen frame. Must be https. The name, logo and cover are read from it."
               >
                 <input
                   value={form.embedUrl}
@@ -803,10 +867,50 @@ function GameModal({
                     set({ embedUrl: e.target.value });
                     setProbe(null);
                   }}
+                  onBlur={() => {
+                    const url = form.embedUrl.trim();
+                    if (url && url !== metaFor && (!form.iconUrl || !form.coverUrl)) void fetchMeta(false);
+                  }}
                   className={inp}
                   placeholder="https://example.com/games/bubble-pop"
                 />
               </Field>
+
+              <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fetchMeta(true)}
+                    disabled={fetchingMeta}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium disabled:opacity-50"
+                  >
+                    {fetchingMeta ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                    Fetch name, logo &amp; cover
+                  </button>
+                  {(form.iconUrl || form.coverUrl) && (
+                    <div className="flex items-center gap-2">
+                      {form.iconUrl && (
+                        <span className="relative h-10 w-10 overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
+                          <SmartImage src={form.iconUrl} alt="Logo" fill sizes="40px" className="object-cover" />
+                        </span>
+                      )}
+                      {form.coverUrl && (
+                        <span className="relative h-10 w-[72px] overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
+                          <SmartImage src={form.coverUrl} alt="Cover" fill sizes="72px" className="object-cover" />
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {metaNote && (
+                  <p className={cn("text-xs", metaNote.ok ? "text-emerald-300" : "text-amber-300")}>
+                    {metaNote.text}{" "}
+                    <button type="button" onClick={() => setTab("basics")} className="underline underline-offset-2">
+                      Open Basics
+                    </button>
+                  </p>
+                )}
+              </div>
 
               <button
                 type="button"
