@@ -71,12 +71,12 @@ export function Hero(props: Props) {
               <span className="min-w-0 truncate">{v.badge}</span>
             </p>
 
-            <h1 className="mkx-display mb-8 break-words lg:text-[clamp(2.25rem,3.4vw,3.375rem)]">
+            <h1 className="mkx-display mb-8 break-words max-sm:text-[min(2.125rem,calc((100vw-2rem)/11.2))] max-sm:tracking-[-0.016em] lg:text-[clamp(2.25rem,3.4vw,3.375rem)]">
               <span className="block text-(--mk-text)">{v.title_line1}</span>
               <span className="block text-(--mk-subtle)">{v.title_line2}</span>
             </h1>
 
-            <p className="mkx-lead mk-measure mb-10 line-clamp-4 sm:line-clamp-none">
+            <p className="mkx-lead mk-measure mb-10">
               {v.subtitle}
             </p>
 
@@ -103,12 +103,12 @@ export function Hero(props: Props) {
             {/* Risk reversal belongs with the button it de-risks, not 64px below
                 it. On a 360px screen the three claims wrap to their own lines
                 rather than overflowing the viewport. */}
-            <p className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm tracking-[0.01em] text-(--mk-subtle)">
+            <p className="inline-flex flex-wrap items-center gap-x-2.5 max-sm:gap-x-4 gap-y-1.5 text-sm tracking-[0.01em] text-(--mk-subtle)">
               <ShieldCheck className="w-4 h-4 shrink-0 text-(--mk-success)" />
               <span>No credit card required</span>
-              <span aria-hidden>·</span>
+              <span aria-hidden className="max-sm:hidden">·</span>
               <span>Free to start</span>
-              <span aria-hidden>·</span>
+              <span aria-hidden className="max-sm:hidden">·</span>
               <span>Pay shown before you start</span>
             </p>
           </div>
