@@ -18,6 +18,7 @@ import {
   Coins,
   Zap,
   GripVertical,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -119,6 +120,17 @@ function toDatetimeLocal(v: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** One-click run lengths for the schedule and for reactivating an ended mission. */
+const QUICK_DURATIONS = [
+  { label: "12h", hours: 12 },
+  { label: "24h", hours: 24 },
+  { label: "48h", hours: 48 },
+  { label: "1 week", hours: 168 },
+];
+
+const isExpired = (m: { endAt: string | null }) => !!m.endAt && new Date(m.endAt).getTime() < Date.now();
+const isUpcoming = (m: { startAt: string | null }) => !!m.startAt && new Date(m.startAt).getTime() > Date.now();
+
 const EMPTY_ITEM: MissionItem = {
   taskType: "ARTICLE",
   description: "",
@@ -171,6 +183,32 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
   const [modal, setModal] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
   const [busyDeleteId, setBusyDeleteId] = useState<string | null>(null);
+  const [busyReactivateId, setBusyReactivateId] = useState<string | null>(null);
+
+  // An ended mission runs again from now for the chosen length, switched on.
+  // Only the schedule and the on/off switch are sent; nothing else changes.
+  const reactivate = async (m: Mission, hours: number) => {
+    setBusyReactivateId(m.id);
+    try {
+      const now = new Date();
+      const startAt = now.toISOString();
+      const endAt = new Date(now.getTime() + hours * 3_600_000).toISOString();
+      const res = await fetch(`/api/admin/daily-missions/${m.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true, startAt, endAt }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setMissions((list) => list.map((x) => (x.id === m.id ? { ...x, isActive: true, startAt, endAt } : x)));
+      toast.success(`"${m.name}" is running again until ${new Date(endAt).toLocaleString()}`);
+      router.refresh();
+    } catch (err) {
+      toast.error("Could not reactivate", { description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusyReactivateId(null);
+    }
+  };
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const grouped = useMemo(() => {
@@ -416,12 +454,17 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
                           <span
                             className={cn(
                               "px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold",
-                              m.isActive
-                                ? "bg-emerald-500/15 text-emerald-400"
-                                : "bg-slate-700 text-slate-400"
+                              isExpired(m)
+                                ? "bg-red-500/15 text-red-400"
+                                : !m.isActive
+                                  ? "bg-slate-700 text-slate-400"
+                                  : isUpcoming(m)
+                                    ? "bg-sky-500/15 text-sky-400"
+                                    : "bg-emerald-500/15 text-emerald-400"
                             )}
+                            title={m.endAt ? `Ends ${new Date(m.endAt).toLocaleString()}` : undefined}
                           >
-                            {m.isActive ? "Active" : "Off"}
+                            {isExpired(m) ? "Expired" : !m.isActive ? "Off" : isUpcoming(m) ? "Scheduled" : "Active"}
                           </span>
                         </div>
                         {m.description && (
@@ -489,6 +532,27 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
                             </div>
                           )}
                         </div>
+                        {isExpired(m) && canManage && (
+                          <div className="mt-3 rounded-lg border border-red-500/25 bg-red-500/5 p-2.5">
+                            <p className="mb-2 inline-flex items-center gap-1 text-[11px] text-red-300">
+                              <RotateCcw className="w-3 h-3" />
+                              Ended {new Date(m.endAt as string).toLocaleString()} · Reactivate for
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {QUICK_DURATIONS.map((d) => (
+                                <button
+                                  key={d.hours}
+                                  onClick={() => reactivate(m, d.hours)}
+                                  disabled={busyReactivateId === m.id}
+                                  className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-emerald-500/50 hover:text-emerald-300 disabled:opacity-50"
+                                >
+                                  {d.label}
+                                </button>
+                              ))}
+                              {busyReactivateId === m.id && <Loader2 className="w-4 h-4 animate-spin text-slate-400 self-center" />}
+                            </div>
+                          </div>
+                        )}
                         {m.linkReferralBonus && (
                           <p className="mt-2 text-[10px] text-amber-400 inline-flex items-center gap-1">
                             <Sparkles className="w-3 h-3" />
@@ -722,8 +786,39 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
                     />
                   </Field>
                 </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">Ends after:</span>
+                  {QUICK_DURATIONS.map((d) => (
+                    <button
+                      key={d.hours}
+                      type="button"
+                      onClick={() => {
+                        const from = modal.startAt ? new Date(modal.startAt) : new Date();
+                        const base = isNaN(from.getTime()) ? new Date() : from;
+                        setModal({
+                          ...modal,
+                          startAt: modal.startAt || toDatetimeLocal(base.toISOString()),
+                          endAt: toDatetimeLocal(new Date(base.getTime() + d.hours * 3_600_000).toISOString()),
+                        });
+                      }}
+                      className="rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:border-indigo-500 hover:text-indigo-300"
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                  {(modal.startAt || modal.endAt) && (
+                    <button
+                      type="button"
+                      onClick={() => setModal({ ...modal, startAt: "", endAt: "" })}
+                      className="rounded-md px-2 py-1 text-xs text-slate-500 hover:text-slate-300"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-500">
-                  Leave both blank to run this mission indefinitely.
+                  Counted from the start time (or from now when it is blank). Leave both blank to run this mission
+                  indefinitely. An ended mission can be reactivated from its card.
                 </p>
               </div>
 

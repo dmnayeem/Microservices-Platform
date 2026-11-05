@@ -31,9 +31,11 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
   autoRefresh: z.boolean().optional(),
   linkReferralBonus: z.boolean().optional(),
-  completionCashReward: z.number().min(0).default(0),
-  streakBonusEvery: z.number().int().min(0).max(365).default(0),
-  streakBonusPoints: z.number().int().min(0).default(0),
+  // Optional, not .default(0): a partial update (Reactivate sends only the
+  // schedule) used to reset the cash reward and the streak bonus to 0.
+  completionCashReward: z.number().min(0).optional(),
+  streakBonusEvery: z.number().int().min(0).max(365).optional(),
+  streakBonusPoints: z.number().int().min(0).optional(),
   startAt: z.string().datetime().nullable().optional(),
   endAt: z.string().datetime().nullable().optional(),
   order: z.number().int().optional(),
