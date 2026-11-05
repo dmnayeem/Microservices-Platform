@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, ArrowRight, Sparkles, Share2 } from "lucide-react";
+import { ExternalLink, ArrowRight, Sparkles, Share2, ChevronDown } from "lucide-react";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
-import { ScrollFadeRow } from "@/components/user/primitives/scroll-fade-row";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { TaskListError } from "./task-list-error";
@@ -88,8 +87,28 @@ export function SocialTasksView({
     setStatus(s);
   };
 
+  // Only platforms that actually have a task in this list get a chip, busiest
+  // first. A phone shows All + the top few; the rest sit behind "More".
+  const [showAllPlatforms, setShowAllPlatforms] = useState(false);
+  const platformCounts = useMemo(() => {
+    const n: Record<string, number> = {};
+    for (const t of tasks) if (PLATFORM_LOOKUP[t.platform]) n[t.platform] = (n[t.platform] ?? 0) + 1;
+    return SOCIAL_PLATFORMS.filter((p) => n[p.key])
+      .map((p, i) => ({ p, count: n[p.key], i }))
+      .sort((a, b) => b.count - a.count || a.i - b.i);
+  }, [tasks]);
+  // A platform that has no tasks in the current tab falls back to All, so a
+  // tab switch never strands the member on an empty filter.
+  const activePlatform = platformCounts.some((x) => x.p.key === platformFilter) ? platformFilter : "ALL";
+  const TOP = 3;
+  const hiddenCount = Math.max(0, platformCounts.length - TOP);
+  const collapse = hiddenCount > 1 && !showAllPlatforms; // never hide just one
+  const shownPlatforms = collapse
+    ? platformCounts.filter((x, i) => i < TOP || x.p.key === activePlatform)
+    : platformCounts;
+
   const visible = tasks.filter(
-    (t) => platformFilter === "ALL" || t.platform === platformFilter
+    (t) => activePlatform === "ALL" || t.platform === activePlatform
   );
 
   return (
@@ -115,35 +134,40 @@ export function SocialTasksView({
         ]}
       />
 
-      {/* Platform filter — bigger, clearer, brand-coloured when active */}
-      <ScrollFadeRow className="-mx-4" innerClassName="flex items-center gap-2 px-4 pb-1 min-w-max" ariaLabel="Platform filter">
-          <button
+      {/* Platform filter: wraps instead of scrolling, so nothing runs off a
+          phone screen. Hidden while loading or when the list is empty. */}
+      {!loading && platformCounts.length > 0 && (
+        <div role="group" aria-label="Platform filter" className="flex flex-wrap items-center gap-2">
+          <PlatformChip
+            active={activePlatform === "ALL"}
             onClick={() => setPlatformFilter("ALL")}
-            className={cn(
-              "shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors",
-              platformFilter === "ALL"
-                ? "bg-(--app-cta) text-(--app-on-cta)"
-                : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
-            )}
-          >
-            All
-          </button>
-          {SOCIAL_PLATFORMS.map((p) => (
-            <button
+            label="All"
+            count={tasks.length}
+          />
+          {shownPlatforms.map(({ p, count }) => (
+            <PlatformChip
               key={p.key}
+              active={activePlatform === p.key}
+              activeClass={p.brandColor}
               onClick={() => setPlatformFilter(p.key)}
-              className={cn(
-                "shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors",
-                platformFilter === p.key
-                  ? cn(p.brandColor, "text-white ring-2 ring-white/20")
-                  : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
-              )}
-            >
-              <BrandIcon brand={p.key} fallback={p.emoji} className="w-3.5 h-3.5" />
-              {p.label}
-            </button>
+              label={p.label}
+              count={count}
+              icon={<BrandIcon brand={p.key} fallback={p.emoji} className="w-3.5 h-3.5" />}
+            />
           ))}
-      </ScrollFadeRow>
+          {hiddenCount > 1 && (
+            <button
+              type="button"
+              onClick={() => setShowAllPlatforms((v) => !v)}
+              aria-expanded={showAllPlatforms}
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-(--app-line) px-3 py-1.5 text-xs font-bold text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--app-surface-hover) transition-colors"
+            >
+              {showAllPlatforms ? "Less" : `More (${platformCounts.length - shownPlatforms.length})`}
+              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showAllPlatforms && "rotate-180")} />
+            </button>
+          )}
+        </div>
+      )}
 
       <AdRenderer placement="TASK_LIST" />
 
@@ -272,5 +296,41 @@ export function SocialTasksView({
         </div>
       )}
     </div>
+  );
+}
+
+function PlatformChip({
+  active,
+  activeClass,
+  onClick,
+  label,
+  count,
+  icon,
+}: {
+  active: boolean;
+  activeClass?: string;
+  onClick: () => void;
+  label: string;
+  count: number;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors whitespace-nowrap",
+        active
+          ? activeClass
+            ? cn(activeClass, "text-white ring-2 ring-white/20")
+            : "bg-(--app-cta) text-(--app-on-cta)"
+          : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
+      )}
+    >
+      {icon}
+      {label}
+      <span className={cn("tabular-nums", active ? "opacity-80" : "text-(--app-ink-3)")}>{count}</span>
+    </button>
   );
 }

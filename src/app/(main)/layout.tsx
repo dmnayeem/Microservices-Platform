@@ -227,7 +227,7 @@ export default async function MainLayout({
           * thing on a page sat under the nav. The bar publishes what it
           * actually occupies as `--bottom-nav-h`; 6rem stays only as the value
           * used for the frame before its observer first runs. */}
-        <main className="mx-auto w-full max-w-7xl py-(--app-pad) px-(--app-pad) sm:px-6 lg:px-8 pb-[calc(var(--bottom-nav-h,6rem)+1rem+var(--anchor-ad-h,0px))] md:pb-[calc(2rem+var(--anchor-ad-h,0px))] scroll-mt-[calc(4rem+env(safe-area-inset-top))]">
+        <main className="mx-auto w-full max-w-7xl overflow-x-clip py-(--app-pad) px-(--app-pad) sm:px-6 lg:px-8 pb-[calc(var(--bottom-nav-h,6rem)+1rem+var(--anchor-ad-h,0px))] md:pb-[calc(2rem+var(--anchor-ad-h,0px))] scroll-mt-[calc(4rem+env(safe-area-inset-top))]">
           <AppRefreshShell>{children}</AppRefreshShell>
         </main>
       </div>
